@@ -1,5 +1,5 @@
 # base stage contains just dependencies.
-FROM python:3.7.11-slim as dependencies
+FROM python:3.9.12-slim as dependencies
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
