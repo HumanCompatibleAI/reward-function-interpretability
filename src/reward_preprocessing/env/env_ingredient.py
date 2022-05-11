@@ -110,6 +110,20 @@ def shaped_mountain_car():
 
 
 @env_ingredient.named_config
+def procgen_coinrun():
+    import procgen
+    procgen.register_environments()
+    name = "procgen:procgen-coinrun-v0"
+    # TODO: add stats
+    # stats_path = (
+    #     "results/expert_demos/seals_mountain_car/policies/final/vec_normalize.pkl"
+    # )
+    normalize = False  # Todo: this should probably be true
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
 def pendulum():
     name = "Pendulum-v0"
     _ = locals()  # make flake8 happy
