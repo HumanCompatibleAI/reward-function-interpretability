@@ -161,12 +161,12 @@ def main(
         k: v
         for k, v in sorted(
             models.items(),
-            key=lambda item: SHAPINGS[item[0].split("_")[3]]["priority"],
+            key=lambda item: SHAPINGS[item[0].split("_")[-1]]["priority"],
         )
     }
     # convert to nicer names
     models = {
-        SHAPINGS[model_path.split("_")[3]]["pretty_name"]: v
+        SHAPINGS[model_path.split("_")[-1]]["pretty_name"]: v
         for model_path, v in models.items()
     }
 
