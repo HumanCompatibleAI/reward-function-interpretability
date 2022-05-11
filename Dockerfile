@@ -1,5 +1,5 @@
 # base stage contains just dependencies.
-FROM python:3.9.12-slim as dependencies
+FROM nvidia/cuda:11.6.2-cudnn8-runtime-ubuntu20.04 as dependencies
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
