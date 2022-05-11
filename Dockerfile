@@ -40,6 +40,11 @@ FROM dependencies as full
 # Delay copying (and installing) the code until the very end
 COPY . /reward_preprocessing
 RUN poetry run pip install git+https://github.com/HumanCompatibleAI/imitation
+# This commit, which is newer than the newest pypi release, fixes a bug related to the number of args given to the seed function.
+RUN poetry run pip install git+https://github.com/openai/gym3.git@4c3824680eaf9dd04dce224ee3d4856429878226
+# Newer version with modification since the preprint was released.
+RUN poetry run pip install git+https://github.com/JacobPfau/procgenAISC.git@f4b4be55337ad8e4e6d2f13337534f9911a40277
+
 # Build a wheel then install to avoid copying whole directory (pip issue #2195)
 # Note that all dependencies were already installed in the previous stage.
 # The purpose of this is only to make the local code available as a package for
