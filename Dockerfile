@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     libc6-dev \
+    # Used by procgen
+    qt5-default \
+    cmake \
     # git is needed by Sacred
     git \
     && rm -rf /var/lib/apt/lists/*
