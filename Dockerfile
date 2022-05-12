@@ -2,20 +2,30 @@
 FROM nvidia/cuda:11.6.2-cudnn8-runtime-ubuntu20.04 as dependencies
 ARG DEBIAN_FRONTEND=noninteractive
 
+RUN apt list
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gcc \
     g++ \
     libc6-dev \
+    # Python
+    python3.9 \
+    python3.9-dev \
+    python3.9-venv \
+    python3-pip \
+    python3-virtualenv \
     # Used by procgen
+    build-essential \
+    libgl1-mesa-dev \
     qt5-default \
     cmake \
     # git is needed by Sacred
     git \
     && rm -rf /var/lib/apt/lists/*
-
-RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python -
+RUN python3 -V
+ENV PATH="/venv/bin:$PATH"
 ENV PATH="/root/.local/bin:$PATH"
+RUN curl -sSL https://install.python-poetry.org | python3.9 -
 
 
 WORKDIR /reward_preprocessing
@@ -52,7 +62,7 @@ RUN poetry run pip install git+https://github.com/JacobPfau/procgenAISC.git@f4b4
 # Note that all dependencies were already installed in the previous stage.
 # The purpose of this is only to make the local code available as a package for
 # easier import.
-RUN poetry run python setup.py sdist bdist_wheel
+RUN poetry run python3 setup.py sdist bdist_wheel
 RUN poetry run pip install dist/reward_preprocessing-*.whl
 
 CMD ["poetry", "run", "pytest"]
