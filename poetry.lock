@@ -1,4 +1,12 @@
 [[package]]
+name = "absl-py"
+version = "1.2.0"
+description = "Abseil Python Common Libraries, see https://github.com/abseil/abseil-py."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "atomicwrites"
 version = "1.4.0"
 description = "Atomic file writes."
@@ -44,12 +52,38 @@ python2 = ["typed-ast (>=1.4.3)"]
 uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
+name = "cachetools"
+version = "5.2.0"
+description = "Extensible memoizing collections and decorators"
+category = "main"
+optional = false
+python-versions = "~=3.7"
+
+[[package]]
 name = "certifi"
 version = "2021.10.8"
 description = "Python package for providing Mozilla's CA Bundle."
 category = "main"
 optional = false
 python-versions = "*"
+
+[[package]]
+name = "chai-sacred"
+version = "0.8.3"
+description = "Facilitates automated and reproducible experimental research"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+colorama = ">=0.4"
+docopt = ">=0.3,<1.0"
+GitPython = "*"
+jsonpickle = ">=1.2"
+munch = ">=2.5,<3.0"
+packaging = ">=18.0"
+py-cpuinfo = ">=4.0"
+wrapt = ">=1.0,<2.0"
 
 [[package]]
 name = "charset-normalizer"
@@ -190,26 +224,78 @@ python-versions = ">=3.7"
 gitdb = ">=4.0.1,<5"
 
 [[package]]
-name = "gym"
-version = "0.19.0"
-description = "The OpenAI Gym: A toolkit for developing and comparing your reinforcement learning agents."
+name = "google-auth"
+version = "2.10.0"
+description = "Google Authentication Library"
+category = "main"
+optional = false
+python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*"
+
+[package.dependencies]
+cachetools = ">=2.0.0,<6.0"
+pyasn1-modules = ">=0.2.1"
+rsa = {version = ">=3.1.4,<5", markers = "python_version >= \"3.6\""}
+six = ">=1.9.0"
+
+[package.extras]
+reauth = ["pyu2f (>=0.1.5)"]
+pyopenssl = ["pyopenssl (>=20.0.0)"]
+enterprise_cert = ["pyopenssl (==22.0.0)", "cryptography (==36.0.2)"]
+aiohttp = ["aiohttp (>=3.6.2,<4.0.0dev)", "requests (>=2.20.0,<3.0.0dev)"]
+
+[[package]]
+name = "google-auth-oauthlib"
+version = "0.4.6"
+description = "Google Authentication Library"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
-cloudpickle = ">=1.2.0,<1.7.0"
-numpy = ">=1.18.0"
+google-auth = ">=1.0.0"
+requests-oauthlib = ">=0.7.0"
 
 [package.extras]
-all = ["atari-py (==0.2.6)", "box2d-py (>=2.3.5,<2.4.0)", "opencv-python (>=3)", "mujoco_py (>=1.50,<2.0)", "scipy", "imageio", "pyglet (>=1.4.0)"]
-atari = ["atari-py (==0.2.6)", "opencv-python (>=3)"]
-box2d = ["box2d-py (>=2.3.5,<2.4.0)", "pyglet (>=1.4.0)"]
+tool = ["click (>=6.0.0)"]
+
+[[package]]
+name = "grpcio"
+version = "1.48.0"
+description = "HTTP/2-based RPC framework"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+six = ">=1.5.2"
+
+[package.extras]
+protobuf = ["grpcio-tools (>=1.48.0)"]
+
+[[package]]
+name = "gym"
+version = "0.21.0"
+description = "Gym: A universal API for reinforcement learning environments."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+cloudpickle = ">=1.2.0"
+numpy = ">=1.18.0"
+pyglet = {version = ">=1.4.0", optional = true, markers = "extra == \"classic_control\""}
+
+[package.extras]
+accept-rom-license = ["autorom[accept-rom-license] (>=0.4.2,<0.5.0)"]
+all = ["mujoco_py (>=1.50,<2.0)", "lz4 (>=3.1.0)", "opencv-python (>=3)", "ale-py (>=0.7.1,<0.8.0)", "pyglet (>=1.4.0)", "scipy (>=1.4.1)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "ale-py (>=0.7.1,<0.8.0)", "lz4 (>=3.1.0)", "opencv-python (>=3)", "pyglet (>=1.4.0)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "scipy (>=1.4.1)", "mujoco_py (>=1.50,<2.0)"]
+atari = ["ale-py (>=0.7.1,<0.8.0)"]
+box2d = ["box2d-py (==2.3.5)", "pyglet (>=1.4.0)"]
 classic_control = ["pyglet (>=1.4.0)"]
-mujoco = ["mujoco_py (>=1.50,<2.0)", "imageio"]
-nomujoco = ["atari-py (==0.2.6)", "box2d-py (>=2.3.5,<2.4.0)", "opencv-python (>=3)", "scipy", "pyglet (>=1.4.0)"]
-robotics = ["mujoco_py (>=1.50,<2.0)", "imageio"]
-toy_text = ["scipy"]
+mujoco = ["mujoco_py (>=1.50,<2.0)"]
+nomujoco = ["lz4 (>=3.1.0)", "opencv-python (>=3)", "ale-py (>=0.7.1,<0.8.0)", "pyglet (>=1.4.0)", "scipy (>=1.4.1)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)"]
+other = ["lz4 (>=3.1.0)", "opencv-python (>=3)"]
+robotics = ["mujoco_py (>=1.50,<2.0)"]
+toy_text = ["scipy (>=1.4.1)"]
 
 [[package]]
 name = "idna"
@@ -249,6 +335,32 @@ test = ["invoke", "pytest", "pytest-cov", "fsspec"]
 tifffile = ["tifffile"]
 
 [[package]]
+name = "imitation"
+version = "0.3.1"
+description = "Implementation of modern reward and imitation learning algorithms."
+category = "main"
+optional = false
+python-versions = ">=3.8.0"
+
+[package.dependencies]
+chai-sacred = ">=0.8.3"
+gym = {version = "0.21.0", extras = ["classic_control"]}
+matplotlib = "*"
+numpy = ">=1.15"
+scikit-learn = ">=0.21.2"
+stable-baselines3 = ">=1.6.0"
+tensorboard = ">=1.14"
+torch = ">=1.4.0"
+tqdm = "*"
+
+[package.extras]
+test = ["pytype", "ray[tune,debug] (>=1.13.0)", "wandb", "scipy (>=1.8.0)", "pytest-xdist", "pytest-notebook", "pytest-cov", "pytest", "pandas", "jupyter-client (<7.0)", "jupyter", "ipykernel", "hypothesis", "flake8-isort", "flake8-docstrings", "flake8-debugger", "flake8-commas", "flake8-builtins", "flake8-blind-except", "flake8", "filelock", "darglint", "codespell", "codecov", "coverage", "black", "seals"]
+parallel = ["ray[tune,debug] (>=1.13.0)"]
+mujoco = ["gym[classic_control,mujoco] (==0.21.0)"]
+docs = ["sphinxcontrib-napoleon", "sphinx-rtd-theme", "sphinx-autodoc-typehints", "sphinx (>=5.0.2,<5.1.0)"]
+dev = ["sphinxcontrib-napoleon", "sphinx-rtd-theme", "sphinx-autodoc-typehints", "sphinx (>=5.0.2,<5.1.0)", "pytype", "ray[tune,debug] (>=1.13.0)", "wandb", "scipy (>=1.8.0)", "pytest-xdist", "pytest-notebook", "pytest-cov", "pytest", "pandas", "jupyter-client (<7.0)", "jupyter", "ipykernel", "hypothesis", "flake8-isort", "flake8-docstrings", "flake8-debugger", "flake8-commas", "flake8-builtins", "flake8-blind-except", "flake8", "filelock", "darglint", "codecov", "coverage", "black", "seals", "codespell", "isort (>=5.0,<6.0)", "ipdb", "ntfy", "awscli", "autopep8"]
+
+[[package]]
 name = "importlab"
 version = "0.7"
 description = "A library to calculate python dependency graphs."
@@ -258,6 +370,22 @@ python-versions = ">=3.6.0"
 
 [package.dependencies]
 networkx = ">=2"
+
+[[package]]
+name = "importlib-metadata"
+version = "4.12.0"
+description = "Read metadata from Python packages"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+zipp = ">=0.5"
+
+[package.extras]
+testing = ["importlib-resources (>=1.3)", "pytest-mypy (>=0.9.1)", "pytest-black (>=0.3.7)", "pytest-perf (>=0.9.2)", "flufl.flake8", "pyfakefs", "packaging", "pytest-enabler (>=1.3)", "pytest-cov", "pytest-flake8", "pytest-checkdocs (>=2.4)", "pytest (>=6)"]
+perf = ["ipython"]
+docs = ["rst.linker (>=1.9)", "jaraco.packaging (>=9)", "sphinx"]
 
 [[package]]
 name = "iniconfig"
@@ -280,6 +408,14 @@ pipfile_deprecated_finder = ["pipreqs", "requirementslib"]
 requirements_deprecated_finder = ["pipreqs", "pip-api"]
 colors = ["colorama (>=0.4.3,<0.5.0)"]
 plugins = ["setuptools"]
+
+[[package]]
+name = "joblib"
+version = "1.1.0"
+description = "Lightweight pipelining with Python functions"
+category = "main"
+optional = false
+python-versions = ">=3.6"
 
 [[package]]
 name = "jsonpickle"
@@ -317,6 +453,28 @@ typing-inspect = ">=0.4.0"
 
 [package.extras]
 dev = ["black (==22.3.0)", "coverage (>=4.5.4)", "fixit (==0.1.1)", "flake8 (>=3.7.8)", "hypothesis (>=4.36.0)", "hypothesmith (>=0.0.4)", "jupyter (>=1.0.0)", "maturin (>=0.8.3,<0.9)", "nbsphinx (>=0.4.2)", "prompt-toolkit (>=2.0.9)", "setuptools-scm (>=6.0.1)", "sphinx-rtd-theme (>=0.4.3)", "ufmt (==1.3)", "usort (==1.0.0rc1)", "setuptools-rust (>=0.12.1)", "slotscheck (>=0.7.1)", "jinja2 (==3.0.3)", "pyre-check (==0.9.9)"]
+
+[[package]]
+name = "markdown"
+version = "3.4.1"
+description = "Python implementation of Markdown."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+importlib-metadata = {version = ">=4.4", markers = "python_version < \"3.10\""}
+
+[package.extras]
+testing = ["pyyaml", "coverage"]
+
+[[package]]
+name = "markupsafe"
+version = "2.1.1"
+description = "Safely add untrusted strings to HTML/XML markup."
+category = "main"
+optional = false
+python-versions = ">=3.7"
 
 [[package]]
 name = "matplotlib"
@@ -422,6 +580,19 @@ description = "NumPy is the fundamental package for array computing with Python.
 category = "main"
 optional = false
 python-versions = ">=3.8"
+
+[[package]]
+name = "oauthlib"
+version = "3.2.0"
+description = "A generic, spec-compliant, thorough implementation of the OAuth request-signing logic"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+signedtoken = ["pyjwt (>=2.0.0,<3)", "cryptography (>=3.0.0)"]
+signals = ["blinker (>=1.4.0)"]
+rsa = ["cryptography (>=3.0.0)"]
 
 [[package]]
 name = "packaging"
@@ -556,6 +727,25 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "pyasn1"
+version = "0.4.8"
+description = "ASN.1 types and codecs"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "pyasn1-modules"
+version = "0.2.8"
+description = "A collection of ASN.1-based protocols modules."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+pyasn1 = ">=0.4.6,<0.5.0"
+
+[[package]]
 name = "pycodestyle"
 version = "2.7.0"
 description = "Python style guide checker"
@@ -570,6 +760,14 @@ description = "passive checker of Python programs"
 category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+
+[[package]]
+name = "pyglet"
+version = "1.5.26"
+description = "Cross-platform windowing and multimedia library"
+category = "main"
+optional = false
+python-versions = "*"
 
 [[package]]
 name = "pyparsing"
@@ -676,6 +874,32 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)", "win-inet-pton"]
 use_chardet_on_py3 = ["chardet (>=3.0.2,<5)"]
 
 [[package]]
+name = "requests-oauthlib"
+version = "1.3.1"
+description = "OAuthlib authentication support for Requests."
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+
+[package.dependencies]
+oauthlib = ">=3.0.0"
+requests = ">=2.0.0"
+
+[package.extras]
+rsa = ["oauthlib[signedtoken] (>=3.0.0)"]
+
+[[package]]
+name = "rsa"
+version = "4.9"
+description = "Pure-Python RSA implementation"
+category = "main"
+optional = false
+python-versions = ">=3.6,<4"
+
+[package.dependencies]
+pyasn1 = ">=0.1.3"
+
+[[package]]
 name = "sacred"
 version = "0.8.2"
 description = "Facilitates automated and reproducible experimental research"
@@ -727,6 +951,26 @@ data = ["pooch (>=1.3.0)"]
 docs = ["sphinx (>=1.8)", "sphinx-gallery (>=0.10.1)", "numpydoc (>=1.0)", "sphinx-copybutton", "pytest-runner", "scikit-learn", "matplotlib (>=3.3)", "dask[array] (>=0.15.0,!=2.17.0)", "cloudpickle (>=0.2.1)", "pandas (>=0.23.0)", "seaborn (>=0.7.1)", "pooch (>=1.3.0)", "tifffile (>=2020.5.30)", "myst-parser", "ipywidgets", "plotly (>=4.14.0)", "kaleido"]
 optional = ["simpleitk", "astropy (>=3.1.2)", "cloudpickle (>=0.2.1)", "dask[array] (>=1.0.0,!=2.17.0)", "matplotlib (>=3.0.3)", "pooch (>=1.3.0)", "pyamg", "qtpy"]
 test = ["asv", "codecov", "flake8", "matplotlib (>=3.0.3)", "pooch (>=1.3.0)", "pytest (>=5.2.0)", "pytest-cov (>=2.7.0)", "pytest-localserver", "pytest-faulthandler"]
+
+[[package]]
+name = "scikit-learn"
+version = "1.1.2"
+description = "A set of python modules for machine learning and data mining"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+joblib = ">=1.0.0"
+numpy = ">=1.17.3"
+scipy = ">=1.3.2"
+threadpoolctl = ">=2.0.0"
+
+[package.extras]
+tests = ["numpydoc (>=1.2.0)", "pyamg (>=4.0.0)", "mypy (>=0.961)", "black (>=22.3.0)", "flake8 (>=3.8.2)", "pytest-cov (>=2.9.0)", "pytest (>=5.0.1)", "pandas (>=1.0.5)", "scikit-image (>=0.16.2)", "matplotlib (>=3.1.2)"]
+examples = ["seaborn (>=0.9.0)", "pandas (>=1.0.5)", "scikit-image (>=0.16.2)", "matplotlib (>=3.1.2)"]
+docs = ["sphinxext-opengraph (>=0.4.2)", "sphinx-prompt (>=1.3.0)", "Pillow (>=7.1.2)", "numpydoc (>=1.2.0)", "sphinx-gallery (>=0.7.0)", "sphinx (>=4.0.1)", "memory-profiler (>=0.57.0)", "seaborn (>=0.9.0)", "pandas (>=1.0.5)", "scikit-image (>=0.16.2)", "matplotlib (>=3.1.2)"]
+benchmark = ["memory-profiler (>=0.57.0)", "pandas (>=1.0.5)", "matplotlib (>=3.1.2)"]
 
 [[package]]
 name = "scipy"
@@ -839,7 +1083,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "stable-baselines3"
-version = "1.4.0"
+version = "1.6.0"
 description = "Pytorch version of Stable Baselines, implementations of reinforcement learning algorithms."
 category = "main"
 optional = false
@@ -847,16 +1091,16 @@ python-versions = ">=3.7"
 
 [package.dependencies]
 cloudpickle = "*"
-gym = ">=0.17,<0.20"
+gym = "0.21"
 matplotlib = "*"
 numpy = "*"
 pandas = "*"
-torch = ">=1.8.1"
+torch = ">=1.11"
 
 [package.extras]
-docs = ["sphinx", "sphinx-autobuild", "sphinx-rtd-theme", "sphinxcontrib.spelling", "sphinx-autodoc-typehints"]
-extra = ["opencv-python", "atari-py (==0.2.6)", "pillow", "tensorboard (>=2.2.0)", "psutil"]
-tests = ["pytest", "pytest-cov", "pytest-env", "pytest-xdist", "pytype", "flake8 (>=3.8)", "flake8-bugbear", "isort (>=5.0)", "black", "scipy (>=1.4.1)"]
+tests = ["scipy (>=1.4.1)", "black", "isort (>=5.0)", "flake8-bugbear", "flake8 (>=3.8)", "pytype", "pytest-xdist", "pytest-env", "pytest-cov", "pytest"]
+extra = ["psutil", "protobuf (>=3.19.0,<3.20.0)", "tensorboard (>=2.2.0)", "pillow", "autorom[accept-rom-license] (>=0.4.2,<0.5.0)", "ale-py (==0.7.4)", "opencv-python"]
+docs = ["sphinx-copybutton", "sphinx-autodoc-typehints", "sphinxcontrib.spelling", "sphinx-rtd-theme", "sphinx-autobuild", "sphinx"]
 
 [[package]]
 name = "tabulate"
@@ -870,6 +1114,43 @@ python-versions = "*"
 widechars = ["wcwidth"]
 
 [[package]]
+name = "tensorboard"
+version = "2.9.0"
+description = "TensorBoard lets you watch Tensors Flow"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+absl-py = ">=0.4"
+google-auth = ">=1.6.3,<3"
+google-auth-oauthlib = ">=0.4.1,<0.5"
+grpcio = ">=1.24.3"
+markdown = ">=2.6.8"
+numpy = ">=1.12.0"
+protobuf = ">=3.9.2"
+requests = ">=2.21.0,<3"
+tensorboard-data-server = ">=0.6.0,<0.7.0"
+tensorboard-plugin-wit = ">=1.6.0"
+werkzeug = ">=1.0.1"
+
+[[package]]
+name = "tensorboard-data-server"
+version = "0.6.1"
+description = "Fast data loading for TensorBoard"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
+name = "tensorboard-plugin-wit"
+version = "1.8.1"
+description = "What-If Tool TensorBoard plugin."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "testfixtures"
 version = "6.18.5"
 description = "A collection of helpers and mock objects for unit tests and doc tests."
@@ -881,6 +1162,14 @@ python-versions = "*"
 build = ["setuptools-git", "wheel", "twine"]
 docs = ["sphinx", "zope.component", "sybil", "twisted", "mock", "django (<2)", "django"]
 test = ["pytest (>=3.6)", "pytest-cov", "pytest-django", "zope.component", "sybil", "twisted", "mock", "django (<2)", "django"]
+
+[[package]]
+name = "threadpoolctl"
+version = "3.1.0"
+description = "threadpoolctl"
+category = "main"
+optional = false
+python-versions = ">=3.6"
 
 [[package]]
 name = "tifffile"
@@ -1008,6 +1297,20 @@ media = ["numpy", "moviepy", "pillow", "bokeh", "soundfile", "plotly", "rdkit-py
 sweeps = ["numpy (>=1.15,<1.21)", "scipy (>=1.5.4)", "pyyaml", "scikit-learn (==0.24.1)", "jsonschema (>=3.2.0)", "jsonref (>=0.2)", "pydantic (>=1.8.2)"]
 
 [[package]]
+name = "werkzeug"
+version = "2.2.2"
+description = "The comprehensive WSGI web application library."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+MarkupSafe = ">=2.1.1"
+
+[package.extras]
+watchdog = ["watchdog"]
+
+[[package]]
 name = "wrapt"
 version = "1.14.1"
 description = "Module for decorators, wrappers and monkey patching."
@@ -1015,12 +1318,25 @@ category = "main"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 
+[[package]]
+name = "zipp"
+version = "3.8.1"
+description = "Backport of pathlib-compatible object wrapper for zip files"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+testing = ["pytest-mypy (>=0.9.1)", "pytest-black (>=0.3.7)", "func-timeout", "jaraco.itertools", "pytest-enabler (>=1.3)", "pytest-cov", "pytest-flake8", "pytest-checkdocs (>=2.4)", "pytest (>=6)"]
+docs = ["jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "jaraco.packaging (>=9)", "sphinx"]
+
 [metadata]
 lock-version = "1.1"
 python-versions = "=3.9.5"
-content-hash = "18a20edaea183be1fb994c7a0219e8a89f256fc8136529dc612af85cc5688970"
+content-hash = "41e1f92044578dd2ef71c160d43e56c544715896547c595bf2c539eec5a39600"
 
 [metadata.files]
+absl-py = []
 atomicwrites = [
     {file = "atomicwrites-1.4.0-py2.py3-none-any.whl", hash = "sha256:6d1784dea7c0c8d4a5172b6c620f40b6e4cbfdf96d783691f2e1302a7b88e197"},
     {file = "atomicwrites-1.4.0.tar.gz", hash = "sha256:ae70396ad1a434f9c7046fd2dd196fc04b12f9e91ffb859164193be8b6168a7a"},
@@ -1033,10 +1349,12 @@ black = [
     {file = "black-21.12b0-py3-none-any.whl", hash = "sha256:a615e69ae185e08fdd73e4715e260e2479c861b5740057fde6e8b4e3b7dd589f"},
     {file = "black-21.12b0.tar.gz", hash = "sha256:77b80f693a569e2e527958459634f18df9b0ba2625ba4e0c2d5da5be42e6f2b3"},
 ]
+cachetools = []
 certifi = [
     {file = "certifi-2021.10.8-py2.py3-none-any.whl", hash = "sha256:d62a0163eb4c2344ac042ab2bdf75399a71a2d8c7d47eac2e2ee91b9d6339569"},
     {file = "certifi-2021.10.8.tar.gz", hash = "sha256:78884e7c1d4b00ce3cea67b44566851c4343c120abd683433ce934a68ea58872"},
 ]
+chai-sacred = []
 charset-normalizer = [
     {file = "charset-normalizer-2.0.12.tar.gz", hash = "sha256:2857e29ff0d34db842cd7ca3230549d1a697f96ee6d3fb071cfa6c7393832597"},
     {file = "charset_normalizer-2.0.12-py3-none-any.whl", hash = "sha256:6881edbebdb17b39b4eaaa821b438bf6eddffb4468cf344f09f89def34a8b1df"},
@@ -1084,9 +1402,10 @@ gitpython = [
     {file = "GitPython-3.1.27-py3-none-any.whl", hash = "sha256:5b68b000463593e05ff2b261acff0ff0972df8ab1b70d3cdbd41b546c8b8fc3d"},
     {file = "GitPython-3.1.27.tar.gz", hash = "sha256:1c885ce809e8ba2d88a29befeb385fcea06338d3640712b59ca623c220bb5704"},
 ]
-gym = [
-    {file = "gym-0.19.0.tar.gz", hash = "sha256:940069b983806e1ccc400fa6d47b4e34e462accf6a4fb0acb0a5e509ad0f502d"},
-]
+google-auth = []
+google-auth-oauthlib = []
+grpcio = []
+gym = []
 idna = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
     {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
@@ -1095,9 +1414,11 @@ imageio = [
     {file = "imageio-2.19.1-py3-none-any.whl", hash = "sha256:cd5b6ac2f4111c76f08d33b86a4cb987520f1d6ec2183e8a2656ace8d026a38e"},
     {file = "imageio-2.19.1.tar.gz", hash = "sha256:d63600626b80ebe1ec9614c33434879c754dea328717f4e2cebe88f156fa1a9c"},
 ]
+imitation = []
 importlab = [
     {file = "importlab-0.7.tar.gz", hash = "sha256:744bd75d4410744962d203bd1eb71a950b19e8fb8eb5f0b805461dc0a2da329b"},
 ]
+importlib-metadata = []
 iniconfig = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
     {file = "iniconfig-1.1.1.tar.gz", hash = "sha256:bc3af051d7d14b2ee5ef9969666def0cd1a000e121eaea580d4a313df4b37f32"},
@@ -1106,6 +1427,7 @@ isort = [
     {file = "isort-5.10.1-py3-none-any.whl", hash = "sha256:6f62d78e2f89b4500b080fe3a81690850cd254227f27f75c3a0c491a1f351ba7"},
     {file = "isort-5.10.1.tar.gz", hash = "sha256:e8443a5e7a020e9d7f97f1d7d9cd17c88bcb3bc7e218bf9cf5095fe550be2951"},
 ]
+joblib = []
 jsonpickle = [
     {file = "jsonpickle-1.5.2-py2.py3-none-any.whl", hash = "sha256:7ace67f85a5cfd148e0d2b7defb63d97e856dd5151c092cc6c48dcc91f39f471"},
     {file = "jsonpickle-1.5.2.tar.gz", hash = "sha256:9e899bcf94bb1ce6e17beccf880d096fd6221681faede55aa7a8349556822359"},
@@ -1181,6 +1503,8 @@ libcst = [
     {file = "libcst-0.4.3-cp39-cp39-win_amd64.whl", hash = "sha256:28f35b9a21b2f8982a8ed3f53b1fdbc5435252409d34d061a3229dc4b413b8c7"},
     {file = "libcst-0.4.3.tar.gz", hash = "sha256:f79ab61287505d97ed57ead14b78777f48cd6ec5339ca4978987e4c35957a465"},
 ]
+markdown = []
+markupsafe = []
 matplotlib = [
     {file = "matplotlib-3.5.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:03bbb3f5f78836855e127b5dab228d99551ad0642918ccbf3067fcd52ac7ac5e"},
     {file = "matplotlib-3.5.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:49a5938ed6ef9dda560f26ea930a2baae11ea99e1c2080c8714341ecfda72a89"},
@@ -1273,6 +1597,7 @@ numpy = [
     {file = "numpy-1.22.3-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c34ea7e9d13a70bf2ab64a2532fe149a9aced424cd05a2c4ba662fd989e3e45f"},
     {file = "numpy-1.22.3.zip", hash = "sha256:dbc7601a3b7472d559dc7b933b18b4b66f9aa7452c120e87dfb33d02008c8a18"},
 ]
+oauthlib = []
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
     {file = "packaging-21.3.tar.gz", hash = "sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb"},
@@ -1425,6 +1750,8 @@ py = [
 py-cpuinfo = [
     {file = "py-cpuinfo-8.0.0.tar.gz", hash = "sha256:5f269be0e08e33fd959de96b34cd4aeeeacac014dd8305f70eb28d06de2345c5"},
 ]
+pyasn1 = []
+pyasn1-modules = []
 pycodestyle = [
     {file = "pycodestyle-2.7.0-py2.py3-none-any.whl", hash = "sha256:514f76d918fcc0b55c6680472f0a37970994e07bbb80725808c17089be302068"},
     {file = "pycodestyle-2.7.0.tar.gz", hash = "sha256:c389c1d06bf7904078ca03399a4816f974a1d590090fecea0c63ec26ebaf1cef"},
@@ -1433,6 +1760,7 @@ pyflakes = [
     {file = "pyflakes-2.3.1-py2.py3-none-any.whl", hash = "sha256:7893783d01b8a89811dd72d7dfd4d84ff098e5eed95cfa8905b22bbffe52efc3"},
     {file = "pyflakes-2.3.1.tar.gz", hash = "sha256:f5bc8ecabc05bb9d291eb5203d6810b49040f6ff446a756326104746cc00c1db"},
 ]
+pyglet = []
 pyparsing = [
     {file = "pyparsing-3.0.9-py3-none-any.whl", hash = "sha256:5026bae9a10eeaefb61dab2f09052b9f4307d44aee4eda64b309723d8d206bbc"},
     {file = "pyparsing-3.0.9.tar.gz", hash = "sha256:2b020ecf7d21b687f219b71ecad3631f644a47f01403fa1d1036b0c6416d70fb"},
@@ -1535,6 +1863,8 @@ requests = [
     {file = "requests-2.27.1-py2.py3-none-any.whl", hash = "sha256:f22fa1e554c9ddfd16e6e41ac79759e17be9e492b3587efa038054674760e72d"},
     {file = "requests-2.27.1.tar.gz", hash = "sha256:68d7c56fd5a8999887728ef304a6d12edc7be74f1cfa47714fc8b414525c9a61"},
 ]
+requests-oauthlib = []
+rsa = []
 sacred = [
     {file = "sacred-0.8.2-py2.py3-none-any.whl", hash = "sha256:b31e103bcd037816d480140722b82d3c2b34d6f99bfd93711c2aa582c2249bab"},
     {file = "sacred-0.8.2.tar.gz", hash = "sha256:98ef43cc93ce39c2243175fdd76973c8175834ae80b8d01c918cc243127b27ce"},
@@ -1571,6 +1901,7 @@ scikit-image = [
     {file = "scikit_image-0.19.2-cp39-cp39-win32.whl", hash = "sha256:99696479cf6fd19bb06ea43269c0728bb75c2ce9cd3710829ac0f1590eecf0dc"},
     {file = "scikit_image-0.19.2-cp39-cp39-win_amd64.whl", hash = "sha256:9d3fd65ec424de83e6fee22480db5431a9b91d280a34ab3e6bf83528e4289f5c"},
 ]
+scikit-learn = []
 scipy = [
     {file = "scipy-1.8.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:87b01c7d5761e8a266a0fbdb9d88dcba0910d63c1c671bdb4d99d29f469e9e03"},
     {file = "scipy-1.8.0-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:ae3e327da323d82e918e593460e23babdce40d7ab21490ddf9fc06dec6b91a18"},
@@ -1693,18 +2024,19 @@ smmap = [
     {file = "smmap-5.0.0-py3-none-any.whl", hash = "sha256:2aba19d6a040e78d8b09de5c57e96207b09ed71d8e55ce0959eeee6c8e190d94"},
     {file = "smmap-5.0.0.tar.gz", hash = "sha256:c840e62059cd3be204b0c9c9f74be2c09d5648eddd4580d9314c3ecde0b30936"},
 ]
-stable-baselines3 = [
-    {file = "stable_baselines3-1.4.0-py3-none-any.whl", hash = "sha256:9256728b0a76368f996f8133007a0314b20519fbc7300a2d524aba7f4d2738b2"},
-    {file = "stable_baselines3-1.4.0.tar.gz", hash = "sha256:0d5219d473d6caa32e770174c65294e6111fcdfce3697a82a58d9100d9227f9f"},
-]
+stable-baselines3 = []
 tabulate = [
     {file = "tabulate-0.8.9-py3-none-any.whl", hash = "sha256:d7c013fe7abbc5e491394e10fa845f8f32fe54f8dc60c6622c6cf482d25d47e4"},
     {file = "tabulate-0.8.9.tar.gz", hash = "sha256:eb1d13f25760052e8931f2ef80aaf6045a6cceb47514db8beab24cded16f13a7"},
 ]
+tensorboard = []
+tensorboard-data-server = []
+tensorboard-plugin-wit = []
 testfixtures = [
     {file = "testfixtures-6.18.5-py2.py3-none-any.whl", hash = "sha256:7de200e24f50a4a5d6da7019fb1197aaf5abd475efb2ec2422fdcf2f2eb98c1d"},
     {file = "testfixtures-6.18.5.tar.gz", hash = "sha256:02dae883f567f5b70fd3ad3c9eefb95912e78ac90be6c7444b5e2f46bf572c84"},
 ]
+threadpoolctl = []
 tifffile = [
     {file = "tifffile-2022.5.4-py3-none-any.whl", hash = "sha256:52b4c02040d00c1811e26c0f6abd41e77e2d57559b3657ff3e873955f74f5c57"},
     {file = "tifffile-2022.5.4.tar.gz", hash = "sha256:b03147a15862b7c1d90d47435197f149bef7a52c25ad67cf1f9b465faa71b8d2"},
@@ -1759,6 +2091,7 @@ wandb = [
     {file = "wandb-0.12.16-py2.py3-none-any.whl", hash = "sha256:ed7782dadfb5bc457998eccd995f88ae564cdf2a36b12024e4a5d9a47b1b84e8"},
     {file = "wandb-0.12.16.tar.gz", hash = "sha256:a738b5eb61081fa96fc2e16ffaf6dbde67b78f973ff45bda61ed93659ca09912"},
 ]
+werkzeug = []
 wrapt = [
     {file = "wrapt-1.14.1-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:1b376b3f4896e7930f1f772ac4b064ac12598d1c38d04907e696cc4d794b43d3"},
     {file = "wrapt-1.14.1-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:903500616422a40a98a5a3c4ff4ed9d0066f3b4c951fa286018ecdf0750194ef"},
@@ -1825,3 +2158,4 @@ wrapt = [
     {file = "wrapt-1.14.1-cp39-cp39-win_amd64.whl", hash = "sha256:dee60e1de1898bde3b238f18340eec6148986da0455d8ba7848d50470a7a32fb"},
     {file = "wrapt-1.14.1.tar.gz", hash = "sha256:380a85cf89e0e69b7cfbe2ea9f765f004ff419f34194018a6827ac0e3edfed4d"},
 ]
+zipp = []
