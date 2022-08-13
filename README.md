@@ -18,9 +18,6 @@ and for `reward_preprocessing` use the same version of Python, otherwise
 you might run into issues when unpickling `imitation` models for use in
 `reward_preprocessing`.
 
-TODO: the extra step for installing `imitation` is because I use it in editable mode, which `poetry` apparently doesn't yet support that well.
-In the long term, `imitation` should just be part of `pyproject.toml`.
-
 ## Docker
 You can also use our [Docker image](https://hub.docker.com/repository/docker/ejenner/reward_preprocessing)
 instead of the installation procedure described above.
