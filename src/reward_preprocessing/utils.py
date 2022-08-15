@@ -55,7 +55,7 @@ def add_observers(ex: sacred.Experiment) -> None:
 
 
 def use_rollouts(
-        ing: sacred.Ingredient,
+    ing: sacred.Ingredient,
 ) -> Tuple[Callable, Callable]:
     """Add a config scope to a Sacred Experiment which will add configs
     needed for using rollouts.
@@ -84,14 +84,14 @@ def use_rollouts(
     ing.named_config(random_rollouts)
 
     def _get_dataloader(
-            venv_factory,
-            batch_size,
-            num_workers,
-            _seed,
-            rollouts,
-            steps,
-            test_steps,
-            train=True,
+        venv_factory,
+        batch_size,
+        num_workers,
+        _seed,
+        rollouts,
+        steps,
+        test_steps,
+        train=True,
     ):
         # turn the rollout configs from ReadOnlyLists into RolloutConfigs
         # (Sacred turns the namedtuples into lists)
@@ -108,12 +108,12 @@ def use_rollouts(
         )
 
     def _get_dataset(
-            venv_factory,
-            _seed,
-            rollouts,
-            steps,
-            test_steps,
-            train=True,
+        venv_factory,
+        _seed,
+        rollouts,
+        steps,
+        test_steps,
+        train=True,
     ):
         # turn the rollout configs from ReadOnlyLists into RolloutConfigs
         # (Sacred turns the namedtuples into lists)
@@ -172,7 +172,9 @@ def get_env_name(env: VecEnv) -> str:
     return specs[0].id
 
 
-def calc_conv_out_size(input_size: int, kernel_size: int, padding: int, stride: int) -> int:
+def calc_conv_out_size(
+    input_size: int, kernel_size: int, padding: int, stride: int
+) -> int:
     """
     Calculate size in one of the dimensions after applying convolutional layer.
     For a max pooling layer set stride to kernel size (assuming default stride for max

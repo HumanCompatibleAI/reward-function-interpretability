@@ -31,7 +31,7 @@ class TabularRewardNet(RewardNet):
         # like a NonTabularRewardNet ABC and put that there?
         super().__init__(observation_space, action_space, normalize_images)
         self.use_next_state = use_next_state
-        n = observation_space.n ** 2 if use_next_state else observation_space.n
+        n = observation_space.n**2 if use_next_state else observation_space.n
         self.rewards = nn.Parameter(th.zeros(n))
 
     def forward(

@@ -124,11 +124,11 @@ def plot_heatmaps(
         stacked_rewards = next(iter(rewards.values()))
         rewards = {
             "without key": {
-                objective: stacked_rewards[objective][: env.size ** 2, :]
+                objective: stacked_rewards[objective][: env.size**2, :]
                 for objective in objectives
             },
             "with key": {
-                objective: stacked_rewards[objective][env.size ** 2 :, :]
+                objective: stacked_rewards[objective][env.size**2 :, :]
                 for objective in objectives
             },
         }

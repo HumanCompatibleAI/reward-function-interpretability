@@ -55,7 +55,7 @@ class MazeEnv(BaseEnv):
         # object exists
         super().__init__()
 
-        n_obs = size ** 2
+        n_obs = size**2
         # if we are using a key, we have twice as many observations
         if key:
             n_obs *= 2
@@ -114,7 +114,7 @@ class MazeEnv(BaseEnv):
         elif shaping == "random":
             # sample potential uniformly between [-1, 1]
             rng = np.random.default_rng(seed=0)
-            potential = 2 * rng.random(size ** 2) - 1
+            potential = 2 * rng.random(size**2) - 1
             for i, j in itertools.product(range(size), repeat=2):
                 pos = self._to_idx((i, j))
 
@@ -126,22 +126,22 @@ class MazeEnv(BaseEnv):
         if key:
             # Copy the reward values to the section with the key
             x_coords, y_coords = np.meshgrid(
-                range(size ** 2), range(size ** 2), indexing="ij"
+                range(size**2), range(size**2), indexing="ij"
             )
-            self.rewards[x_coords + size ** 2, y_coords] = self.rewards[
+            self.rewards[x_coords + size**2, y_coords] = self.rewards[
                 x_coords, y_coords
             ]
-            self.rewards[x_coords, y_coords + size ** 2] = self.rewards[
+            self.rewards[x_coords, y_coords + size**2] = self.rewards[
                 x_coords, y_coords
             ]
-            self.rewards[x_coords + size ** 2, y_coords + size ** 2] = self.rewards[
+            self.rewards[x_coords + size**2, y_coords + size**2] = self.rewards[
                 x_coords, y_coords
             ]
 
         # Finally, add the actual sparse goal reward
         goal_pos = size * self.goal_idx[0][0] + self.goal_idx[0][1]
         if key:
-            goal_pos += size ** 2
+            goal_pos += size**2
         self.rewards[goal_pos, :] = 1.0
 
     def seed(self, seed: int = 0) -> List[int]:
@@ -193,27 +193,27 @@ class MazeEnv(BaseEnv):
         ):
             new_has_key = True
 
-        new_state = self._to_idx(new_position) + new_has_key * self.size ** 2
+        new_state = self._to_idx(new_position) + new_has_key * self.size**2
         return new_state, valid
 
     def _reward(self, state, action, next_state, has_key) -> float:
         return self.rewards[
-            self._to_idx(state) + has_key * self.size ** 2,
-            self._to_idx(next_state) + has_key * self.size ** 2,
+            self._to_idx(state) + has_key * self.size**2,
+            self._to_idx(next_state) + has_key * self.size**2,
         ]
 
     def _to_idx(self, position):
         return self.size * position[0] + position[1]
 
     def _to_coords(self, idx):
-        has_key = idx // self.size ** 2
+        has_key = idx // self.size**2
         assert has_key in [0, 1]
-        idx = idx % self.size ** 2
+        idx = idx % self.size**2
         return idx // self.size, idx % self.size, has_key
 
     def _get_obs(self):
         current_position = self.maze.objects.agent.positions[0]
-        return self._to_idx(current_position) + self.has_key * self.size ** 2
+        return self._to_idx(current_position) + self.has_key * self.size**2
 
     def reset(self):
         self.maze.objects.goal.positions = self.goal_idx
