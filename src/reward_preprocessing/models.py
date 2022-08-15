@@ -1,11 +1,13 @@
-from typing import Tuple
+from typing import Tuple, List
 
 import gym
 import torch as th
 from imitation.rewards.reward_nets import RewardNet
 import numpy as np
 import torch
+from torch import nn
 
+from reward_preprocessing import utils
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
 class CNNRegressionRewardNet(RewardNet):
@@ -87,3 +89,58 @@ class MountainCarRewardNet(RewardNet):
             [self.env._shaping(x, y) for x, y in zip(state, next_state)]
         )
         return reward + shaping
+
+
+class CNN(nn.Module):
+    """General CNN for learning reward using supervised regression from trajectories."""
+
+    def __init__(self, input_size: int, in_channels: int, channels: List[int]):
+        """
+        Args:
+            input_size:  The (scalar) size of the input image the conv net will be
+            trained on
+        :param input_size:
+        :param in_channels: Number of channels of the input images
+        :param channels: A list of the channel sizes for each layer
+        """
+        super().__init__()
+
+        current_size = input_size
+        # Base model
+        self.model = nn.Sequential()
+
+        # Create successive convolutional layers, with the in_channels coming from the
+        # previous layer and the out_channels coming from the channels arguments
+        previous = in_channels
+        for i, out in enumerate(channels):
+            new_module = nn.Conv2d(in_channels=previous, out_channels=out, kernel_size=(3, 3), stride=stride)
+            self.model.add_module(name='conv' + str(i), module=new_module)
+            self.model.add_module(name='relu' + str(i), module=nn.ReLU())
+            previous = out
+            # Update the input size after the current layer
+            current_size = utils.calc_conv_out_size(current_size, 3, 0, stride)
+        # For now only one pooling layer
+        self.model.add_module('maxpool', nn.MaxPool2d(kernel_size=(2, 2)))
+        # Size of the data can be calculated in the same way as with conv layers
+        current_size = utils.conv_out_dim(current_size, 2, 0, 2)
+        self.model.add_module('flatten', nn.Flatten())
+        # Input dimensions * last number of channels is the number of params
+        # in the flattened layer
+        number_params = int(current_size * current_size * previous)
+        # Single linear layer for this classifier
+        self.model.add_module('linear', nn.Linear(number_params, num_classes))
+
+    def forward(self, x):
+        return self.model(x)
+
+    def forward(self, state: th.Tensor, action: th.Tensor, next_state: th.Tensor,
+                done: th.Tensor) -> th.Tensor:
+        """
+        Args:
+            state: Tensor of shape (batch_size, state_size)
+            action: Tensor of shape (batch_size, action_size)
+            next_state: Tensor of shape (batch_size, state_size)
+            done: Tensor of shape (batch_size,)
+        Returns:
+            Tensor of shape (batch_size,)
+        """
