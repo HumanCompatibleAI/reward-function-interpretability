@@ -12,30 +12,29 @@ from torch import nn
 from reward_preprocessing import utils
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
-class CNNRegressionRewardNet(RewardNet):
+
+class ProcgenCnnRegressionRewardNet(RewardNet):
     """CNN for learning reward using supervised regression from trajectories."""
 
-    def __int__(self):
+    def __int__(
+        self, observation_space: gym.spaces.Space, action_space: gym.spaces.Space
+    ):
+        super().__init__(observation_space=observation_space, action_space=action_space)
 
-"
+        self.model = Cnn(
+            input_size=observation_space.shape[0],
+            in_channels=3,
+            channels=[32, 64],
+        )
 
-
-class SB3CnnObsRewardNet(RewardNet):
-    """"""
-
-    def __init__(self, env: gym.Env, device):
-        super().__init__(observation_space=env.observation_space, action_space=env.action_space)
-        self.features_extractor = PPO('CnnPolicy', env).policy.features_extractor
-        features_dim = self.features_extractor.features_dim
-        self.reward_net = nn.Linear(features_dim, 1).to(device)
-
-
-
-    def forward(self, state: th.Tensor, action: th.Tensor, next_state: th.Tensor,
-                done: th.Tensor) -> th.Tensor:
-        """CNN reward net for image-based envs. Uses SB3's default CNN feature
-        extractor architecture. Uses only the last frame of the observation to learn the reward.
-
+    def forward(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        """
         Args:
             state: Tensor of shape (batch_size, state_size)
             action: Tensor of shape (batch_size, action_size)
@@ -45,13 +44,7 @@ class SB3CnnObsRewardNet(RewardNet):
             Tensor of shape (batch_size,)
         """
         last_frame = state[:, -1]
-        self.forward(last_frame)
-
-        # obs_transposed = VecTransposeImage.transpose_image(observation)
-        latent, _, _ = self.ac_model._get_latent(
-            th.tensor(obs_transposed).to(self.device))
-        return self.reward_net(latent)
-
+        return self.model(last_frame)
 
 
 class MazeRewardNet(RewardNet):
@@ -116,7 +109,7 @@ class MountainCarRewardNet(RewardNet):
         return reward + shaping
 
 
-class CNN(nn.Module):
+class Cnn(nn.Module):
     """General CNN for learning reward using supervised regression from trajectories."""
 
     def __init__(self, input_size: int, in_channels: int, channels: List[int]):
@@ -124,11 +117,11 @@ class CNN(nn.Module):
         Args:
             input_size:  The (scalar) size of the input image the conv net will be
             trained on
-        :param input_size:
-        :param in_channels: Number of channels of the input images
-        :param channels: A list of the channel sizes for each layer
+            in_channels: The number of channels of the input image
+            channels: A list of the number of channels of each conv layer
         """
         super().__init__()
+        stride = 1
 
         current_size = input_size
         # Base model
@@ -137,35 +130,39 @@ class CNN(nn.Module):
         # Create successive convolutional layers, with the in_channels coming from the
         # previous layer and the out_channels coming from the channels arguments
         previous = in_channels
+        i = 0
         for i, out in enumerate(channels):
-            new_module = nn.Conv2d(in_channels=previous, out_channels=out, kernel_size=(3, 3), stride=stride)
-            self.model.add_module(name='conv' + str(i), module=new_module)
-            self.model.add_module(name='relu' + str(i), module=nn.ReLU())
+            new_module = nn.Conv2d(
+                in_channels=previous,
+                out_channels=out,
+                kernel_size=(3, 3),
+                stride=stride,
+            )
+            self.model.add_module(name="conv" + str(i), module=new_module)
+            self.model.add_module(name="relu" + str(i), module=nn.ReLU())
             previous = out
             # Update the input size after the current layer
             current_size = utils.calc_conv_out_size(current_size, 3, 0, stride)
         # For now only one pooling layer
-        self.model.add_module('maxpool', nn.MaxPool2d(kernel_size=(2, 2)))
+        self.model.add_module("maxpool", nn.MaxPool2d(kernel_size=(2, 2)))
         # Size of the data can be calculated in the same way as with conv layers
-        current_size = utils.conv_out_dim(current_size, 2, 0, 2)
-        self.model.add_module('flatten', nn.Flatten())
-        # Input dimensions * last number of channels is the number of params
-        # in the flattened layer
+        current_size = utils.calc_conv_out_size(current_size, 2, 0, 2)
+        self.model.add_module("dropout0", nn.Dropout(p=0.25))
+        self.model.add_module("flatten", nn.Flatten())
+        # Shape * last number of channels is the number of params in the flattened layer
         number_params = int(current_size * current_size * previous)
-        # Single linear layer for this classifier
-        self.model.add_module('linear', nn.Linear(number_params, num_classes))
+        self.model.add_module("linear0", nn.Linear(number_params, 128))
+        self.model.add_module(name="relu" + str(i), module=nn.ReLU())
+        i += 1
+        self.model.add_module("dropout1", nn.Dropout(p=0.5))
+        self.model.add_module("linear1", nn.Linear(128, 1))
+        # TODO: Maybe just learn to output reward between -1 and 1?
 
-    def forward(self, x):
-        return self.model(x)
-
-    def forward(self, state: th.Tensor, action: th.Tensor, next_state: th.Tensor,
-                done: th.Tensor) -> th.Tensor:
+    def forward(self, x: th.Tensor) -> th.Tensor:
         """
         Args:
-            state: Tensor of shape (batch_size, state_size)
-            action: Tensor of shape (batch_size, action_size)
-            next_state: Tensor of shape (batch_size, state_size)
-            done: Tensor of shape (batch_size,)
+            x: Tensor of shape (batch_size, state_size)
         Returns:
-            Tensor of shape (batch_size,)
+            Tensor of shape (batch_size, 1)
         """
+        return self.model(x)
