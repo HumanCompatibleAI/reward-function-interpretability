@@ -14,7 +14,7 @@ from stable_baselines3.common.vec_env import VecEnv
 import torch
 
 from reward_preprocessing.policy import get_policy
-from reward_preprocessing.types import VenvFactory
+from reward_preprocessing.rfi_types import VenvFactory
 
 
 class RolloutConfig(NamedTuple):
