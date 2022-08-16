@@ -5,6 +5,8 @@ import torch as th
 from imitation.rewards.reward_nets import RewardNet
 import numpy as np
 import torch
+from stable_baselines3 import PPO
+from stable_baselines3.ppo import CnnPolicy
 from torch import nn
 
 from reward_preprocessing import utils
@@ -15,9 +17,25 @@ class CNNRegressionRewardNet(RewardNet):
 
     def __int__(self):
 
+"
+
+
+class SB3CnnObsRewardNet(RewardNet):
+    """"""
+
+    def __init__(self, env: gym.Env, device):
+        super().__init__(observation_space=env.observation_space, action_space=env.action_space)
+        self.features_extractor = PPO('CnnPolicy', env).policy.features_extractor
+        features_dim = self.features_extractor.features_dim
+        self.reward_net = nn.Linear(features_dim, 1).to(device)
+
+
+
     def forward(self, state: th.Tensor, action: th.Tensor, next_state: th.Tensor,
                 done: th.Tensor) -> th.Tensor:
-        """
+        """CNN reward net for image-based envs. Uses SB3's default CNN feature
+        extractor architecture. Uses only the last frame of the observation to learn the reward.
+
         Args:
             state: Tensor of shape (batch_size, state_size)
             action: Tensor of shape (batch_size, action_size)
@@ -26,6 +44,13 @@ class CNNRegressionRewardNet(RewardNet):
         Returns:
             Tensor of shape (batch_size,)
         """
+        last_frame = state[:, -1]
+        self.forward(last_frame)
+
+        # obs_transposed = VecTransposeImage.transpose_image(observation)
+        latent, _, _ = self.ac_model._get_latent(
+            th.tensor(obs_transposed).to(self.device))
+        return self.reward_net(latent)
 
 
 
