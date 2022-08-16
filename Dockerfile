@@ -24,10 +24,6 @@ COPY poetry.lock pyproject.toml ./
 # (I've tried some things from https://github.com/python-poetry/poetry/issues/521
 # without success)
 RUN poetry install --no-interaction --no-ansi
-# HACK: make sure we have all the dependencies of imitation but then uninstall
-# imitation itself. We want to use the git version of that and that changes too
-# frequently to include in this stage
-RUN poetry run pip install git+https://github.com/HumanCompatibleAI/imitation && poetry run pip uninstall --yes imitation && poetry run pip cache purge
 
 # clear the directory again (this is necessary so that CircleCI can checkout
 # into the directory)
@@ -39,7 +35,6 @@ FROM dependencies as full
 
 # Delay copying (and installing) the code until the very end
 COPY . /reward_preprocessing
-RUN poetry run pip install git+https://github.com/HumanCompatibleAI/imitation
 # Build a wheel then install to avoid copying whole directory (pip issue #2195)
 # Note that all dependencies were already installed in the previous stage.
 # The purpose of this is only to make the local code available as a package for
