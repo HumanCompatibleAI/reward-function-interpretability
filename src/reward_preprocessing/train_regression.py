@@ -4,13 +4,13 @@ from typing import Sequence, cast
 import sacred
 import torch as th
 from imitation.data import types
+from imitation.data.rollout import flatten_trajectories_with_rew
 from imitation.scripts.common import common, demonstrations  # reward, rl, train
 from sacred.observers import FileStorageObserver
 from torch.utils.data import random_split, DataLoader
 from tqdm import tqdm
 
 from reward_preprocessing.models import ProcgenCnnRegressionRewardNet
-from reward_preprocessing.supervised.data import ObsRewDataset
 
 train_regression_ex = sacred.Experiment(
     "train_regression",
@@ -40,7 +40,8 @@ def train_regression(
     expert_trajs = demonstrations.load_expert_trajs()
     assert type(expert_trajs) == Sequence[types.TrajectoryWithRew]
     expert_trajs = cast(Sequence[types.TrajectoryWithRew], expert_trajs)
-    dataset = ObsRewDataset(expert_trajs)
+    dataset = flatten_trajectories_with_rew(expert_trajs)
+
     # Calculate train-test split
     num_test = int(len(dataset) * test_frac)
     num_train = len(dataset) - num_test
@@ -81,8 +82,10 @@ def _train_supervised(num_epochs, model, device, train_loader, optimizer, loss_f
 def _train_batch(model, device, train_loader, optimizer, epoch, loss_fn):
     model.train()
     bar = tqdm(train_loader, desc=f"Epoch {epoch}", ncols=80)
-    for batch_idx, (data, target) in enumerate(bar):
-        data, target = data.to(device), target.to(device)
+    for batch_idx, data_dict in enumerate(bar):
+        # The reward should be associated with 'next_obs', not 'obs'.
+        obs_bt, rew_bt = data_dict["next_obs"], data_dict["rew"]
+        data, target = obs_bt.to(device), rew_bt.to(device)
         optimizer.zero_grad()
         output = model(data)
         loss = loss_fn(output, target)
