@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch as th
 from imitation.rewards.reward_nets import RewardNet
-from stable_baselines3.common.preprocessing import preprocess_obs, maybe_transpose
+from stable_baselines3.common.preprocessing import preprocess_obs
 from torch import nn
 
 from reward_preprocessing import utils
@@ -41,6 +41,8 @@ class ProcgenCnnRegressionRewardNet(RewardNet):
         Returns:
             Tensor of shape (batch_size,)
         """
+        # TODO: We always assume shape (batch_size, height, width, channels) for inputs,
+        # do we actually want that or do we want to allow different shapes?
         # Performs preprocessing for images
         preprocessed_obs = preprocess_obs(
             next_state, self.observation_space, normalize_images=self.normalize_images

@@ -16,3 +16,5 @@ __pycache__/
 src/reward_preprocessing/output
 
 .idea/
+
+scratch.txt
