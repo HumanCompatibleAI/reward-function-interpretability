@@ -1,12 +1,11 @@
-from typing import Tuple, List
+from typing import Tuple, List, cast
 
 import gym
-import torch as th
-from imitation.rewards.reward_nets import RewardNet
 import numpy as np
 import torch
-from stable_baselines3 import PPO
-from stable_baselines3.ppo import CnnPolicy
+import torch as th
+from imitation.rewards.reward_nets import RewardNet
+from stable_baselines3.common.preprocessing import preprocess_obs, maybe_transpose
 from torch import nn
 
 from reward_preprocessing import utils
@@ -14,14 +13,13 @@ from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
 
 class ProcgenCnnRegressionRewardNet(RewardNet):
-    """CNN for learning reward using supervised regression from trajectories."""
+    """Rewardnet using a CNN for learning reward using supervised regression on obs, rew
+    pairs."""
 
-    def __int__(
-        self, observation_space: gym.spaces.Space, action_space: gym.spaces.Space
-    ):
+    def __init__(self, observation_space: gym.Space, action_space: gym.Space):
         super().__init__(observation_space=observation_space, action_space=action_space)
 
-        self.model = Cnn(
+        self.cnn_regressor = Cnn(
             input_size=observation_space.shape[0],
             in_channels=3,
             channels=[32, 64],
@@ -36,15 +34,21 @@ class ProcgenCnnRegressionRewardNet(RewardNet):
     ) -> th.Tensor:
         """
         Args:
-            state: Tensor of shape (batch_size, state_size)
+            state: Tensor of shape (batch_size, height, width, channels)
             action: Tensor of shape (batch_size, action_size)
             next_state: Tensor of shape (batch_size, state_size)
             done: Tensor of shape (batch_size,)
         Returns:
             Tensor of shape (batch_size,)
         """
-        last_frame = state[:, -1]
-        return self.model(last_frame)
+        # Performs preprocessing for images
+        preprocessed_obs = preprocess_obs(
+            next_state, self.observation_space, normalize_images=self.normalize_images
+        )
+        preprocessed_obs = cast(th.Tensor, preprocessed_obs)
+        # Reshape to (batch_size, channels, height, width)
+        transposed = th.permute(preprocessed_obs, [0, 3, 1, 2])
+        return self.cnn_regressor(transposed)
 
 
 class MazeRewardNet(RewardNet):
@@ -156,7 +160,7 @@ class Cnn(nn.Module):
         i += 1
         self.model.add_module("dropout1", nn.Dropout(p=0.5))
         self.model.add_module("linear1", nn.Linear(128, 1))
-        # TODO: Maybe just learn to output reward between -1 and 1?
+        # TODO: Maybe just learn to output reward between -1 and 1 with tanh activation?
 
     def forward(self, x: th.Tensor) -> th.Tensor:
         """

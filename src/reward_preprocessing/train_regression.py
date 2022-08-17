@@ -38,7 +38,7 @@ def train_regression(
 ):
     # Load expert trajectories
     expert_trajs = demonstrations.load_expert_trajs()
-    assert type(expert_trajs) == Sequence[types.TrajectoryWithRew]
+    assert isinstance(expert_trajs[0], types.TrajectoryWithRew)
     expert_trajs = cast(Sequence[types.TrajectoryWithRew], expert_trajs)
     dataset = flatten_trajectories_with_rew(expert_trajs)
 
@@ -83,11 +83,20 @@ def _train_batch(model, device, train_loader, optimizer, epoch, loss_fn):
     model.train()
     bar = tqdm(train_loader, desc=f"Epoch {epoch}", ncols=80)
     for batch_idx, data_dict in enumerate(bar):
-        # The reward should be associated with 'next_obs', not 'obs'.
-        obs_bt, rew_bt = data_dict["next_obs"], data_dict["rew"]
-        data, target = obs_bt.to(device), rew_bt.to(device)
+        obs_bt = data_dict["obs"]
+        act_bt = data_dict["acts"]
+        next_obs_bt = data_dict["next_obs"]
+        done_bt = data_dict["dones"]
+        rew_bt = data_dict["rews"]
+
+        obs = obs_bt.to(device)
+        act = act_bt.to(device)
+        next_obs = next_obs_bt.to(device)
+        done = done_bt.to(device)
+        target = rew_bt.to(device)
+
         optimizer.zero_grad()
-        output = model(data)
+        output = model(obs, act, next_obs, done)
         loss = loss_fn(output, target)
         loss.backward()
         optimizer.step()
