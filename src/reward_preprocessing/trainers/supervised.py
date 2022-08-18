@@ -74,6 +74,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
         )
+        self._global_batch_step = 0
         self._batch_size = batch_size
         self._test_frac = test_frac
         self._test_freq = test_freq
@@ -134,6 +135,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
     ):
         self._reward_net.train()
         for batch_idx, data_dict in enumerate(self._train_loader):
+            self._global_batch_step += 1
             model_args, target = _data_dict_to_model_args_and_target(data_dict, device)
 
             self._opt.zero_grad()
@@ -142,11 +144,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             loss.backward()
             self._opt.step()
             if batch_idx % self._test_freq == 0:  # Test and log every test_freq batches
+                self.logger.record("epoch", epoch)
+                self.logger.record("train_loss", loss.item())
                 test_loss = self._test(device, self._loss_fn)
-                # description = (
-                #     f"Epoch: {epoch}, train loss: {loss.item():.4f}, "
-                #     f"test loss: {test_loss:.4f}"
-                # )
+                self.logger.record("test_loss", test_loss)
+                self.logger.dump(self._global_batch_step)
 
     def _test(self, device, loss_fn) -> float:
         """Test model on data in test_loader. Returns average batch loss."""
