@@ -1,13 +1,11 @@
 import os.path as osp
-from typing import Sequence, cast, Dict, Tuple
+from typing import Sequence, cast
 
 import sacred
 import torch as th
 from imitation.data import types
-from imitation.data.rollout import flatten_trajectories_with_rew
 from imitation.scripts.common import common, demonstrations  # reward, rl, train
 from sacred.observers import FileStorageObserver
-from tqdm import tqdm
 
 from reward_preprocessing.models import ProcgenCnnRegressionRewardNet
 from reward_preprocessing.scripts.common import supervised as supervised_config

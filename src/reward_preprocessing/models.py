@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch as th
 from imitation.rewards.reward_nets import RewardNet
+from imitation.util.networks import build_cnn
 from stable_baselines3.common.preprocessing import preprocess_obs
 from torch import nn
 
@@ -19,10 +20,12 @@ class ProcgenCnnRegressionRewardNet(RewardNet):
     def __init__(self, observation_space: gym.Space, action_space: gym.Space):
         super().__init__(observation_space=observation_space, action_space=action_space)
 
-        self.cnn_regressor = Cnn(
-            input_size=observation_space.shape[0],
+        # TODO: Not sure if Cnn (from this module) or build_cnn is better here. The
+        # former gives us more freedom in the architecture.
+        self.cnn_regressor = build_cnn(
             in_channels=3,
-            channels=[32, 64],
+            hid_channels=[32, 64],
+            out_size=1,
         )
 
     def forward(
