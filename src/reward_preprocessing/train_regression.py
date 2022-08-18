@@ -90,10 +90,10 @@ def _train_batch(
         loss.backward()
         optimizer.step()
         if batch_idx % test_freq == 0:  # Test and log every test_freq batches
-            # test_loss = _test(model, device, test_loader, loss_fn)
+            test_loss = _test(model, device, test_loader, loss_fn)
             description = (
                 f"Epoch: {epoch}, train loss: {loss.item():.4f}, "
-                # f"test loss: {test_loss:.4f}"
+                f"test loss: {test_loss:.4f}"
             )
             bar.set_description(description)
     bar.close()

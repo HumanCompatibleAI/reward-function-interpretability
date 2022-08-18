@@ -4,7 +4,7 @@ import logging
 from typing import Tuple
 
 import sacred
-from imitation.data.types import Transitions
+from imitation.data.types import Transitions, transitions_collate_fn
 
 from torch.utils import data as th_data
 
@@ -47,11 +47,13 @@ def train_test_dataloaders(
         shuffle=True,
         batch_size=batch_size,
         num_workers=num_loader_workers,
+        collate_fn=transitions_collate_fn,
     )
     test_loader = th_data.DataLoader(
         test,
         shuffle=False,
         batch_size=batch_size,
         num_workers=num_loader_workers,
+        collate_fn=transitions_collate_fn,
     )
     return train_loader, test_loader
