@@ -5,7 +5,7 @@ from typing import Sequence, cast
 import sacred
 import torch as th
 from imitation.data import types
-from imitation.scripts.common import common, demonstrations  # reward, rl, train
+from imitation.scripts.common import common, demonstrations
 from sacred.observers import FileStorageObserver
 
 from reward_preprocessing.models import ProcgenCnnRegressionRewardNet
@@ -18,9 +18,6 @@ train_regression_ex = sacred.Experiment(
         common.common_ingredient,
         demonstrations.demonstrations_ingredient,
         supervised_config.supervised_ingredient,
-        # reward.reward_ingredient,
-        # rl.rl_ingredient,
-        # train.train_ingredient,
     ],
 )
 
