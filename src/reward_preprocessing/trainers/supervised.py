@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, Type, Mapping, Dict, Tuple
+from typing import Optional, Sequence, Type, Mapping, Dict, Tuple, Callable
 
 import torch as th
 from imitation.algorithms import base
@@ -7,6 +7,7 @@ from imitation.data.rollout import flatten_trajectories_with_rew
 from imitation.data.types import transitions_collate_fn
 from imitation.util import logger as imit_logger
 from torch.utils import data as th_data
+from tqdm import tqdm
 
 from reward_preprocessing.models import ProcgenCnnRegressionRewardNet
 
@@ -81,11 +82,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self._num_loader_workers = num_loader_workers
         self._loss_fn = loss_fn
 
-        self._reward_net = reward_net
+        self.reward_net = reward_net
 
         # Init optimizer
         self._opt = opt_cls(
-            self._reward_net.parameters(),
+            self.reward_net.parameters(),
             **opt_kwargs,
         )
 
@@ -121,25 +122,40 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             drop_last=True,
         )
 
-    def train(self, num_epochs, device):
-        for epoch in range(1, num_epochs + 1):
+    def train(
+        self,
+        num_epochs,
+        device,
+        callback: Optional[Callable[[int], None]] = None,
+    ):
+        """Trains the model on the data in train_loader.
+
+        Args:
+            num_epochs: Number of epochs to train for.
+            device: Device to train on.
+            callback: Optional callback to call after each epoch, takes the epoch number
+                as the single argument (epoch numbers start at 1).
+        """
+        for epoch in tqdm(range(1, num_epochs + 1), desc="Epoch"):
             self._train_batch(
                 device,
                 epoch,
             )
+            if callback is not None:
+                callback(epoch)
 
     def _train_batch(
         self,
         device,
         epoch,
     ):
-        self._reward_net.train()
+        self.reward_net.train()
         for batch_idx, data_dict in enumerate(self._train_loader):
             self._global_batch_step += 1
             model_args, target = _data_dict_to_model_args_and_target(data_dict, device)
 
             self._opt.zero_grad()
-            output = self._reward_net(*model_args)
+            output = self.reward_net(*model_args)
             loss = self._loss_fn(output, target)
             loss.backward()
             self._opt.step()
@@ -152,17 +168,17 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
 
     def _test(self, device, loss_fn) -> float:
         """Test model on data in test_loader. Returns average batch loss."""
-        self._reward_net.eval()
+        self.reward_net.eval()
         test_loss: th.Tensor = th.Tensor([0.0])
         with th.no_grad():
             for data_dict in self._test_loader:
                 model_args, target = _data_dict_to_model_args_and_target(
                     data_dict, device
                 )
-                output = self._reward_net(*model_args)
+                output = self.reward_net(*model_args)
                 test_loss += loss_fn(output, target)  # sum up batch loss
 
         test_loss /= len(self._test_loader.dataset)
-        self._reward_net.train()
+        self.reward_net.train()
 
         return test_loss.item()

@@ -1,3 +1,4 @@
+import os
 import os.path as osp
 from typing import Sequence, cast
 
@@ -24,8 +25,24 @@ train_regression_ex = sacred.Experiment(
 )
 
 
+@train_regression_ex.config
+def defaults():
+    # Every checkpoint_epoch_interval epochs, save the model. Epochs start at 1.
+    checkpoint_epoch_interval = 1
+
+
+def save(trainer: SupervisedTrainer, save_path):
+    """Save regression model."""
+    os.makedirs(save_path, exist_ok=True)
+    th.save(trainer.reward_net, os.path.join(save_path, "model.pt"))
+
+
 @train_regression_ex.main
-def train_regression(supervised):  # From ingredient
+def train_regression(
+    supervised,  # From ingredient
+    checkpoint_epoch_interval: int
+):
+    # TODO: make function return some stats
     # Load expert trajectories
     expert_trajs = demonstrations.load_expert_trajs()
     assert isinstance(expert_trajs[0], types.TrajectoryWithRew)
@@ -55,8 +72,20 @@ def train_regression(supervised):  # From ingredient
         allow_variable_horizon=True,
     )
 
+    def checkpoint_callback(epoch_num):
+        if checkpoint_epoch_interval > 0 and epoch_num % checkpoint_epoch_interval == 0:
+            save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
+
     # Start training
-    trainer.train(num_epochs=supervised["epochs"], device=device)
+    trainer.train(
+        num_epochs=supervised["epochs"],
+        device=device,
+        callback=checkpoint_callback,
+    )
+
+    # Save final artifacts.
+    if checkpoint_epoch_interval >= 0:
+        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
 
 def main_console():
