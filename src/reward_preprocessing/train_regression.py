@@ -35,10 +35,7 @@ def save(trainer: SupervisedTrainer, save_path):
 
 
 @train_regression_ex.main
-def train_regression(
-    supervised,  # From ingredient
-    checkpoint_epoch_interval: int
-):
+def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingredient
     # TODO: make function return some stats
     # Load expert trajectories
     expert_trajs = demonstrations.load_expert_trajs()
