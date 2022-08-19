@@ -1,12 +1,8 @@
 """Common configuration elements for training supervised models."""
 
 import logging
-from typing import Tuple
 
 import sacred
-from imitation.data.types import Transitions, transitions_collate_fn
-
-from torch.utils import data as th_data
 
 supervised_ingredient = sacred.Ingredient("supervised")
 logger = logging.getLogger(__name__)
