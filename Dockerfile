@@ -9,6 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libc6-dev \
     # git is needed by Sacred
     git \
+    # Needed for procgen
+    qt5-default \
+    cmake \
+    gcc \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python -
