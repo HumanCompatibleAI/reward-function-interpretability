@@ -1,24 +1,21 @@
 import logging
-from typing import List, Tuple, cast
+from typing import Tuple
 
 import gym
 from imitation.rewards.reward_nets import RewardNet
 from imitation.util.networks import build_cnn
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
-import torch
 import torch as th
-from torch import nn
 
 logger = logging.getLogger(__name__)
 
 
-from reward_preprocessing import utils
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
 
 class ProcgenCnnRegressionRewardNet(RewardNet):
-    """Rewardnet using a CNN for learning reward using supervised regression on obs, rew
+    """RewardNet using a CNN for learning reward using supervised regression on obs, rew
     pairs."""
 
     def __init__(self, observation_space: gym.Space, action_space: gym.Space):
@@ -54,8 +51,9 @@ class ProcgenCnnRegressionRewardNet(RewardNet):
         preprocessed_obs = preprocess_obs(
             next_state, self.observation_space, normalize_images=self.normalize_images
         )
-        preprocessed_obs = cast(th.Tensor, preprocessed_obs)
-        # Reshape to (batch_size, channels, height, width)
+        assert isinstance(preprocessed_obs, th.Tensor)
+        # Reshape from (batch_size [0], height [1], width [2], channels [3])
+        # to (batch_size [0], channels [3], height [1], width [2])
         if len(preprocessed_obs.shape) == 4:
             transposed = th.permute(preprocessed_obs, [0, 3, 1, 2])
         else:
@@ -77,15 +75,15 @@ class MazeRewardNet(RewardNet):
 
     def forward(
         self,
-        state: torch.Tensor,
-        action: torch.Tensor,
-        next_state: torch.Tensor,
-        done: torch.Tensor,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
     ):
         np_state = state.detach().cpu().numpy()
         np_next_state = next_state.detach().cpu().numpy()
         rewards = self.rewards[np_state, np_next_state]
-        return torch.as_tensor(rewards, device=state.device)
+        return th.as_tensor(rewards, device=state.device)
 
     def preprocess(
         self,
@@ -93,18 +91,18 @@ class MazeRewardNet(RewardNet):
         action: np.ndarray,
         next_state: np.ndarray,
         done: np.ndarray,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         """Preprocess a batch of input transitions and convert it to PyTorch tensors.
 
         The output of this function is suitable for its forward pass,
         so a typical usage would be ``model(*model.preprocess(transitions))``.
         """
-        state_th = torch.as_tensor(state, device=self.device, dtype=torch.long)
-        action_th = torch.as_tensor(action, device=self.device)
-        next_state_th = torch.as_tensor(
-            next_state, device=self.device, dtype=torch.long
+        state_th = th.as_tensor(state, device=self.device, dtype=th.long)
+        action_th = th.as_tensor(action, device=self.device)
+        next_state_th = th.as_tensor(
+            next_state, device=self.device, dtype=th.long
         )
-        done_th = torch.as_tensor(done, device=self.device)
+        done_th = th.as_tensor(done, device=self.device)
 
         assert state_th.shape == next_state_th.shape
         return state_th, action_th, next_state_th, done_th
@@ -117,13 +115,13 @@ class MountainCarRewardNet(RewardNet):
 
     def forward(
         self,
-        state: torch.Tensor,
-        action: torch.Tensor,
-        next_state: torch.Tensor,
-        done: torch.Tensor,
-    ) -> torch.Tensor:
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
         reward = (state[:, 0] > 0.5).float() - 1.0
-        shaping = torch.tensor(
+        shaping = th.tensor(
             [self.env._shaping(x, y) for x, y in zip(state, next_state)]
         )
         return reward + shaping

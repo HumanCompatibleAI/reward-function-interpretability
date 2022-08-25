@@ -1,5 +1,5 @@
 import os
-import os.path as osp
+import os.path
 from typing import Sequence, cast
 
 from imitation.data import types
@@ -26,6 +26,7 @@ train_regression_ex = sacred.Experiment(
 def defaults():
     # Every checkpoint_epoch_interval epochs, save the model. Epochs start at 1.
     checkpoint_epoch_interval = 1
+    locals()  # make flake8 happy
 
 
 def save(trainer: SupervisedTrainer, save_path):
@@ -82,11 +83,11 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
         save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
 
-def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "train_regression"))
+def main():
+    observer = FileStorageObserver(os.path.join("output", "sacred", "train_regression"))
     train_regression_ex.observers.append(observer)
     train_regression_ex.run_commandline()
 
 
 if __name__ == "__main__":  # pragma: no cover
-    main_console()
+    main()

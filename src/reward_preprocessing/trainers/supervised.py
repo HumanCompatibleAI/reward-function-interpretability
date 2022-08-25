@@ -21,17 +21,11 @@ def _data_dict_to_model_args_and_target(
         data_dict: Dictionary of data from Transitions dataloader to be passed to model.
         device: Device to move data to.
     """
-    obs_bt = data_dict["obs"]
-    act_bt = data_dict["acts"]
-    next_obs_bt = data_dict["next_obs"]
-    done_bt = data_dict["dones"]
-    rew_bt = data_dict["rews"]
-
-    obs = obs_bt.to(device)
-    act = act_bt.to(device)
-    next_obs = next_obs_bt.to(device)
-    done = done_bt.to(device)
-    target = rew_bt.to(device)
+    obs = data_dict["obs"].to(device)
+    act = data_dict["acts"].to(device)
+    next_obs = data_dict["next_obs"].to(device)
+    done = data_dict["dones"].to(device)
+    target = data_dict["rews"].to(device)
 
     return (obs, act, next_obs, done), target
 

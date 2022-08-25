@@ -170,24 +170,3 @@ def get_env_name(env: VecEnv) -> str:
     # It's only one line but it's a somewhat hard to read and write one
     specs = env.get_attr("spec", indices=[0])
     return specs[0].id
-
-
-def calc_conv_out_size(
-    input_size: int, kernel_size: int, padding: int, stride: int
-) -> int:
-    """
-    Calculate size in one of the dimensions after applying convolutional layer.
-    For a max pooling layer set stride to kernel size (assuming default stride for max
-    pooling). Result is floored in case output dim is not integer, since PyTorch floors
-    output dims.
-
-    Args:
-        input_size (int): Input size (width or height)
-        kernel_size (int): size of kernel
-        padding (int): padding of kernel
-        stride (int): stride of kernel
-
-    Returns:
-        Output size (width or height)
-    """
-    return int((input_size - kernel_size + 2 * padding) / stride) + 1
