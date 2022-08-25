@@ -1,5 +1,5 @@
 import os
-import os.path as osp
+import os.path
 from typing import Sequence, cast
 
 from imitation.data import types
@@ -84,7 +84,7 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "train_regression"))
+    observer = FileStorageObserver(os.path.join("output", "sacred", "train_regression"))
     train_regression_ex.observers.append(observer)
     train_regression_ex.run_commandline()
 
