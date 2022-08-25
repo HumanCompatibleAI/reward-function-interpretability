@@ -1,11 +1,11 @@
-from typing import Optional, Sequence, Type, Mapping, Dict, Tuple, Callable
+from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple, Type
 
-import torch as th
 from imitation.algorithms import base
 from imitation.data import types
 from imitation.data.rollout import flatten_trajectories_with_rew
 from imitation.data.types import transitions_collate_fn
 from imitation.util import logger as imit_logger
+import torch as th
 from torch.utils import data as th_data
 from tqdm import tqdm
 

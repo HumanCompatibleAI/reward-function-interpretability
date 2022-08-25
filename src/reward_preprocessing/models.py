@@ -1,13 +1,13 @@
 import logging
-from typing import Tuple, List, cast
+from typing import List, Tuple, cast
 
 import gym
-import numpy as np
-import torch
-import torch as th
 from imitation.rewards.reward_nets import RewardNet
 from imitation.util.networks import build_cnn
+import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
+import torch
+import torch as th
 from torch import nn
 
 logger = logging.getLogger(__name__)
