@@ -2,11 +2,11 @@ import os
 import os.path as osp
 from typing import Sequence, cast
 
-import sacred
-import torch as th
 from imitation.data import types
 from imitation.scripts.common import common, demonstrations
+import sacred
 from sacred.observers import FileStorageObserver
+import torch as th
 
 from reward_preprocessing.models import ProcgenCnnRegressionRewardNet
 from reward_preprocessing.scripts.common import supervised as supervised_config
@@ -26,6 +26,7 @@ train_regression_ex = sacred.Experiment(
 def defaults():
     # Every checkpoint_epoch_interval epochs, save the model. Epochs start at 1.
     checkpoint_epoch_interval = 1
+    locals()  # make flake8 happy
 
 
 def save(trainer: SupervisedTrainer, save_path):

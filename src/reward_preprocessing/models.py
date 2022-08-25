@@ -1,15 +1,13 @@
-from typing import Tuple, List, cast
+from typing import Tuple, cast
 
 import gym
-import numpy as np
-import torch
-import torch as th
 from imitation.rewards.reward_nets import RewardNet
 from imitation.util.networks import build_cnn
+import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
-from torch import nn
+import torch
+import torch as th
 
-from reward_preprocessing import utils
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
 
