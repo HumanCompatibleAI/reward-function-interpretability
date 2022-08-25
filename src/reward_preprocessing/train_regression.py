@@ -83,11 +83,11 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
         save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
 
-def main_console():
+def main():
     observer = FileStorageObserver(os.path.join("output", "sacred", "train_regression"))
     train_regression_ex.observers.append(observer)
     train_regression_ex.run_commandline()
 
 
 if __name__ == "__main__":  # pragma: no cover
-    main_console()
+    main()
