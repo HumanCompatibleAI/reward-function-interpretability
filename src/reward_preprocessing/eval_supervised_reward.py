@@ -47,6 +47,7 @@ def _eval_policy(
     reward_path: Optional[str] = None,
 ):
     """Wrapper to make calling eval_policy more convenient."""
+
     return eval_policy.eval_policy(
         eval_n_episodes=eval_n_episodes,
         policy_type=policy_type,
@@ -69,7 +70,7 @@ def defaults():
     policy_type = "ppo"
     # Path to the expert policy
     policy_path = None
-    # Path the learned supervised reward net
+    # Path to the learned supervised reward net
     reward_path = None
 
 
