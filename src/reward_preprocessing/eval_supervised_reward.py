@@ -9,11 +9,6 @@ from imitation.rewards.serialize import (
 )
 from imitation.scripts import eval_policy
 
-# I need to import common because eval_policy uses  common.make_log_dir(). If I
-# don't import it, eval_policy will compalin that it is missing ['log_dir', 'log_level']
-# and I don't have any way to pass these (AFAICT). So instead I import it here and
-# make common part of my experiment.
-from imitation.scripts.common import common
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import torch as th
@@ -21,7 +16,7 @@ import torch as th
 from reward_preprocessing.env import env_ingredient
 
 eval_supervised_ex = Experiment(
-    "eval_supervised", ingredients=[env_ingredient, common.common_ingredient]
+    "eval_supervised", ingredients=[env_ingredient]
 )
 
 # Register our custom reward so that imitation internals can e.g. load the specified
