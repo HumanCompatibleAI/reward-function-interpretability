@@ -47,6 +47,7 @@ class ProcgenCnnRegressionRewardNet(RewardNet):
         preprocessed_obs = preprocess_obs(
             next_state, self.observation_space, normalize_images=self.normalize_images
         )
+        assert isinstance(preprocessed_obs, th.Tensor)
         # Reshape to (batch_size, channels, height, width)
         transposed = th.permute(preprocessed_obs, [0, 3, 1, 2])
         return self.cnn_regressor(transposed)
