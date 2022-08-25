@@ -11,7 +11,7 @@ from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
 
 class ProcgenCnnRegressionRewardNet(RewardNet):
-    """Rewardnet using a CNN for learning reward using supervised regression on obs, rew
+    """RewardNet using a CNN for learning reward using supervised regression on obs, rew
     pairs."""
 
     def __init__(self, observation_space: gym.Space, action_space: gym.Space):
