@@ -71,6 +71,8 @@ def defaults():
     # Path to the learned supervised reward net
     reward_path = None
 
+    locals()  # quieten flake8
+
 
 @eval_supervised_ex.main
 def main(
