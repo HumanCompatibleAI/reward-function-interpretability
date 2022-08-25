@@ -8,10 +8,9 @@ import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 import torch as th
 
-logger = logging.getLogger(__name__)
-
-
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 
 class ProcgenCnnRegressionRewardNet(RewardNet):
@@ -99,9 +98,7 @@ class MazeRewardNet(RewardNet):
         """
         state_th = th.as_tensor(state, device=self.device, dtype=th.long)
         action_th = th.as_tensor(action, device=self.device)
-        next_state_th = th.as_tensor(
-            next_state, device=self.device, dtype=th.long
-        )
+        next_state_th = th.as_tensor(next_state, device=self.device, dtype=th.long)
         done_th = th.as_tensor(done, device=self.device)
 
         assert state_th.shape == next_state_th.shape
