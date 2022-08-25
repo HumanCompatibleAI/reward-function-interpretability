@@ -1,4 +1,4 @@
-from typing import Tuple, cast
+from typing import Tuple
 
 import gym
 from imitation.rewards.reward_nets import RewardNet
@@ -88,9 +88,7 @@ class MazeRewardNet(RewardNet):
         """
         state_th = th.as_tensor(state, device=self.device, dtype=th.long)
         action_th = th.as_tensor(action, device=self.device)
-        next_state_th = th.as_tensor(
-            next_state, device=self.device, dtype=th.long
-        )
+        next_state_th = th.as_tensor(next_state, device=self.device, dtype=th.long)
         done_th = th.as_tensor(done, device=self.device)
 
         assert state_th.shape == next_state_th.shape
