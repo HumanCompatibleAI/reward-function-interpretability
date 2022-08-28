@@ -61,7 +61,9 @@ class ProcgenCnnRegressionRewardNet(RewardNet):
                 "Skipping transpose."
             )
             transposed = preprocessed_obs
-        return self.cnn_regressor(transposed)
+        batch_size = transposed.shape[0]
+        # Reshape into shape expected by imitation (see RewardNet predict_th())
+        return self.cnn_regressor(transposed).reshape((batch_size,))
 
 
 class MazeRewardNet(RewardNet):
