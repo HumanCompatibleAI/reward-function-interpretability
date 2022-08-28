@@ -95,9 +95,7 @@ def eval_reward(
 
     rew_fn = load_reward("SupervisedRewardNet", reward_path, venv)
 
-    policy = None
-    if policy_type is not None:
-        policy = serialize.load_policy(policy_type, policy_path, venv)
+    policy = serialize.load_policy(policy_type, policy_path, venv)
 
     logging.info(f"Evaluating random policy with env reward as sanity check.")
     stats = _eval_policy(venv, num_episodes=eval_n_episodes)
