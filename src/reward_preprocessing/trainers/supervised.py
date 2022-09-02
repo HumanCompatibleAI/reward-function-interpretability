@@ -48,6 +48,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         opt_kwargs: Optional[Mapping] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
+        seed: Optional[int] = None,
     ):
         """Creates an algorithm that learns from demonstrations.
 
@@ -85,10 +86,12 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         )
 
         if demonstrations is not None:
-            self.set_demonstrations(demonstrations)
+            self.set_demonstrations(demonstrations, seed)
 
     def set_demonstrations(
-        self, demonstrations: Sequence[types.TrajectoryWithRew]
+        self,
+        demonstrations: Sequence[types.TrajectoryWithRew],
+        seed: Optional[int] = None,
     ) -> None:
         """Sets train and test dataloaders from trajectories. Trajectories must contain
         reward data."""
@@ -97,7 +100,18 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         # Calculate the dataset split.
         num_test = int(len(dataset) * self._test_frac)
         num_train = len(dataset) - num_test
-        train, test = th_data.random_split(dataset, [num_train, num_test])
+        if seed is None:
+            train, test = th_data.random_split(dataset, [num_train, num_test])
+        else:
+            train, test = th_data.random_split(
+                dataset,
+                [num_train, num_test],
+                generator=th.Generator().manual_seed(seed),
+            )
+
+        generator = None
+        if seed is not None:
+            generator = th.Generator().manual_seed(seed)
 
         self._train_loader = th_data.DataLoader(
             train,
@@ -106,6 +120,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             num_workers=self._num_loader_workers,
             collate_fn=transitions_collate_fn,
             drop_last=True,
+            generator=generator,
         )
         self._test_loader = th_data.DataLoader(
             test,
@@ -176,4 +191,3 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.reward_net.train()
 
         return test_loss
-
