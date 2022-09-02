@@ -163,16 +163,17 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
     def _test(self, device, loss_fn) -> float:
         """Test model on data in test_loader. Returns average batch loss."""
         self.reward_net.eval()
-        test_loss: th.Tensor = th.Tensor([0.0])
+        test_loss = 0.0
         with th.no_grad():
             for data_dict in self._test_loader:
                 model_args, target = _data_dict_to_model_args_and_target(
                     data_dict, device
                 )
                 output = self.reward_net(*model_args)
-                test_loss += loss_fn(output, target)  # sum up batch loss
+                test_loss += loss_fn(output, target).item()  # sum up batch loss
 
         test_loss /= len(self._test_loader.dataset)
         self.reward_net.train()
 
-        return test_loss.item()
+        return test_loss
+
