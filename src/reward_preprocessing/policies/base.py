@@ -8,5 +8,9 @@ class ImpalaPolicy(ActorCriticCnnPolicy):
     imitation."""
 
     def __init__(self, *args, **kwargs):
-        """Builds FeedForward32Policy; arguments passed to `ActorCriticPolicy`."""
-        super().__init__(*args, **kwargs, features_extractor_class=ImpalaModel)
+        """Builds ImpalaPolicy; arguments passed to `ActorCriticPolicy`."""
+        # We override any provided `features_extractor_class` with our ImpalaModel.
+        # TODO: Potentially we want to allow setting feature extractors without having
+        # them be overwritten here.
+        kwargs.update(dict(features_extractor_class=ImpalaModel))
+        super().__init__(*args, **kwargs)

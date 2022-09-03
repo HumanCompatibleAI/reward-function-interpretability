@@ -69,12 +69,12 @@ class ImpalaBlock(nn.Module):
 class ImpalaModel(BaseFeaturesExtractor):
     def __init__(
         self,
-        in_channels: int,
         observation_space: gym.Space,
-        features_dim: int = 0,
+        features_dim: int = 256,
         **kwargs,
     ):
         super(ImpalaModel, self).__init__(observation_space, features_dim)
+        in_channels = observation_space.shape[0]
         self.block1 = ImpalaBlock(in_channels=in_channels, out_channels=16)
         self.block2 = ImpalaBlock(in_channels=16, out_channels=32)
         self.block3 = ImpalaBlock(in_channels=32, out_channels=32)
