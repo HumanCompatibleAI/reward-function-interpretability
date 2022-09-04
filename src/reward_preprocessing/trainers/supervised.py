@@ -102,16 +102,14 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         num_train = len(dataset) - num_test
         if seed is None:
             train, test = th_data.random_split(dataset, [num_train, num_test])
+            shuffle_generator = None
         else:
             train, test = th_data.random_split(
                 dataset,
                 [num_train, num_test],
                 generator=th.Generator().manual_seed(seed),
             )
-
-        generator = None
-        if seed is not None:
-            generator = th.Generator().manual_seed(seed)
+            shuffle_generator = th.Generator().manual_seed(seed)
 
         self._train_loader = th_data.DataLoader(
             train,
@@ -120,7 +118,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             num_workers=self._num_loader_workers,
             collate_fn=transitions_collate_fn,
             drop_last=True,
-            generator=generator,
+            generator=shuffle_generator,
         )
         self._test_loader = th_data.DataLoader(
             test,
