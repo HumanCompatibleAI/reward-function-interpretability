@@ -23,7 +23,7 @@ eval_callback = EvalCallback(
 callback = CallbackList([checkpoint_callback, eval_callback])
 
 
-model = PPO("MlpPolicy", "procgen:procgen-coinrun-v0")
+model = PPO("CnnPolicy", "procgen:procgen-coinrun-v0")
 model.learn(total_timesteps=total_timesteps, callback=callback)
 # Final save
 model.save("ppo_coinrun_v0")
