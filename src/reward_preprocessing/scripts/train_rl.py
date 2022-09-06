@@ -3,7 +3,7 @@ from imitation.scripts.config.train_rl import train_rl_ex
 from imitation.scripts.train_rl import main_console
 
 from reward_preprocessing.env.maze import use_config
-from reward_preprocessing.ext.impala import ImpalaModel
+from reward_preprocessing.ext.impala import ImpalaGMPolicy, ImpalaModel
 import reward_preprocessing.policies.base
 
 use_config(train_rl_ex)
@@ -44,6 +44,14 @@ def coinrun_aisc_fixed_coin():
     )
     # num_vec * n_steps / (mini)batch_size amounts to 8 minibatches as in the original
     # paper. They also did this in parallel for 4 workers but we don't do that here.
+    locals()  # make flake8 happy
+
+
+@train_rl_ex.named_config
+def use_gm_policy():
+    train = dict(
+        policy_cls=ImpalaGMPolicy,
+    )
     locals()  # make flake8 happy
 
 
