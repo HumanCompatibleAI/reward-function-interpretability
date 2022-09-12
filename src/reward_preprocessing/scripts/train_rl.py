@@ -28,7 +28,9 @@ def coinrun_aisc_fixed_coin():
     )
     total_timesteps = int(200_000_000)
     rl = dict(
-        batch_size=256,  # This corresponds to n_steps for rollouts.
+        # n_steps for rollouts is batch_size // venv.num_envs so this should be
+        # num_vec * n_steps we want
+        batch_size=256 * 256,
         rl_kwargs=dict(
             n_epochs=3,
             ent_coef=0.01,
