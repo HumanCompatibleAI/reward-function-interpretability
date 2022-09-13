@@ -1,8 +1,14 @@
 # base stage contains just dependencies.
-FROM python:3.9.5-slim as dependencies
+FROM nvidia/cuda:11.6.2-cudnn8-runtime-ubuntu20.04 as dependencies
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Python 3.9
+    python3.9 \
+    python3.9-dev \
+    python3-pip \
+    virtualenv \
+    # Misc
     curl \
     gcc \
     g++ \
@@ -15,6 +21,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/venv/bin:$PATH"
+COPY ci/build_and_activate_venv.sh ./ci/build_and_activate_venv.sh
+RUN ci/build_and_activate_venv.sh /venv
 
 RUN curl -sSL https://install.python-poetry.org | python -
 ENV PATH="/root/.local/bin:$PATH"
