@@ -28,7 +28,10 @@ COPY poetry.lock pyproject.toml ./
 # difficult and not worth getting right for this project
 # (I've tried some things from https://github.com/python-poetry/poetry/issues/521
 # without success)
+#RUN pip install "gym3 @ git+https://github.com/openai/gym3.git@4c38246"
 RUN poetry install --no-interaction --no-ansi
+# We have to install procgen using poetry because it relies on gym3 in its build.py which is only installed inside the poetry env
+RUN poetry run pip install "procgen @ git+https://github.com/JacobPfau/procgenAISC.git@822dd97"
 
 # clear the directory again (this is necessary so that CircleCI can checkout
 # into the directory)
