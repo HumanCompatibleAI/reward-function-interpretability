@@ -49,3 +49,10 @@ black = "^21.8b0"
 flake8 = "^3.9.2"
 pytype = "^2021.8.24"
 flake8-isort = "^4.0.0"
+
+[[tool.poetry.source]]
+name = "torch"
+url = "https://download.pytorch.org/whl/cu116"
+default = false
+secondary = false
+
