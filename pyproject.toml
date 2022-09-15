@@ -31,7 +31,9 @@ wandb = "^0.12.1"
 sb3-contrib = "^1.1.0"
 seals = "^0.1.1"
 mazelab = {git = "https://github.com/ejnnr/mazelab"}
-imitation = {git = "https://github.com/HumanCompatibleAI/imitation", tag = "v0.3.1"}
+imitation = {git = "https://github.com/dfilan/imitation", rev = "f3f425505"}
+procgen = {git = "https://github.com/JacobPfau/procgenAISC", rev = "822dd97"}
+gym3 = {git = "https://github.com/openai/gym3", rev = "4c38246"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"

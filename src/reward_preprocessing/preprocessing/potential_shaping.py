@@ -293,7 +293,7 @@ class TabularPotentialShaping(PotentialShaping):
         # TODO: this is not very robust, only works for square
         # mazes
         n = int(math.sqrt(self.observation_space.n))
-        if n ** 2 != self.observation_space.n:
+        if n**2 != self.observation_space.n:
             raise NotImplementedError(
                 "Potential plotting is not implemented for this type of potential."
             )
