@@ -33,15 +33,8 @@ seals = "^0.1.1"
 mazelab = {git = "https://github.com/ejnnr/mazelab", rev = "3042551"}
 imitation = {git = "https://github.com/HumanCompatibleAI/imitation", rev = "91c66b7"}
 gym3 = {git = "https://github.com/openai/gym3", rev = "4c38246"}  # This version includes some fixes that are not in the newest pip version
-
-# I had to put procgen into a separate group.
-# During the build process of procgen, build.py uses gym3, which is not yet installed, when installing all dependencies ath the same time
-# using poetry install.
-[tool.poetry.group.procgen]
-optional = true
-
-[tool.poetry.group.procgen.dependencies]
-procgen = {git = "https://github.com/JacobPfau/procgenAISC", rev = "822dd97"}
+# This version has fixes that are not upstream yet
+procgen = {git = "https://github.com/PavelCz/procgenAISC", rev = "8b49409df1fa0e6e238a98fe813aa65135e835f1"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
