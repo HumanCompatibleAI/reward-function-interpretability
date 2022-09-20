@@ -45,42 +45,41 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
     custom_logger, log_dir = common.setup_logging()
 
-    venv = common.make_venv()
+    with common.make_venv() as venv:
+        # Init the regression CNN
+        model = ProcgenCnnRegressionRewardNet(
+            observation_space=venv.observation_space, action_space=venv.action_space
+        )
+        device = "cuda" if th.cuda.is_available() else "cpu"
+        loss_fn = th.nn.MSELoss()
 
-    # Init the regression CNN
-    model = ProcgenCnnRegressionRewardNet(
-        observation_space=venv.observation_space, action_space=venv.action_space
-    )
-    device = "cuda" if th.cuda.is_available() else "cpu"
-    loss_fn = th.nn.MSELoss()
+        trainer = SupervisedTrainer(
+            demonstrations=expert_trajs,
+            reward_net=model,
+            batch_size=supervised["batch_size"],
+            test_frac=supervised["test_frac"],
+            test_freq=supervised["test_freq"],
+            num_loader_workers=supervised["num_loader_workers"],
+            loss_fn=loss_fn,
+            opt_kwargs={"lr": 1e-3},
+            custom_logger=custom_logger,
+            allow_variable_horizon=True,
+        )
 
-    trainer = SupervisedTrainer(
-        demonstrations=expert_trajs,
-        reward_net=model,
-        batch_size=supervised["batch_size"],
-        test_frac=supervised["test_frac"],
-        test_freq=supervised["test_freq"],
-        num_loader_workers=supervised["num_loader_workers"],
-        loss_fn=loss_fn,
-        opt_kwargs={"lr": 1e-3},
-        custom_logger=custom_logger,
-        allow_variable_horizon=True,
-    )
+        def checkpoint_callback(epoch_num):
+            if checkpoint_epoch_interval > 0 and epoch_num % checkpoint_epoch_interval == 0:
+                save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
 
-    def checkpoint_callback(epoch_num):
-        if checkpoint_epoch_interval > 0 and epoch_num % checkpoint_epoch_interval == 0:
-            save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
+        # Start training
+        trainer.train(
+            num_epochs=supervised["epochs"],
+            device=device,
+            callback=checkpoint_callback,
+        )
 
-    # Start training
-    trainer.train(
-        num_epochs=supervised["epochs"],
-        device=device,
-        callback=checkpoint_callback,
-    )
-
-    # Save final artifacts.
-    if checkpoint_epoch_interval >= 0:
-        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+        # Save final artifacts.
+        if checkpoint_epoch_interval >= 0:
+            save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
 
 def main():
