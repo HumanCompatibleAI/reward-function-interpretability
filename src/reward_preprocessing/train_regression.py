@@ -66,6 +66,9 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
             allow_variable_horizon=True,
         )
 
+        # Move model to correct device
+        model.to(device)
+
         def checkpoint_callback(epoch_num):
             if checkpoint_epoch_interval > 0 and epoch_num % checkpoint_epoch_interval == 0:
                 save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
