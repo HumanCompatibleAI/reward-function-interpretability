@@ -7,32 +7,14 @@ from imitation.data.rollout import AnyPolicy
 from imitation.policies import serialize
 from imitation.rewards import reward_function
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
-from imitation.rewards.serialize import (
-    ValidateRewardFn,
-    _make_functional,
-    load_reward,
-    reward_registry,
-)
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnv
-import torch as th
 
+from reward_preprocessing.common.serialize import load_reward
 from reward_preprocessing.env import create_env, env_ingredient
 
 eval_supervised_ex = Experiment("eval_supervised", ingredients=[env_ingredient])
-
-# Register our custom reward so that imitation internals can e.g. load the specified
-# type. We register in a very similar way to imitation.reward.serialize
-reward_registry.register(
-    key="SupervisedRewardNet",
-    # Validate the shape returned by the reward net
-    value=lambda path, _, **kwargs: ValidateRewardFn(
-        _make_functional(  # Turns the loaded reward net into a reward function.
-            th.load(str(path)),
-        ),
-    ),
-)
 
 
 def _eval_policy(
