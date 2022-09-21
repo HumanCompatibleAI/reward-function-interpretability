@@ -142,8 +142,9 @@ class ImpalaGMPolicy(ActorCriticPolicy):
         :param deterministic: Whether to sample or use deterministic actions
         :return: action, value and log probability of the action
         """
-        preprocessed_obs = preprocess_obs(obs, self.observation_space,
-                                          normalize_images=self.normalize_images)
+        preprocessed_obs = preprocess_obs(
+            obs, self.observation_space, normalize_images=self.normalize_images
+        )
 
         hidden = self.embedder(preprocessed_obs)
         # if self.recurrent:
