@@ -10,7 +10,6 @@ train_gan_ex = sacred.Experiment("train_gan")
 
 @train_gan_ex.config
 def train_gan_defaults():
-    # give a bunch of variable assignments and then comment saying what that is
     generator_class = gen_models.Small21To84Generator
     discriminator_class = gen_models.SmallWassersteinCritic
     gan_algorithm = vegans.GAN.WassersteinGAN
