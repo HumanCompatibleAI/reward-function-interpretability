@@ -34,6 +34,7 @@ class FourTo64Generator(nn.Module):
 
     Of use for generative modelling of procgen rollouts.
     """
+
     def __init__(self, latent_shape, data_shape):
         super(FourTo64Generator, self).__init__()
         self.hidden_part = nn.Sequential(
