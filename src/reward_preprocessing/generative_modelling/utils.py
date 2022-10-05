@@ -5,8 +5,6 @@ from imitation.data import rollout, types
 import numpy as np
 from torch.utils import data as torch_data
 
-# TODO check if maybe this library is already doing what I want?
-
 
 def make_transition_to_tensor(num_acts):
     """Produces a function that takes a transition, produces a tensor.
@@ -58,21 +56,27 @@ class TransformedDataset(torch_data.Dataset):
         return self.base_dataset.__len__()
 
 
-def rollouts_to_dataloader(rollouts_path, num_acts, batch_size):
+def rollouts_to_dataloader(rollouts_paths, num_acts, batch_size):
     """Take saved rollouts of a policy, and produce a dataloader of transitions.
 
     Assumes that observations are (h,w,c)-formatted images and that actions are
     discrete.
 
     Args:
-        rollouts_path: Path to rollouts saved via imitation script.
+        rollouts_path: Path to rollouts saved via imitation script, or list of
+            such paths.
         num_acts: Number of actions available to the agent (necessary because
             actions are saved as a number, not as a one-hot vector).
         batch_size: Int, size of batches that the dataloader serves. Note that
             a batch size of 2 will make the GAN algorithm think each batch is
             a (data, label) pair, which will mess up training.
     """
-    rollouts = types.load_with_rewards(rollouts_path)
+    if isinstance(rollouts_paths, list):
+        rollouts = []
+        for path in rollouts_paths:
+            rollouts += types.load_with_rewards(path)
+    else:
+        rollouts = types.load_with_rewards(rollouts_paths)
     flat_rollouts = rollout.flatten_trajectories_with_rew(rollouts)
     tensor_rollouts = TransformedDataset(
         flat_rollouts, make_transition_to_tensor(num_acts)

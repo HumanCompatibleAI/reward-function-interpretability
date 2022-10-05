@@ -21,3 +21,10 @@ def train_gan_defaults():
     batch_size = 256  # batch size for transition dataloader
     latent_shape = [3, 21, 21]  # shape of latent vector input to generator
     locals()  # make flake8 happy
+
+
+@train_gan_ex.named_config
+def procgen():
+    generator_class = gen_models.FourTo64Generator
+    latent_shape = [3, 4, 4]
+    locals()

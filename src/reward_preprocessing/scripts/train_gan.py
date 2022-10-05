@@ -17,7 +17,7 @@ def train_gan(
     discriminator_class,
     gan_algorithm,
     optim_kwargs,
-    rollouts_path,
+    rollouts_paths,
     num_acts,
     num_training_epochs,
     batch_size,
@@ -43,7 +43,7 @@ def train_gan(
         gan_algorithm: A GAN training algorithm imported from `vegans`.
         optim_kwargs: A dictionary of keyword arguments for the generator and
             adversary networks.
-        rollouts_path: Path of rollouts saved by `imitation`.
+        rollouts_paths: Path of rollouts saved by `imitation`, or list of paths.
         num_acts: Number of actions in the training environment.
         num_training_epochs: How many epochs to train the GAN for.
         batch_size: Number of transitions per batch to be trained on.
@@ -62,7 +62,7 @@ def train_gan(
             between successive savings of loss information.
     """
     transitions_loader = utils.rollouts_to_dataloader(
-        rollouts_path, num_acts, batch_size
+        rollouts_paths, num_acts, batch_size
     )
     transitions_batch = next(iter(transitions_loader))
     trans_shape = list(transitions_batch.shape)[1:]

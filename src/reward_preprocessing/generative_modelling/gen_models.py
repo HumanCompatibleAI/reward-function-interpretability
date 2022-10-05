@@ -28,6 +28,38 @@ class Small21To84Generator(nn.Module):
         return x
 
 
+class FourTo64Generator(nn.Module):
+    """
+    Small generative model that takes 4 x 4 noise to a 64 x 64 image.
+
+    Of use for generative modelling of procgen rollouts.
+    """
+    def __init__(self, latent_shape, data_shape):
+        super(FourTo64Generator, self).__init__()
+        self.hidden_part = nn.Sequential(
+            nn.ConvTranspose2d(latent_shape[0], 32, kernel_size=4, padding=1, stride=2),
+            # now 8x8
+            nn.LeakyReLU(0.1),
+            nn.ConvTranspose2d(32, 32, kernel_size=4, padding=1, stride=2),
+            # now 16x16
+            nn.LeakyReLU(0.1),
+            nn.Conv2d(32, 32, kernel_size=3, padding=1),
+            nn.LeakyReLU(0.1),
+            nn.ConvTranspose2d(32, 32, kernel_size=4, padding=1, stride=2),
+            # now 32x32
+            nn.LeakyReLU(0.1),
+            nn.ConvTranspose2d(32, 32, kernel_size=4, padding=1, stride=2),
+            # now 64x64
+            nn.ReLU(),
+        )
+        self.output = nn.Conv2d(32, data_shape[0], kernel_size=3, padding=1)
+
+    def forward(self, x):
+        x = self.hidden_part(x)
+        x = self.output(x)
+        return x
+
+
 class SmallWassersteinCritic(nn.Module):
     """
     Small critic for use in the Wasserstein GAN algorithm.
