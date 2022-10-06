@@ -21,7 +21,7 @@ authors = ["Erik Jenner", "Adam Gleave"]
 
 [tool.poetry.dependencies]
 python = "=3.9.5"
-torch = "^1.12.1"
+torch = {version= "^1.12.1", source="torch-cuda"}
 stable-baselines3 = "^1.1.0"
 sacred = "^0.8.2"
 numpy = "^1.21.2"
@@ -45,8 +45,8 @@ pytype = "^2021.8.24"
 flake8-isort = "^4.0.0"
 
 [[tool.poetry.source]]
-name = "torch"
+name = "torch-cuda"
 url = "https://download.pytorch.org/whl/cu116"
 default = false
-secondary = false
+secondary = true
 
