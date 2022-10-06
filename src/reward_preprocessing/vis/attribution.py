@@ -1,7 +1,9 @@
 """Port of lucid.scratch.attribution to PyTorch. APL2.0 licensed."""
-import numpy as np
 # import tensorflow as tf
 import lucent.optvis.render as render
+import numpy as np
+import torch as th
+
 # import itertools
 # from lucent.misc.gradient_override import gradient_override_map
 
@@ -24,17 +26,18 @@ import lucent.optvis.render as render
 
 
 def get_acts(model, layer_name, obses):
-    with tf.Graph().as_default(), tf.Session():
-        t_obses = tf.placeholder_with_default(
-            obses.astype(np.float32), (None, None, None, None)
-        )
-        T = render.hook_model(model, t_obses)  #, t_obses)
-        t_acts = T(layer_name)
-        return t_acts.eval()
+    # with tf.Graph().as_default(), tf.Sess&ion():
+    # t_obses = tf.placeholder_with_default(
+    #     obses.astype(np.float32), (None, None, None, None)
+    # )
+    t_obses = th.from_numpy(obses.astype(np.float32))
+    T = render.hook_model(model, t_obses)  # , t_obses)
+    t_acts = T(layer_name)
+    return t_acts.eval()
 
 
 def default_score_fn(t):
-    return tf.reduce_sum(t, axis=list(range(len(t.shape)))[1:])
+    return th.sum(t, dim=list(range(len(t.shape)))[1:])
 
 
 def get_grad_or_attr(
@@ -48,13 +51,19 @@ def get_grad_or_attr(
     score_fn=default_score_fn,
     grad_or_attr,
     override=None,
-    integrate_steps=1
+    integrate_steps=1,
 ):
+    # This is a WIP port to PyTorch. The following parameters are not yet implemented
+    # and we therefore assert that they are not used. TODO: Implement or remove.
+    assert act_poses == None
+    assert override == None
+    assert integrate_steps == 1
     # with tf.Graph().as_default(), tf.Session(), gradient_override_map(override or {}):
-    t_obses = tf.placeholder_with_default(
-        obses.astype(np.float32), (None, None, None, None)
-    )
-    T = render.hook_model(model, t_obses)  #, t_obses)
+    # t_obses = tf.placeholder_with_default(
+    #     obses.astype(np.float32), (None, None, None, None)
+    # )
+    t_obses = th.from_numpy(obses.astype(np.float32))
+    T = render.hook_model(model, t_obses)  # , t_obses)
     t_acts = T(layer_name)
     if prev_layer_name is None:
         t_acts_prev = t_obses
@@ -69,27 +78,30 @@ def get_grad_or_attr(
     #     )
     t_scores = score_fn(t_acts)
     assert len(t_scores.shape) >= 1, "score_fn should not reduce the batch dim"
-    t_score = tf.reduce_sum(t_scores)
-    t_grad = tf.gradients(t_score, [t_acts_prev])[0]
-    if integrate_steps > 1:
-        acts_prev = t_acts_prev.eval()
-        grad = (
-            sum(
-                [
-                    t_grad.eval(feed_dict={t_acts_prev: acts_prev * alpha})
-                    for alpha in np.linspace(0, 1, integrate_steps + 1)[1:]
-                ]
-            )
-            / integrate_steps
-        )
-    else:
-        acts_prev = None
-        grad = t_grad.eval()
+    t_score = th.sum(t_scores)
+    # t_grad = tf.gradients(t_score, [t_acts_prev])[0]
+    t_grad = th.autograd.grad(t_score, [t_acts_prev])[0]
+    # if integrate_steps > 1:
+    #     acts_prev = t_acts_prev.eval()
+    #     grad = (
+    #         sum(
+    #             [
+    #                 t_grad.eval(feed_dict={t_acts_prev: acts_prev * alpha})
+    #                 for alpha in np.linspace(0, 1, integrate_steps + 1)[1:]
+    #             ]
+    #         )
+    #         / integrate_steps
+    #     )
+    # else:
+    acts_prev = None
+    # grad = t_grad.eval()
+    grad = t_grad
     if grad_or_attr == "grad":
         return grad
     elif grad_or_attr == "attr":
         if acts_prev is None:
-            acts_prev = t_acts_prev.eval()
+            # acts_prev = t_acts_prev.eval()
+            acts_prev = t_acts_prev
         return acts_prev * grad
     else:
         raise NotImplementedError

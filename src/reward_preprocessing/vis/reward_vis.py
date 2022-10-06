@@ -1,13 +1,16 @@
 """Port of lucid.scratch.rl_util to PyTorch. APL2.0 licensed."""
-import numpy as np
 from functools import reduce
-import scipy.ndimage as nd
+
 from lucent.misc.channel_reducer import ChannelReducer
+import numpy as np
+import scipy.ndimage as nd
+
 # import lucent.optvis.param as param
 # import lucent.optvis.objectives as objectives
 # import lucent.optvis.render as render
 # import lucent.optvis.transform as transform
 from reward_preprocessing.vis.attribution import get_acts, get_attr
+
 
 def argmax_nd(x, axes, *, max_rep=np.inf, max_rep_strict=None):
     assert max_rep > 0
@@ -58,6 +61,10 @@ class LayerNMF:
         attr_layer_name=None,
         attr_opts={"integrate_steps": 10},
     ):
+        """Use NMF dimensionality reduction to then do visualization.
+
+        Args:
+            model: The PyTorch model to analyze. Can be reward net or policy net."""
         self.model = model
         self.layer_name = layer_name
         self.obses = obses
