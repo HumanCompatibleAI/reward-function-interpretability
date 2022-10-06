@@ -28,6 +28,7 @@ def train_gan(
     steps={"Adversary": 5},
     print_every="1e",
     save_losses_every="0.25e",
+    save_model_every="1e",
 ):
     """Train a GAN on a set of transitions.
 
@@ -60,6 +61,8 @@ def train_gan(
             successive printings of training information.
         save_losses_every: String specifying how many epochs should elapse
             between successive savings of loss information.
+        save_model_every: String specifying how many epochs should elapse
+            between successive savings of the model.
     """
     transitions_loader = utils.rollouts_to_dataloader(
         rollouts_paths, num_acts, batch_size
@@ -83,9 +86,12 @@ def train_gan(
         batch_size=batch_size,
         print_every=print_every,
         save_losses_every=save_losses_every,
+        save_model_every=save_model_every,
         epochs=num_training_epochs,
         steps=steps,
     )
+    samples, losses = gan.get_training_results()
+    return samples, losses
 
 
 def main_console():
