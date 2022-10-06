@@ -51,7 +51,6 @@ def train_gan(
         latent_shape: Shape of the latent tensor to be fed into the generator
             network. Should be in (c,h,w) format.
         gan_save_path: Directory in which to save GAN training details.
-            TODO(daniel): why is stuff not actually being saved?
         device: "cpu" or "cuda", depending on what you're training on.
         ngpu: Number of GPUs to train on, if training on GPUs.
         steps: Dictionary specifying how many steps to train the
@@ -91,7 +90,8 @@ def train_gan(
         steps=steps,
     )
     samples, losses = gan.get_training_results()
-    return samples, losses
+    visualized_samples = utils.visualize_samples(samples, num_acts)
+    return samples, losses, visualized_samples
 
 
 def main_console():

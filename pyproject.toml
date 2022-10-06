@@ -35,6 +35,7 @@ imitation = {git = "https://github.com/dfilan/imitation", rev = "f3f425505"}
 procgen = {git = "https://github.com/JacobPfau/procgenAISC", rev = "822dd97"}
 gym3 = {git = "https://github.com/openai/gym3", rev = "4c38246"}
 vegans = {git = "https://github.com/dfilan/vegans"}
+Pillow = "^9.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"

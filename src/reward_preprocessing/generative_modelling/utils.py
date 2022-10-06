@@ -1,9 +1,12 @@
 # Utilities for training a generative model on imitation rollouts.
 # Ideally, you should only need to export rollouts_to_dataloader.
 
+import PIL
 from imitation.data import rollout, types
 import numpy as np
 from torch.utils import data as torch_data
+
+# TODO: add type annotations
 
 
 def make_transition_to_tensor(num_acts):
@@ -85,3 +88,27 @@ def rollouts_to_dataloader(rollouts_paths, num_acts, batch_size):
         tensor_rollouts, shuffle=True, batch_size=batch_size
     )
     return rollout_dataloader
+
+
+def visualize_samples(samples: np.ndarray, num_acts: int):
+    """Visualize samples from a GAN."""
+    processed_samples = []
+    for transition in samples:
+        s = transition[0:3, :, :]
+        s = process_image_array(s)
+        act = transition[3 : 3 + num_acts, :, :]
+        s_ = transition[3 + num_acts : transition.shape[0], :, :]
+        s_ = process_image_array(s_)
+        act_slim = np.mean(act, axis=(1, 2))
+        s_img = PIL.Image.fromarray(s)
+        s__img = PIL.Image.fromarray(s_)
+        processed_samples.append({"s": s_img, "act": act_slim, "s_": s__img})
+    return processed_samples
+
+
+def process_image_array(img: np.array) -> np.array:
+    """Process a numpy array for feeding into PIL.Image.fromarray."""
+    clipped = np.clip(img, 0, 255)
+    cast = clipped.astype(np.uint8)
+    transposed = np.transpose(cast, axes=(1, 2, 0))
+    return transposed
