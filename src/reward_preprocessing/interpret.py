@@ -71,17 +71,21 @@ def interpret(
         layer_name="cnn_regressor_avg_pool",
         obses=observations[:1024],
     )
-    for i in range(nmf.features):
+    num_features = nmf.features
+    rows, columns = 1, num_features
+    fig = plt.figure(figsize=(columns*2, rows*2))  # width, height in inches
+    for i in range(num_features):
         print(i)
 
-        plt.figure()
         img, indices = nmf.vis_dataset(feature=i, expand_mult=1)
         # img = img.astype(np.uint8)
         index = indices[0][0]
         img = observations[index]
+
+        fig.add_subplot(rows, columns, i+1)
         plt.imshow(img)
         # show()
-        plt.show()
+    plt.show()
 
 
 def main():
