@@ -202,6 +202,11 @@ class LayerNMF:
         return self.padded_obses[obs_index, slice_h, slice_w]
 
     def vis_dataset(self, feature, *, subdiv_mult=1, expand_mult=1, top_frac=0.1):
+        """Visualize a dataset of patches that maximize a given feature.
+
+        Args:
+            feature: The feature to visualize. Can be an integer or a list of integers.
+        """
         acts_h, acts_w = self.acts_reduced.shape[1:3]
         zoom_h = subdiv_mult - (subdiv_mult - 1) / (acts_h + 2)
         zoom_w = subdiv_mult - (subdiv_mult - 1) / (acts_w + 2)
@@ -257,66 +262,73 @@ class LayerNMF:
             obs_indices.tolist(),
         )
 
-    # def vis_dataset_thumbnail(
-    #     self, feature, *, num_mult=1, expand_mult=1, max_rep=None
-    # ):
-    #     if max_rep is None:
-    #         max_rep = num_mult
-    #     if self.acts_reduced.shape[0] < num_mult ** 2:
-    #         raise RuntimeError(
-    #             f"At least {num_mult ** 2} observations are required to produce"
-    #             " a thumbnail visualization."
-    #         )
-    #     acts_feature = self.acts_reduced[..., feature]
-    #     pos_indices = argmax_nd(
-    #         acts_feature, axes=[1, 2], max_rep=max_rep, max_rep_strict=True
-    #     )
-    #     acts_single = acts_feature[
-    #         range(acts_feature.shape[0]), pos_indices[0], pos_indices[1]
-    #     ]
-    #     obs_indices = np.argsort(-acts_single, axis=0)[: num_mult ** 2]
-    #     coords = np.array(list(zip(*pos_indices)), dtype=[("h", int), ("w", int)])[
-    #         obs_indices
-    #     ]
-    #     indices_order = np.argsort(coords, axis=0, order=("h", "w"))
-    #     indices_order = indices_order.reshape((num_mult, num_mult))
-    #     for i in range(num_mult):
-    #         indices_order[i] = indices_order[i][
-    #             np.argsort(coords[indices_order[i]], axis=0, order="w")
-    #         ]
-    #     obs_indices = obs_indices[indices_order]
-    #     poses = np.array(pos_indices).transpose()[obs_indices] + 0.5
-    #     self.pad_obses(expand_mult=expand_mult)
-    #     patches = []
-    #     patch_acts = np.zeros((num_mult, num_mult))
-    #     patch_shapes = []
-    #     for i in range(num_mult):
-    #         patches.append([])
-    #         for j in range(num_mult):
-    #             obs_index = obs_indices[i, j]
-    #             pos_h, pos_w = poses[i, j]
-    #             patch = self.get_patch(obs_index, pos_h, pos_w, expand_mult=expand_mult)
-    #             patches[i].append(patch)
-    #             patch_acts[i, j] = acts_single[obs_index]
-    #             patch_shapes.append(patch.shape)
-    #     patch_acts_max = patch_acts.max()
-    #     opacities = patch_acts / (1 if patch_acts_max == 0 else patch_acts_max)
-    #     patch_min_h = np.array([s[0] for s in patch_shapes]).min()
-    #     patch_min_w = np.array([s[1] for s in patch_shapes]).min()
-    #     for i in range(num_mult):
-    #         for j in range(num_mult):
-    #             opacity = opacities[i, j][None, None, None]
-    #             opacity = opacity.repeat(patches[i][j].shape[0], axis=0)
-    #             opacity = opacity.repeat(patches[i][j].shape[1], axis=1)
-    #             patches[i][j] = np.concatenate([patches[i][j], opacity], axis=-1)
-    #             patches[i][j] = patches[i][j][:patch_min_h, :patch_min_w]
-    #     return (
-    #         np.concatenate(
-    #             [np.concatenate(patches[i], axis=1) for i in range(len(patches))],
-    #             axis=0,
-    #         ),
-    #         obs_indices.tolist(),
-    #     )
+    def vis_dataset_thumbnail(
+        self, feature, *, num_mult=1, expand_mult=1, max_rep=None
+    ):
+        """Visualize a dataset of patches that maximize a given feature.
+
+        Args:
+            feature: The feature to visualize. Can be an integer or a list of integers.
+            num_mult: Height and width of the grid of thumbnails.
+            expand_mult: Multiplier for the size of the thumbnails.
+        """
+        if max_rep is None:
+            max_rep = num_mult
+        if self.acts_reduced.shape[0] < num_mult ** 2:
+            raise RuntimeError(
+                f"At least {num_mult ** 2} observations are required to produce"
+                " a thumbnail visualization."
+            )
+        acts_feature = self.acts_reduced[..., feature]
+        pos_indices = argmax_nd(
+            acts_feature, axes=[1, 2], max_rep=max_rep, max_rep_strict=True
+        )
+        acts_single = acts_feature[
+            range(acts_feature.shape[0]), pos_indices[0], pos_indices[1]
+        ]
+        obs_indices = np.argsort(-acts_single, axis=0)[: num_mult ** 2]
+        coords = np.array(list(zip(*pos_indices)), dtype=[("h", int), ("w", int)])[
+            obs_indices
+        ]
+        indices_order = np.argsort(coords, axis=0, order=("h", "w"))
+        indices_order = indices_order.reshape((num_mult, num_mult))
+        for i in range(num_mult):
+            indices_order[i] = indices_order[i][
+                np.argsort(coords[indices_order[i]], axis=0, order="w")
+            ]
+        obs_indices = obs_indices[indices_order]
+        poses = np.array(pos_indices).transpose()[obs_indices] + 0.5
+        self.pad_obses(expand_mult=expand_mult)
+        patches = []
+        patch_acts = np.zeros((num_mult, num_mult))
+        patch_shapes = []
+        for i in range(num_mult):
+            patches.append([])
+            for j in range(num_mult):
+                obs_index = obs_indices[i, j]
+                pos_h, pos_w = poses[i, j]
+                patch = self.get_patch(obs_index, pos_h, pos_w, expand_mult=expand_mult)
+                patches[i].append(patch)
+                patch_acts[i, j] = acts_single[obs_index]
+                patch_shapes.append(patch.shape)
+        patch_acts_max = patch_acts.max()
+        opacities = patch_acts / (1 if patch_acts_max == 0 else patch_acts_max)
+        patch_min_h = np.array([s[0] for s in patch_shapes]).min()
+        patch_min_w = np.array([s[1] for s in patch_shapes]).min()
+        for i in range(num_mult):
+            for j in range(num_mult):
+                opacity = opacities[i, j][None, None, None]
+                opacity = opacity.repeat(patches[i][j].shape[0], axis=0)
+                opacity = opacity.repeat(patches[i][j].shape[1], axis=1)
+                patches[i][j] = np.concatenate([patches[i][j], opacity], axis=-1)
+                patches[i][j] = patches[i][j][:patch_min_h, :patch_min_w]
+        return (
+            np.concatenate(
+                [np.concatenate(patches[i], axis=1) for i in range(len(patches))],
+                axis=0,
+            ),
+            obs_indices.tolist(),
+        )
 
 
 # def rescale_opacity(

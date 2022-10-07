@@ -83,10 +83,10 @@ def interpret(
     for i in range(num_features):
         print(i)
 
-        img, indices = nmf.vis_dataset(feature=i, expand_mult=1)
+        img, indices = nmf.vis_dataset_thumbnail(feature=i, num_mult=4, expand_mult=1)
         # img = img.astype(np.uint8)
-        index = indices[0][0]
-        img = observations[index]
+        # index = indices[0][0]
+        # img = observations[index]
 
         fig.add_subplot(rows, columns, i + 1)
         plt.imshow(img)
