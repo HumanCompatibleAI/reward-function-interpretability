@@ -1,12 +1,14 @@
 import os.path as osp
 from typing import Optional, Sequence, cast
+
 import matplotlib
-matplotlib.use('TkAgg')
+
+matplotlib.use("TkAgg")
 from imitation.data import types
 from imitation.scripts.common import demonstrations
-import numpy as np
 from lucent.misc.io import show
 from matplotlib import pyplot as plt
+import numpy as np
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import torch as th
@@ -67,13 +69,17 @@ def interpret(
 
     nmf = LayerNMF(
         model=rew_net,
-        # layer_name="cnn_regressor_dense_final",
-        layer_name="cnn_regressor_avg_pool",
+        features=2,
+        layer_name="cnn_regressor_dense_final",
+        # layer_name="cnn_regressor_avg_pool",
         obses=observations[:1024],
+        activation_fn="sigmoid"
     )
+
+    # Visualization
     num_features = nmf.features
     rows, columns = 1, num_features
-    fig = plt.figure(figsize=(columns*2, rows*2))  # width, height in inches
+    fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches
     for i in range(num_features):
         print(i)
 
@@ -82,7 +88,7 @@ def interpret(
         index = indices[0][0]
         img = observations[index]
 
-        fig.add_subplot(rows, columns, i+1)
+        fig.add_subplot(rows, columns, i + 1)
         plt.imshow(img)
         # show()
     plt.show()

@@ -1,10 +1,13 @@
 """Port of lucid.scratch.rl_util to PyTorch. APL2.0 licensed."""
+import logging
 from functools import reduce
+from typing import Optional
 
 from lucent.misc.channel_reducer import ChannelReducer
 import numpy as np
 import scipy.ndimage as nd
 
+import torch as th
 # import lucent.optvis.param as param
 # import lucent.optvis.objectives as objectives
 # import lucent.optvis.render as render
@@ -60,11 +63,25 @@ class LayerNMF:
         *,
         attr_layer_name=None,
         attr_opts={"integrate_steps": 10},
+        activation_fn: Optional[str]=None,
     ):
         """Use NMF dimensionality reduction to then do visualization.
 
         Args:
-            model: The PyTorch model to analyze. Can be reward net or policy net."""
+            model: The PyTorch model to analyze. Can be reward net or policy net.
+            layer_name: The name of the layer to analyze.
+            obses: Dataset of observations to analyze.
+            obses_full:
+            features: Number of features to use in NMF.
+            attr_layer_name:
+            attr_opts:
+            activation_fn:
+                Sometimes "activations" in the model did not go through an actual
+                activation function, e.g. the output of a reward net. If this
+                activation function is specified, we will apply the respective function
+                before doing NMF. This is especially important if activations (such as
+                reward outpu) can have negative values.
+            """
         self.model = model
         self.layer_name = layer_name
         self.obses = obses
@@ -80,6 +97,19 @@ class LayerNMF:
         else:
             self.reducer = ChannelReducer(features)
         activations = get_acts(model, layer_name, obses)
+
+        # Apply activation function if specified.
+        if activation_fn == "sigmoid":
+            activations = th.sigmoid(activations)
+        elif activation_fn is not None:
+            raise ValueError(f"Unsupported activation_fn: {activation_fn}")
+
+        # From this point on activations should be non-negative.
+        if activations.min() < 0:
+            logging.warning(
+                f"LayerNMF: activations for layer {layer_name} have negative values."
+            )
+
         self.patch_h = self.obses_full.shape[1] / activations.shape[1]
         self.patch_w = self.obses_full.shape[2] / activations.shape[2]
         if self.reducer is None:

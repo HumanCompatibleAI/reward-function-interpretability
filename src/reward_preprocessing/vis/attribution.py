@@ -25,7 +25,7 @@ import torch as th
 #     return {"MaxPool": MaxPoolGrad}
 
 
-def get_acts(model, layer_name, obses):
+def get_acts(model, layer_name, obses) -> th.Tensor:
     # with tf.Graph().as_default(), tf.Sess&ion():
     # t_obses = tf.placeholder_with_default(
     #     obses.astype(np.float32), (None, None, None, None)
@@ -35,6 +35,14 @@ def get_acts(model, layer_name, obses):
     # Perform forward pass for model
     model(state=None, action=None, next_state=t_obses, done=None)
     t_acts = hook(layer_name)
+
+    # Reward activations might be 1 dimensional (apart from the batch dimension) e.g.
+    # for linear layers. In this case we unsqueeze.
+    if len(t_acts.shape) == 2:
+        t_acts = t_acts.unsqueeze(-1).unsqueeze(-1)
+    assert len(t_acts.shape) >= 4, (
+        "activations should be at least 3 dimensional plus a batch dimension"
+    )
     return t_acts.detach()
 
 
