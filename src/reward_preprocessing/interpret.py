@@ -1,11 +1,15 @@
 import os.path as osp
 from typing import Optional, Sequence, cast
-import torch as th
+import matplotlib
+matplotlib.use('TkAgg')
 from imitation.data import types
 from imitation.scripts.common import demonstrations
 import numpy as np
+from lucent.misc.io import show
+from matplotlib import pyplot as plt
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
+import torch as th
 
 from reward_preprocessing.common.serialize import load_reward
 from reward_preprocessing.vis.reward_vis import LayerNMF
@@ -53,15 +57,31 @@ def interpret(
     expert_trajs = demonstrations.load_expert_trajs(rollout_path, n_expert_demos)
     assert isinstance(expert_trajs[0], types.TrajectoryWithRew)
     expert_trajs = cast(Sequence[types.TrajectoryWithRew], expert_trajs)
-    # from lucent.modelzoo.util import get_model_layers
+    from lucent.modelzoo.util import get_model_layers
+
+    print("Available layers:")
+    print(get_model_layers(rew_net))
+
     # Get observations from trajectories
     observations = np.concatenate([traj.obs for traj in expert_trajs])
 
-    layer = LayerNMF(
+    nmf = LayerNMF(
         model=rew_net,
-        layer_name="cnn_regressor_dense_final",
+        # layer_name="cnn_regressor_dense_final",
+        layer_name="cnn_regressor_avg_pool",
         obses=observations[:1024],
     )
+    for i in range(nmf.features):
+        print(i)
+
+        plt.figure()
+        img, indices = nmf.vis_dataset(feature=i, expand_mult=1)
+        # img = img.astype(np.uint8)
+        index = indices[0][0]
+        img = observations[index]
+        plt.imshow(img)
+        # show()
+        plt.show()
 
 
 def main():

@@ -31,9 +31,11 @@ def get_acts(model, layer_name, obses):
     #     obses.astype(np.float32), (None, None, None, None)
     # )
     t_obses = th.from_numpy(obses.astype(np.float32))
-    T = render.hook_model(model, t_obses)  # , t_obses)
-    t_acts = T(layer_name)
-    return t_acts.eval()
+    hook = render.hook_model(model, t_obses)  # , t_obses)
+    # Perform forward pass for model
+    model(state=None, action=None, next_state=t_obses, done=None)
+    t_acts = hook(layer_name)
+    return t_acts.detach()
 
 
 def default_score_fn(t):

@@ -79,24 +79,24 @@ class LayerNMF:
             self.reducer = None
         else:
             self.reducer = ChannelReducer(features)
-        acts = get_acts(model, layer_name, obses)
-        self.patch_h = self.obses_full.shape[1] / acts.shape[1]
-        self.patch_w = self.obses_full.shape[2] / acts.shape[2]
+        activations = get_acts(model, layer_name, obses)
+        self.patch_h = self.obses_full.shape[1] / activations.shape[1]
+        self.patch_w = self.obses_full.shape[2] / activations.shape[2]
         if self.reducer is None:
-            self.acts_reduced = acts
+            self.acts_reduced = activations
             self.channel_dirs = np.eye(self.acts_reduced.shape[-1])
             self.transform = lambda acts: acts.copy()
             self.inverse_transform = lambda acts: acts.copy()
         else:
             if attr_layer_name is None:
-                self.acts_reduced = self.reducer.fit_transform(acts)
+                self.acts_reduced = self.reducer.fit_transform(activations)
             else:
                 attrs = get_attr(model, attr_layer_name, layer_name, obses, **attr_opts)
                 attrs_signed = np.concatenate(
                     [np.maximum(0, attrs), np.maximum(0, -attrs)], axis=0
                 )
                 self.reducer.fit(attrs_signed)
-                self.acts_reduced = self.reducer.transform(acts)
+                self.acts_reduced = self.reducer.transform(activations)
             self.channel_dirs = self.reducer._reducer.components_
             self.transform = lambda acts: self.reducer.transform(acts)
             self.inverse_transform = lambda acts_r: ChannelReducer._apply_flat(
