@@ -32,6 +32,7 @@ def defaults():
     # Rollouts to use vor dataset visualization
     rollout_path = None
     n_expert_demos = None
+    limit_num_obs = -1
 
     locals()  # quieten flake8
 
@@ -42,6 +43,7 @@ def interpret(
     reward_path: Optional[str],
     rollout_path: str,
     n_expert_demos: Optional[int],
+    limit_num_obs: int,
 ):
     """Sanity check a learned supervised reward net. Evaluate 4 things:
     - Random policy on env reward
@@ -76,14 +78,17 @@ def interpret(
 
     # Get observations from trajectories
     observations = np.concatenate([traj.obs for traj in expert_trajs])
-
+    
+    if limit_num_obs < 0:
+        obses = observations
+    else:
+        obses = observations[:limit_num_obs]
     nmf = LayerNMF(
         model=rew_net,
         features=2,
         layer_name="cnn_regressor_dense_final",
         # layer_name="cnn_regressor_avg_pool",
-        obses=observations[:1024],
-        # obses=observations,
+        obses=obses,
         activation_fn="sigmoid",
     )
 
