@@ -2,9 +2,11 @@ import os.path as osp
 from typing import Optional, Sequence, cast
 
 import matplotlib
+import wandb
 
 matplotlib.use("TkAgg")
 from imitation.data import types
+from imitation.scripts.common import common as common_config
 from imitation.scripts.common import demonstrations
 from lucent.misc.io import show
 from matplotlib import pyplot as plt
@@ -18,6 +20,7 @@ from reward_preprocessing.vis.reward_vis import LayerNMF
 
 interpret_ex = Experiment(
     "interpret",
+    ingredients=[common_config.common_ingredient]
     # ingredients=[demonstrations.demonstrations_ingredient],
 )
 
@@ -35,6 +38,7 @@ def defaults():
 
 @interpret_ex.main
 def interpret(
+    common: dict,  # from sacred config
     reward_path: Optional[str],
     rollout_path: str,
     n_expert_demos: Optional[int],
@@ -45,10 +49,16 @@ def interpret(
     - Expert policy on env reward
     - Expert policy on learned reward function
     """
+    # Load reward not pytorch module
     if th.cuda.is_available():
         rew_net = th.load(str(reward_path))  # Load from same device as saved
     else:  # CUDA not available
         rew_net = th.load(str(reward_path), map_location=th.device("cpu"))  # Force CPU
+
+    # Set up imitation-style logging
+    custom_logger, log_dir = common_config.setup_logging()
+
+    wandb_logging = 'wandb' in common['log_format_strs']
 
     rew_net.eval()
     # Argument venv not necessary, as it is ignored for SupvervisedRewardNet
@@ -73,7 +83,8 @@ def interpret(
         layer_name="cnn_regressor_dense_final",
         # layer_name="cnn_regressor_avg_pool",
         obses=observations[:1024],
-        activation_fn="sigmoid"
+        # obses=observations,
+        activation_fn="sigmoid",
     )
 
     # Visualization
@@ -88,9 +99,16 @@ def interpret(
         # index = indices[0][0]
         # img = observations[index]
 
+        if wandb_logging:
+            wb_img = wandb.Image(img, caption=f"Feature {i}")
+            custom_logger.record(f"feature_{i}", wb_img)
+
         fig.add_subplot(rows, columns, i + 1)
         plt.imshow(img)
         # show()
+    if wandb_logging:
+        custom_logger.dump(step=0)
+
     plt.show()
 
 

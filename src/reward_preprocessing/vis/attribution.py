@@ -40,9 +40,9 @@ def get_acts(model, layer_name, obses) -> th.Tensor:
     # for linear layers. In this case we unsqueeze.
     if len(t_acts.shape) == 2:
         t_acts = t_acts.unsqueeze(-1).unsqueeze(-1)
-    assert len(t_acts.shape) >= 4, (
-        "activations should be at least 3 dimensional plus a batch dimension"
-    )
+    assert (
+        len(t_acts.shape) >= 4
+    ), "activations should be at least 3 dimensional plus a batch dimension"
     return t_acts.detach()
 
 
