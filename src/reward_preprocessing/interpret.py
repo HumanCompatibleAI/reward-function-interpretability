@@ -1,6 +1,7 @@
 import os.path as osp
 from typing import Optional, Sequence, cast
 
+from PIL import Image
 import matplotlib
 import wandb
 
@@ -13,6 +14,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
+import scipy.misc
 import torch as th
 
 from reward_preprocessing.common.serialize import load_reward
@@ -109,15 +111,17 @@ def interpret(
     for i in range(num_features):
         print(i)
 
-        img, indices = nmf.vis_dataset_thumbnail(
-            feature=i, num_mult=4, expand_mult=vis_scale
-        )
+        img, indices = nmf.vis_dataset_thumbnail(feature=i, num_mult=4, expand_mult=1)
         # img = img.astype(np.uint8)
         # index = indices[0][0]
         # img = observations[index]
 
         if wandb_logging:
-            wb_img = wandb.Image(img, caption=f"Feature {i}")
+            p_img = Image.fromarray(np.uint8(img * 255), mode="RGBA").resize(
+                size=(img.shape[0] * vis_scale, img.shape[1] * vis_scale),
+                resample=Image.NEAREST,
+            )
+            wb_img = wandb.Image(p_img, caption=f"Feature {i}")
             custom_logger.record(f"feature_{i}", wb_img)
         if pyplot:
             fig.add_subplot(rows, columns, i + 1)
