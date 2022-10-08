@@ -32,8 +32,10 @@ def defaults():
     # Rollouts to use vor dataset visualization
     rollout_path = None
     n_expert_demos = None
+    # Limit the number of observations to use for visualization, -1 for all
     limit_num_obs = -1
-    pyplot = False
+    pyplot = False  # Plot images as pyplot figures
+    vis_scale = 4  # Scale the visualization img by this factor
 
     locals()  # quieten flake8
 
@@ -46,6 +48,7 @@ def interpret(
     n_expert_demos: Optional[int],
     limit_num_obs: int,
     pyplot: bool,
+    vis_scale: int,
 ):
     """Sanity check a learned supervised reward net. Evaluate 4 things:
     - Random policy on env reward
@@ -106,7 +109,9 @@ def interpret(
     for i in range(num_features):
         print(i)
 
-        img, indices = nmf.vis_dataset_thumbnail(feature=i, num_mult=4, expand_mult=1)
+        img, indices = nmf.vis_dataset_thumbnail(
+            feature=i, num_mult=4, expand_mult=vis_scale
+        )
         # img = img.astype(np.uint8)
         # index = indices[0][0]
         # img = observations[index]
