@@ -33,6 +33,7 @@ def defaults():
     rollout_path = None
     n_expert_demos = None
     limit_num_obs = -1
+    pyplot = False
 
     locals()  # quieten flake8
 
@@ -44,6 +45,7 @@ def interpret(
     rollout_path: str,
     n_expert_demos: Optional[int],
     limit_num_obs: int,
+    pyplot: bool,
 ):
     """Sanity check a learned supervised reward net. Evaluate 4 things:
     - Random policy on env reward
@@ -95,7 +97,8 @@ def interpret(
     # Visualization
     num_features = nmf.features
     rows, columns = 1, num_features
-    fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches
+    if pyplot:
+        fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches
     for i in range(num_features):
         print(i)
 
@@ -107,14 +110,14 @@ def interpret(
         if wandb_logging:
             wb_img = wandb.Image(img, caption=f"Feature {i}")
             custom_logger.record(f"feature_{i}", wb_img)
-
-        fig.add_subplot(rows, columns, i + 1)
-        plt.imshow(img)
+        if pyplot:
+            fig.add_subplot(rows, columns, i + 1)
+            plt.imshow(img)
         # show()
     if wandb_logging:
         custom_logger.dump(step=0)
-
-    plt.show()
+    if pyplot:
+        plt.show()
 
 
 def main():
