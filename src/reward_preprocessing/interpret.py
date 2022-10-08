@@ -62,7 +62,7 @@ def interpret(
     # Set up imitation-style logging
     custom_logger, log_dir = common_config.setup_logging()
 
-    wandb_logging = 'wandb' in common['log_format_strs']
+    wandb_logging = "wandb" in common["log_format_strs"]
 
     rew_net.eval()
     # Argument venv not necessary, as it is ignored for SupvervisedRewardNet
@@ -80,10 +80,14 @@ def interpret(
 
     # Get observations from trajectories
     observations = np.concatenate([traj.obs for traj in expert_trajs])
-    
+
     if limit_num_obs < 0:
         obses = observations
     else:
+        custom_logger.log(
+            f"Limiting number of observations to {limit_num_obs} of "
+            f"{len(observations)} total."
+        )
         obses = observations[:limit_num_obs]
     nmf = LayerNMF(
         model=rew_net,
@@ -118,6 +122,7 @@ def interpret(
         custom_logger.dump(step=0)
     if pyplot:
         plt.show()
+    custom_logger.log("Done with dataset visualization.")
 
 
 def main():
