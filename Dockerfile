@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.9 \
     python3.9-dev \
     python3-pip \
+    python-tk \
     virtualenv \
     # Misc
     curl \
