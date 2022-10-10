@@ -4,14 +4,14 @@ import logging
 from typing import Optional
 
 from lucent.misc.channel_reducer import ChannelReducer
+import lucent.optvis.objectives as objectives
+import lucent.optvis.param as param
+import lucent.optvis.render as render
+import lucent.optvis.transform as transform
 import numpy as np
 import scipy.ndimage as nd
 import torch as th
 
-# import lucent.optvis.param as param
-# import lucent.optvis.objectives as objectives
-# import lucent.optvis.render as render
-# import lucent.optvis.transform as transform
 from reward_preprocessing.vis.attribution import get_acts, get_attr
 
 
@@ -132,39 +132,51 @@ class LayerNMF:
             self.inverse_transform = lambda acts_r: ChannelReducer._apply_flat(
                 self.reducer._reducer.inverse_transform, acts_r
             )
+        # Transform into torch tensor instead of numpy array, because this is expected
+        # later on.
+        self.channel_dirs = th.tensor(self.channel_dirs)
 
-    # def vis_traditional(
-    #     self,
-    #     feature_list=None,
-    #     *,
-    #     transforms=[transform.jitter(2)],
-    #     l2_coeff=0.0,
-    #     l2_layer_name=None,
-    # ):
-    #     if feature_list is None:
-    #         feature_list = list(range(self.acts_reduced.shape[-1]))
-    #     try:
-    #         feature_list = list(feature_list)
-    #     except TypeError:
-    #         feature_list = [feature_list]
-    #
-    #     obj = sum(
-    #         [
-    #             objectives.direction_neuron(
-    #                 self.layer_name, self.channel_dirs[feature], batch=feature
-    #             )
-    #             for feature in feature_list
-    #         ]
-    #     )
-    #     if l2_coeff != 0.0:
-    #         assert (
-    #             l2_layer_name is not None
-    #         ), "l2_layer_name must be specified if l2_coeff is non-zero"
-    #         obj -= objectives.L2(l2_layer_name) * l2_coeff
-    #     param_f = lambda: param.image(64, batch=len(feature_list))
-    #     return render.render_vis(
-    #         self.model, obj, param_f=param_f, transforms=transforms
-    #     )[-1]
+    def vis_traditional(
+        self,
+        feature_list=None,
+        *,
+        transforms=[transform.jitter(2)],
+        l2_coeff=0.0,
+        l2_layer_name=None,
+    ):
+        if feature_list is None:
+            feature_list = list(range(self.acts_reduced.shape[-1]))
+        try:
+            feature_list = list(feature_list)
+        except TypeError:
+            feature_list = [feature_list]
+
+        obj = sum(
+            [
+                objectives.direction_neuron(
+                    self.layer_name, self.channel_dirs[feature], batch=feature
+                )
+                for feature in feature_list
+            ]
+        )
+        if l2_coeff != 0.0:
+            assert (
+                l2_layer_name is not None
+            ), "l2_layer_name must be specified if l2_coeff is non-zero"
+            obj -= objectives.L2(l2_layer_name) * l2_coeff
+        param_f = lambda: param.image(64, batch=len(feature_list))
+        return render.render_vis(
+            self.model,
+            obj,
+            param_f=param_f,
+            transforms=transforms,
+            # To fix order of transforms.
+            # TODO: Should we enable preprocess here?
+            preprocess=False,
+            # This makes it so input is passed through the model at least ones, which
+            # is necessary to get the feature activations.
+            verbose=True,
+        )[-1]
 
     def pad_obses(self, *, expand_mult=1):
         pad_h = np.ceil(self.patch_h * expand_mult).astype(int)

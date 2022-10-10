@@ -33,7 +33,9 @@ def get_acts(model, layer_name, obses) -> th.Tensor:
     t_obses = th.from_numpy(obses.astype(np.float32))
     hook = render.hook_model(model, t_obses)  # , t_obses)
     # Perform forward pass for model
-    model(state=None, action=None, next_state=t_obses, done=None)
+    # model(state=None, action=None, next_state=t_obses, done=None)
+    model(t_obses)
+    # model((None, None, t_obses, None))  # (state, action, next_state, done)
     t_acts = hook(layer_name)
 
     # Reward activations might be 1 dimensional (apart from the batch dimension) e.g.
