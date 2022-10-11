@@ -6,6 +6,7 @@ from imitation.data import types
 from imitation.scripts.common import common as common_config
 from imitation.scripts.common import demonstrations
 from lucent.optvis import transform
+import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
 from sacred import Experiment
@@ -71,6 +72,9 @@ def interpret(
     - Expert policy on env reward
     - Expert policy on learned reward function
     """
+    if pyplot:
+        matplotlib.use("TkAgg")
+
     # Load reward not pytorch module
     if th.cuda.is_available():
         rew_net = th.load(str(reward_path))  # Load from same device as saved
@@ -164,6 +168,8 @@ def interpret(
             )
             wb_img = wandb.Image(p_img, caption=f"Feature {i}")
             custom_logger.record(f"feature_{i}", wb_img)
+            # Can't re-use steps unfortunately, so each feature img gets its own step.
+            custom_logger.dump(step=i)
         if pyplot:
             if len(img.shape) == 3:
                 fig.add_subplot(rows, columns, i + 1)
@@ -174,8 +180,6 @@ def interpret(
                     plt.imshow(img[img_i])
 
         # show()
-    if wandb_logging:
-        custom_logger.dump(step=0)
     if pyplot:
         plt.show()
     custom_logger.log("Done with dataset visualization.")
