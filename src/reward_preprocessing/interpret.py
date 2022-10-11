@@ -2,8 +2,15 @@ import os.path as osp
 from typing import Any, Optional, Sequence, cast
 
 from PIL import Image
+from imitation.data import types
+from imitation.scripts.common import common as common_config
+from imitation.scripts.common import demonstrations
 from lucent.optvis import transform
-import matplotlib
+from matplotlib import pyplot as plt
+import numpy as np
+from sacred import Experiment
+from sacred.observers import FileStorageObserver
+import torch as th
 import wandb
 
 from reward_preprocessing.common.networks import (
@@ -11,16 +18,6 @@ from reward_preprocessing.common.networks import (
     FourDimOutput,
     NextStateOnlyModel,
 )
-
-from imitation.data import types
-from imitation.scripts.common import common as common_config
-from imitation.scripts.common import demonstrations
-from matplotlib import pyplot as plt
-import numpy as np
-from sacred import Experiment
-from sacred.observers import FileStorageObserver
-import torch as th
-
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
 interpret_ex = Experiment(
