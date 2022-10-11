@@ -12,7 +12,6 @@ from reward_preprocessing.common.networks import (
     NextStateOnlyModel,
 )
 
-matplotlib.use("TkAgg")
 from imitation.data import types
 from imitation.scripts.common import common as common_config
 from imitation.scripts.common import demonstrations
