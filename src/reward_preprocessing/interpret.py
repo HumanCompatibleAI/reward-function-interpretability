@@ -43,6 +43,8 @@ def defaults():
     pyplot = False  # Plot images as pyplot figures
     vis_scale = 4  # Scale the visualization img by this factor
     vis_type = "traditional"  # "traditional" or "dataset"
+    layer_name = "reshaped_out"  # Name of the layer to visualize.
+    num_features = 2  # Number of features to use for visualization.
 
     locals()  # quieten flake8
 
@@ -64,6 +66,8 @@ def interpret(
     pyplot: bool,
     vis_scale: int,
     vis_type: str,
+    layer_name: str,
+    num_features: int,
 ):
     """Sanity check a learned supervised reward net. Evaluate 4 things:
     - Random policy on env reward
@@ -121,8 +125,8 @@ def interpret(
         obses = observations[:limit_num_obs]
     nmf = LayerNMF(
         model=rew_net,
-        features=2,
-        layer_name="reshaped_out",
+        features=num_features,
+        layer_name=layer_name,
         # layer_name="cnn_regressor_avg_pool",
         obses=obses,
         activation_fn="sigmoid",
