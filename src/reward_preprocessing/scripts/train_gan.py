@@ -25,7 +25,7 @@ def train_gan(
     gan_save_path,
     device="cpu",
     ngpu=None,
-    steps={"Adversary": 5},
+    steps={"Adversary": 2},
     print_every="1e",
     save_losses_every="0.25e",
     save_model_every="1e",
