@@ -88,10 +88,13 @@ def interpret(
 
     rew_net.eval()
 
-    # See description of class for explanation
-    rew_net = NextStateOnlyModel(rew_net)
+    if vis_type == "traditional":
+        rew_net = rew_net.cnn_regressor
+    elif vis_type == "dataset":
+        # See description of class for explanation
+        rew_net = NextStateOnlyModel(rew_net)
 
-    rew_net = ChannelsFirstToChannelsLast(rew_net)
+    # rew_net = ChannelsFirstToChannelsLast(rew_net)
 
     # This is due to how lucent works
     # TODO: this should probably be unified instead of having many different exceptions
@@ -112,8 +115,13 @@ def interpret(
 
     # Get observations from trajectories
     observations = np.concatenate([traj.obs for traj in expert_trajs])
-    # Transpose all observations because lucent expects channels first (after batch dim)
-    observations = np.transpose(observations, (0, 3, 1, 2))
+
+    # vis traditional -> channel first,
+    # vid dataset -> channel last
+    if vis_type == "traditional":
+        # Transpose all observations because lucent expects channels first (after
+        # batch dim)
+        observations = np.transpose(observations, (0, 3, 1, 2))
 
     if limit_num_obs < 0:
         obses = observations
