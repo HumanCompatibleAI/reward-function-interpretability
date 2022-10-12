@@ -88,10 +88,13 @@ def interpret(
 
     rew_net.eval()
 
-    # See description of class for explanation
-    rew_net = NextStateOnlyModel(rew_net)
+    # if vis_type == "traditional":
+    rew_net = rew_net.cnn_regressor
 
-    rew_net = ChannelsFirstToChannelsLast(rew_net)
+    # See description of class for explanation
+    # rew_net = NextStateOnlyModel(rew_net)
+
+    # rew_net = ChannelsFirstToChannelsLast(rew_net)
 
     # This is due to how lucent works
     # TODO: this should probably be unified instead of having many different exceptions

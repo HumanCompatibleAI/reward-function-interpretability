@@ -5,6 +5,7 @@ from typing import Optional
 
 from lucent.misc.channel_reducer import ChannelReducer
 import lucent.optvis.objectives as objectives
+# import reward_preprocessing.vis.param as param
 import lucent.optvis.param as param
 import lucent.optvis.render as render
 import lucent.optvis.transform as transform
@@ -110,8 +111,8 @@ class LayerNMF:
                 f"LayerNMF: activations for layer {layer_name} have negative values."
             )
 
-        self.patch_h = self.obses_full.shape[1] / activations.shape[1]
-        self.patch_w = self.obses_full.shape[2] / activations.shape[2]
+        self.patch_h = self.obses_full.shape[2] / activations.shape[2]
+        self.patch_w = self.obses_full.shape[3] / activations.shape[3]
         if self.reducer is None:
             self.acts_reduced = activations
             self.channel_dirs = np.eye(self.acts_reduced.shape[-1])
@@ -187,21 +188,21 @@ class LayerNMF:
             self.padded_obses = (
                 np.indices(
                     (
-                        self.obses_full.shape[1] + self.pad_h * 2,
-                        self.obses_full.shape[2] + self.pad_w * 2,
+                        self.obses_full.shape[2] + self.pad_h * 2,
+                        self.obses_full.shape[3] + self.pad_w * 2,
                     )
                 ).sum(axis=0)
                 % 2
             )
             self.padded_obses = self.padded_obses * 0.25 + 0.75
             self.padded_obses = self.padded_obses.astype(self.obses_full.dtype)
-            self.padded_obses = self.padded_obses[None, ..., None]
+            self.padded_obses = self.padded_obses[None, None, ...]
             self.padded_obses = self.padded_obses.repeat(
                 self.obses_full.shape[0], axis=0
             )
             self.padded_obses = self.padded_obses.repeat(3, axis=-1)
             self.padded_obses[
-                :, self.pad_h : -self.pad_h, self.pad_w : -self.pad_w, :
+                :, :, self.pad_h : -self.pad_h, self.pad_w : -self.pad_w
             ] = self.obses_full
 
     def get_patch(self, obs_index, pos_h, pos_w, *, expand_mult=1):
@@ -219,7 +220,7 @@ class LayerNMF:
         Args:
             feature: The feature to visualize. Can be an integer or a list of integers.
         """
-        acts_h, acts_w = self.acts_reduced.shape[1:3]
+        acts_h, acts_w = self.acts_reduced.shape[2:4]
         zoom_h = subdiv_mult - (subdiv_mult - 1) / (acts_h + 2)
         zoom_w = subdiv_mult - (subdiv_mult - 1) / (acts_w + 2)
         acts_subdiv = self.acts_reduced[..., feature]
@@ -240,7 +241,7 @@ class LayerNMF:
         with np.errstate(divide="ignore"):
             max_rep = np.ceil(
                 np.divide(
-                    acts_subdiv.shape[1] * acts_subdiv.shape[2],
+                    acts_subdiv.shape[2] * acts_subdiv.shape[3],
                     acts_subdiv.shape[0] * top_frac,
                 )
             )
@@ -293,7 +294,7 @@ class LayerNMF:
             )
         acts_feature = self.acts_reduced[..., feature]
         pos_indices = argmax_nd(
-            acts_feature, axes=[1, 2], max_rep=max_rep, max_rep_strict=True
+            acts_feature, axes=[2, 3], max_rep=max_rep, max_rep_strict=True
         )
         acts_single = acts_feature[
             range(acts_feature.shape[0]), pos_indices[0], pos_indices[1]
