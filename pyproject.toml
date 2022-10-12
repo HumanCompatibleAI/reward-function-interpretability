@@ -34,7 +34,7 @@ mazelab = {git = "https://github.com/ejnnr/mazelab", rev = "3042551"}
 imitation = {git = "https://github.com/HumanCompatibleAI/imitation", rev = "91c66b7"}
 gym3 = {git = "https://github.com/openai/gym3", rev = "4c38246"}  # This version includes some fixes that are not in the newest pip version
 # This version has fixes that are not upstream yet
-procgen = {git = "https://github.com/PavelCz/procgenAISC", rev = "8b49409df1fa0e6e238a98fe813aa65135e835f1"}
+procgen = {git = "https://github.com/JacobPfau/procgenAISC/", rev = "7821f2c00be9a4ff753c6d54b20aed26028ca812"}
 torch-lucent = "^0.1.8"
 
 [tool.poetry.dev-dependencies]
