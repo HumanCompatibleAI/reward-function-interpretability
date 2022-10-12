@@ -35,7 +35,7 @@ def make_transition_to_tensor(num_acts):
         assert transp_next_obs.shape[1] == obs_height
         assert transp_next_obs.shape[2] == obs_width
         tensor_transition = np.concatenate(
-            [transp_obs, boosted_act, transp_next_obs],
+            [transp_obs / 255.0, boosted_act, transp_next_obs / 255.0],
             axis=0,
         )
         return tensor_transition
@@ -108,7 +108,8 @@ def visualize_samples(samples: np.ndarray, num_acts: int):
 
 def process_image_array(img: np.array) -> np.array:
     """Process a numpy array for feeding into PIL.Image.fromarray."""
-    clipped = np.clip(img, 0, 255)
+    up_multiplied = img * 255
+    clipped = np.clip(up_multiplied, 0, 255)
     cast = clipped.astype(np.uint8)
     transposed = np.transpose(cast, axes=(1, 2, 0))
     return transposed
