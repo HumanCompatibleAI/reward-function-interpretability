@@ -14,6 +14,7 @@ __pycache__/
 /processed
 /fig
 src/reward_preprocessing/output
+src/scratch
 
 .idea/
 

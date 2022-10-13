@@ -1,3 +1,4 @@
+import logging
 from typing import Tuple
 
 import gym
@@ -6,8 +7,12 @@ from imitation.util.networks import build_cnn
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 import torch as th
+import torch.nn as nn
 
+from reward_preprocessing.common.networks import ReshapeLayer
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 
 class ProcgenCnnRegressionRewardNet(RewardNet):
@@ -50,8 +55,19 @@ class ProcgenCnnRegressionRewardNet(RewardNet):
         assert isinstance(preprocessed_obs, th.Tensor)
         # Reshape from (batch_size [0], height [1], width [2], channels [3])
         # to (batch_size [0], channels [3], height [1], width [2])
-        transposed = th.permute(preprocessed_obs, [0, 3, 1, 2])
-        return self.cnn_regressor(transposed)
+        if len(preprocessed_obs.shape) == 4:
+            transposed = th.permute(preprocessed_obs, [0, 3, 1, 2])
+        else:
+            logging.warning(
+                f"Encountered unexpected shape {preprocessed_obs.shape}. "
+                "Skipping transpose."
+            )
+            transposed = preprocessed_obs
+        batch_size = transposed.shape[0]
+
+        # Reshape into shape expected by imitation (see RewardNet predict_th())
+        out = self.cnn_regressor(transposed).reshape((batch_size,))
+        return out
 
 
 class MazeRewardNet(RewardNet):
