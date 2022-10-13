@@ -132,16 +132,20 @@ class DCGanWassersteinCritic(nn.Module):
         super(DCGanWassersteinCritic, self).__init__()
         self.network = nn.Sequential(
             nn.Conv2d(data_shape[0], 128, kernel_size=4, padding=1, stride=2),
+            # now 32 x 32
             nn.LeakyReLU(0.1),
             nn.Conv2d(128, 256, kernel_size=4, padding=1, stride=2),
+            # now 16 x 16
             nn.LeakyReLU(0.1),
-            nn.BatchNorm2d(256),
+            nn.LayerNorm([256, 16, 16]),
             nn.Conv2d(256, 512, kernel_size=4, padding=1, stride=2),
+            # now 8 x 8
             nn.LeakyReLU(0.1),
-            nn.BatchNorm2d(512),
+            nn.LayerNorm([512, 8, 8]),
             nn.Conv2d(512, 1024, kernel_size=4, padding=1, stride=2),
+            # now 4 x 4
             nn.LeakyReLU(0.1),
-            nn.BatchNorm2d(1024),
+            nn.LayerNorm([1024, 4, 4]),
             nn.AdaptiveAvgPool2d(1),
             nn.Flatten(),
             nn.Linear(1024, 1),
