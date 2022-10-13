@@ -89,8 +89,9 @@ class DCGanFourTo64Generator(nn.Module):
         )
 
     def forward(self, x):
+        batch_size = x.shape[0]
         x = self.project(x)
-        x = th.reshape(x, (1024, 4, 4))
+        x = th.reshape(x, (batch_size, 1024, 4, 4))
         x = nn.functional.leaky_relu(x, negative_slope=0.1)
         x = self.conv_body(x)
         return x
@@ -146,5 +147,5 @@ class DCGanWassersteinCritic(nn.Module):
             nn.Linear(1024, 1),
         )
 
-        def forward(self, x):
-            return self.network(x)
+    def forward(self, x):
+        return self.network(x)
