@@ -103,6 +103,7 @@ def visualize_samples(samples: np.ndarray, num_acts: int, save_dir):
         act_slim = np.mean(act, axis=(1, 2))
         s_img = PIL.Image.fromarray(s)
         s__img = PIL.Image.fromarray(s_)
+        (Path(save_dir) / str(i)).mkdir()
         s_img.save(Path(save_dir) / str(i) / "first_obs.png")
         s__img.save(Path(save_dir) / str(i) / "second_obs.png")
         np.save(Path(save_dir) / str(i) / "act_vec.npy", act_slim)
