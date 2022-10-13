@@ -3,6 +3,7 @@
 For use in reward function feature visualization.
 """
 
+import torch as th
 from sacred.observers import FileStorageObserver
 
 from reward_preprocessing.generative_modelling import utils
@@ -25,7 +26,8 @@ def train_gan(
     gan_save_path,
     device="cpu",
     ngpu=None,
-    steps={"Adversary": 2},
+    optimizer=th.optim.Adam,
+    steps={"Adversary": 5},
     print_every="1e",
     save_losses_every="0.25e",
     save_model_every="1e",
@@ -53,6 +55,7 @@ def train_gan(
         gan_save_path: Directory in which to save GAN training details.
         device: "cpu" or "cuda", depending on what you're training on.
         ngpu: Number of GPUs to train on, if training on GPUs.
+        optimizer: torch.optim. Optimizer to train GAN with.
         steps: Dictionary specifying how many steps to train the
             discriminator for for every generator training step, or vice
             versa.
@@ -75,11 +78,13 @@ def train_gan(
         discriminator,
         z_dim=latent_shape,
         x_dim=trans_shape,
+        optim=optimizer,
         optim_kwargs=optim_kwargs,
         folder=gan_save_path,
         device=device,
         ngpu=ngpu,
     )
+    gan.summary()
     gan.fit(
         transitions_loader,
         batch_size=batch_size,

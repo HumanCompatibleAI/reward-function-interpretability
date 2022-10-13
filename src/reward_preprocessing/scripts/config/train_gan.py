@@ -38,4 +38,6 @@ def procgen():
     print_every = "0.01e"
     save_losses_every = "0.1e"
     save_model_every = "0.1e"
+    num_acts = 15
+    device = "cuda"
     locals()
