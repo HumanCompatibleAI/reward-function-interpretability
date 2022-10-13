@@ -1017,7 +1017,7 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "procgen"
-version = "0.10.4+8b49409"
+version = "0.10.4+7821f2c"
 description = "Procedurally Generated Game-Like RL Environments"
 category = "main"
 optional = false
@@ -1034,9 +1034,9 @@ test = ["pytest (==5.2.1)", "pytest-benchmark (==3.2.2)"]
 
 [package.source]
 type = "git"
-url = "https://github.com/PavelCz/procgenAISC"
-reference = "8b49409df1fa0e6e238a98fe813aa65135e835f1"
-resolved_reference = "8b49409df1fa0e6e238a98fe813aa65135e835f1"
+url = "https://github.com/JacobPfau/procgenAISC"
+reference = "7821f2c00be9a4ff753c6d54b20aed26028ca812"
+resolved_reference = "7821f2c00be9a4ff753c6d54b20aed26028ca812"
 
 [[package]]
 name = "promise"
@@ -1872,7 +1872,7 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 [metadata]
 lock-version = "1.1"
 python-versions = "=3.9.5"
-content-hash = "825a22c0b2eae04aa70245632110cc704920aa1d7a96434811069967f287d54f"
+content-hash = "192216a235b0516687f847021da7fec9616481927d7546e5359100ed8fe56137"
 
 [metadata.files]
 absl-py = [
