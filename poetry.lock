@@ -1034,7 +1034,7 @@ test = ["pytest (==5.2.1)", "pytest-benchmark (==3.2.2)"]
 
 [package.source]
 type = "git"
-url = "https://github.com/JacobPfau/procgenAISC/"
+url = "https://github.com/JacobPfau/procgenAISC"
 reference = "7821f2c00be9a4ff753c6d54b20aed26028ca812"
 resolved_reference = "7821f2c00be9a4ff753c6d54b20aed26028ca812"
 
@@ -1872,7 +1872,7 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 [metadata]
 lock-version = "1.1"
 python-versions = "=3.9.5"
-content-hash = "48be68788ad0109f02c0849dc836056ec7ef96e9b6b60ee2e839bc1b7f47897f"
+content-hash = "192216a235b0516687f847021da7fec9616481927d7546e5359100ed8fe56137"
 
 [metadata.files]
 absl-py = [
