@@ -1,6 +1,8 @@
 # Utilities for training a generative model on imitation rollouts.
 # Ideally, you should only need to export rollouts_to_dataloader.
 
+from pathlib import Path
+
 import PIL
 from imitation.data import rollout, types
 import numpy as np
@@ -90,10 +92,9 @@ def rollouts_to_dataloader(rollouts_paths, num_acts, batch_size):
     return rollout_dataloader
 
 
-def visualize_samples(samples: np.ndarray, num_acts: int):
+def visualize_samples(samples: np.ndarray, num_acts: int, save_dir):
     """Visualize samples from a GAN."""
-    processed_samples = []
-    for transition in samples:
+    for i, transition in enumerate(samples):
         s = transition[0:3, :, :]
         s = process_image_array(s)
         act = transition[3 : 3 + num_acts, :, :]
@@ -102,8 +103,9 @@ def visualize_samples(samples: np.ndarray, num_acts: int):
         act_slim = np.mean(act, axis=(1, 2))
         s_img = PIL.Image.fromarray(s)
         s__img = PIL.Image.fromarray(s_)
-        processed_samples.append({"s": s_img, "act": act_slim, "s_": s__img})
-    return processed_samples
+        s_img.save(Path(save_dir) / str(i) / "first_obs.png")
+        s__img.save(Path(save_dir) / str(i) / "second_obs.png")
+        np.save(Path(save_dir) / str(i) / "act_vec.npy", act_slim)
 
 
 def process_image_array(img: np.array) -> np.array:

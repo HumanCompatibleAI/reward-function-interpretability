@@ -90,8 +90,8 @@ def train_gan(
         steps=steps,
     )
     samples, losses = gan.get_training_results()
-    visualized_samples = utils.visualize_samples(samples, num_acts)
-    return samples, losses, visualized_samples
+    utils.visualize_samples(samples, num_acts, gan.folder)
+    return samples, losses
 
 
 def main_console():
