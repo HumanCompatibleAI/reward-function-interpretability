@@ -110,11 +110,11 @@ def interpret(
     expert_trajs = cast(Sequence[types.TrajectoryWithRew], expert_trajs)
     from lucent.modelzoo.util import get_model_layers
 
-    print("Available layers:")
-    print(get_model_layers(rew_net))
-
     # Get observations from trajectories
     observations = np.concatenate([traj.obs for traj in expert_trajs])
+
+    print("Available layers:")
+    print(get_model_layers(rew_net))
 
     # vis traditional -> channel first,
     # vid dataset -> channel last
