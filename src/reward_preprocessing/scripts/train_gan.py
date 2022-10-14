@@ -96,7 +96,7 @@ def train_gan(
     )
     samples, losses = gan.get_training_results()
     utils.visualize_samples(samples, num_acts, gan.folder)
-    return samples, losses
+    return losses
 
 
 def main_console():
