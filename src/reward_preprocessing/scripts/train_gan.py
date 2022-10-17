@@ -66,9 +66,11 @@ def train_gan(
         save_model_every: String specifying how many epochs should elapse
             between successive savings of the model.
     """
+    # create data loader of transitions
     transitions_loader = utils.rollouts_to_dataloader(
         rollouts_paths, num_acts, batch_size
     )
+    # define gan
     transitions_batch = next(iter(transitions_loader))
     trans_shape = list(transitions_batch.shape)[1:]
     generator = generator_class(latent_shape, trans_shape)
@@ -84,7 +86,9 @@ def train_gan(
         device=device,
         ngpu=ngpu,
     )
+    # print out summary
     gan.summary()
+    # fit gan
     gan.fit(
         transitions_loader,
         batch_size=batch_size,
@@ -94,6 +98,7 @@ def train_gan(
         epochs=num_training_epochs,
         steps=steps,
     )
+    # save samples, return losses
     samples, losses = gan.get_training_results()
     utils.visualize_samples(samples, num_acts, gan.folder)
     return losses
