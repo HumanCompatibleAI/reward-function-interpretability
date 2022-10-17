@@ -2,10 +2,14 @@
 # Ideally, you should only need to export rollouts_to_dataloader.
 
 from pathlib import Path
+from typing import Tuple
 
 import PIL
 from imitation.data import rollout, types
+from imitation.rewards.reward_nets import RewardNet
 import numpy as np
+import torch as th
+import torch.nn as nn
 from torch.utils import data as torch_data
 
 # TODO: add type annotations
@@ -116,3 +120,47 @@ def process_image_array(img: np.array) -> np.array:
     cast = clipped.astype(np.uint8)
     transposed = np.transpose(cast, axes=(1, 2, 0))
     return transposed
+
+
+def tensor_to_transition(
+    trans_tens: th.Tensor,
+) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+    """Turn a generated 'transition tensor' into a bona fide transition."""
+    num_acts = trans_tens.size(1) - 6
+    # process first observation
+    obs_raw = trans_tens[:, 0:3, :, :]
+    obs_proc = process_image_tensor(obs_raw)
+    # process action
+    act_raw = trans_tens[:, 3 : num_acts + 3, :, :]
+    act_slim = th.mean(act_raw, dim=[2, 3])
+    arg_max = th.argmax(act_slim, dim=1)
+    act_proc = nn.functional.one_hot(arg_max, num_classes=num_acts)
+    # process next observation
+    next_obs_raw = trans_tens[:, num_acts + 3 : num_acts + 6, :, :]
+    next_obs_proc = process_image_tensor(next_obs_raw)
+    return obs_proc, act_proc, next_obs_proc
+
+
+def process_image_tensor(obs: th.Tensor) -> th.Tensor:
+    """Take a GAN image and processes it for use in a reward net."""
+    clipped_obs = th.clamp(obs, 0, 1)
+    transposed = th.permute(clipped_obs, (0, 2, 3, 1))
+    return transposed
+
+
+class RewardGeneratorCombo(nn.Module):
+    """Composition of a generative model and a RewardNet.
+
+    Assumes that the RewardNet normalizes observations to [0,1].
+    """
+
+    def __init__(self, reward_net: RewardNet, generator: nn.Module):
+        super().__init__()
+        self.reward_net = reward_net
+        self.generator = generator
+
+    def forward(latent_vec):
+        transition_tensor = generator(latent_vec)
+        obs, action_vec, next_obs = tensor_to_transition(latent_vec)
+        done = th.zeros(action_vec.shape)
+        return reward_net.forward(obs, action_vec, next_obs, done)
