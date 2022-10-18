@@ -51,7 +51,7 @@ class ChannelReducer(object):
     http://scikit-learn.org/stable/modules/classes.html#module-sklearn.decomposition
     """
 
-    def __init__(self, n_components=3, reduction_alg="NMF", **kwargs):
+    def __init__(self, n_components=3, reduction_alg="NMF", reduction_dim=-1, **kwargs):
         """
         Constructor for ChannelReducer.
 
@@ -61,6 +61,8 @@ class ChannelReducer(object):
             "NMF" (non-negative matrix factorization). Other options include:
             "PCA", "FastICA", and "MiniBatchDictionaryLearning". The name of any of
             the sklearn.decomposition classes will work, though.
+          reduction_dim: Which dimension to reduce. Defaults to -1, which is the last /
+            innermost dimension.
           kwargs: Additional kwargs to be passed on to the reducer.
         """
 
@@ -85,37 +87,49 @@ class ChannelReducer(object):
         self.n_components = n_components
         self._reducer = reduction_alg(n_components=n_components, **kwargs)
         self._is_fit = False
+        self.reduction_dim = reduction_dim
 
     @classmethod
-    def _apply_flat(cls, f, acts):
+    def _apply_flat(cls, f, acts, reduction_dim=-1):
         """
         Utility for applying f to inner dimension of activations.
         Flattens activations into a 2D tensor, applies f, then unflattens so that all
         dimensions except innermost are unchanged.
+        keep_dim is the dimension that does not get flattened, i.e. the one that we
+        want to reduce. Defaults to -1, which is the innermost aka last dimension.
         """
         orig_shape = acts.shape
-        acts_flat = acts.reshape([-1, acts.shape[-1]])
+        acts_flat = acts.reshape([-1, acts.shape[reduction_dim]])
         new_flat = f(acts_flat)
         if not isinstance(new_flat, np.ndarray):
             return new_flat
-        shape = list(orig_shape[:-1]) + [-1]
-        return new_flat.reshape(shape)
+        new_shape = list(orig_shape)
+        # All dimensions go back to the previous shape except the dimensions we didn't,
+        # flatten, which is the dimension we reduced.
+        new_shape[reduction_dim] = -1
+        return new_flat.reshape(new_shape)
 
     def fit(self, acts):
         """Learn a model of dim reduction for the data. Returns the instance of the
         compositions itself."""
         self._is_fit = True
-        return ChannelReducer._apply_flat(self._reducer.fit, acts)
+        return ChannelReducer._apply_flat(
+            self._reducer.fit, acts, reduction_dim=self.reduction_dim
+        )
 
     def fit_transform(self, acts):
         """Learn a model of dim reduction for the data. Returns the actual reduced
         data."""
         self._is_fit = True
-        return ChannelReducer._apply_flat(self._reducer.fit_transform, acts)
+        return ChannelReducer._apply_flat(
+            self._reducer.fit_transform, acts, reduction_dim=self.reduction_dim
+        )
 
     def transform(self, acts):
         """Return the data as it was learned."""
-        return ChannelReducer._apply_flat(self._reducer.transform, acts)
+        return ChannelReducer._apply_flat(
+            self._reducer.transform, acts, reduction_dim=self.reduction_dim
+        )
 
     def __call__(self, acts):
         if self._is_fit:

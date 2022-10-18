@@ -3,7 +3,6 @@ from functools import reduce
 import logging
 from typing import Optional
 
-from lucent.misc.channel_reducer import ChannelReducer
 import lucent.optvis.objectives as objectives
 import lucent.optvis.param as param
 import lucent.optvis.render as render
@@ -12,6 +11,7 @@ import numpy as np
 import scipy.ndimage as nd
 import torch as th
 
+from reward_preprocessing.ext.channel_reducer import ChannelReducer
 from reward_preprocessing.vis.attribution import get_acts, get_attr
 
 
@@ -99,11 +99,17 @@ class LayerNMF:
         self.pad_h = 0
         self.pad_w = 0
         self.padded_obses = self.obses_full
+
+        # We want to reduce dim 1, which is the convention for channel dim in *lucent*
+        # (not lucid). We assume different channels correspond to different features
+        # for benefits of interpretability (as the do e.g. in the rl vision distill
+        # paper). This is used for ChannelReducers.
+        reduction_dim = 1
         if self.features is None:
             self.reducer = None
         else:
             # Dimensionality reduction using NMF.
-            self.reducer = ChannelReducer(features)
+            self.reducer = ChannelReducer(features, reduction_dim=reduction_dim)
         activations = get_acts(model, layer_name, obses)
 
         # Apply activation function if specified.
@@ -139,7 +145,9 @@ class LayerNMF:
             self.channel_dirs = self.reducer._reducer.components_
             self.transform = lambda acts: self.reducer.transform(acts)
             self.inverse_transform = lambda acts_r: ChannelReducer._apply_flat(
-                self.reducer._reducer.inverse_transform, acts_r
+                self.reducer._reducer.inverse_transform,
+                acts_r,
+                reduction_dim=reduction_dim,
             )
         # Transform into torch tensor instead of numpy array, because this is expected
         # later on.
