@@ -185,6 +185,8 @@ class LayerNMF:
             # This makes it so input is passed through the model at least ones, which
             # is necessary to get the feature activations.
             verbose=True,
+            # We work with images of size 64, the model does not accept arbitrary sizes.
+            fixed_image_size=64,
         )[-1]
 
     def pad_obses(self, *, expand_mult=1):
