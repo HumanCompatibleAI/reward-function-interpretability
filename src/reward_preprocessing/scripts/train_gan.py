@@ -98,8 +98,9 @@ def train_gan(
         epochs=num_training_epochs,
         steps=steps,
     )
-    # save samples, return losses
+    # save samples, return losses, save plot of losses
     samples, losses = gan.get_training_results()
+    utils.save_loss_plots(losses, gan.folder)
     utils.visualize_samples(samples, num_acts, gan.folder)
     return losses
 

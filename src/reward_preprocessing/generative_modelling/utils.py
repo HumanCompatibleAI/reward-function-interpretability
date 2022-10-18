@@ -11,6 +11,7 @@ import numpy as np
 import torch as th
 import torch.nn as nn
 from torch.utils import data as torch_data
+import vegans.utils
 
 # TODO: add type annotations
 
@@ -164,3 +165,9 @@ class RewardGeneratorCombo(nn.Module):
         obs, action_vec, next_obs = tensor_to_transition(latent_vec)
         done = th.zeros(action_vec.shape)
         return reward_net.forward(obs, action_vec, next_obs, done)
+
+
+def save_loss_plots(losses, save_dir):
+    """Save plots of generator/adversary losses over training."""
+    fig, _ = vegans.utils.plot_losses(losses, show=False)
+    fig.savefig(Path(save_dir) / 'loss_fig.png')
