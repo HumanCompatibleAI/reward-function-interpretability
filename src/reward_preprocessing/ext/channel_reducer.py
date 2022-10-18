@@ -31,7 +31,6 @@ apply to arbitrary rank tensors. It saves lots of annoying reshaping.
 """
 
 import numpy as np
-import sklearn.decomposition
 
 # I assume this was fix for some problems with different versions of sklearn?
 # We shouldn't need this.
@@ -39,16 +38,18 @@ import sklearn.decomposition
 #     from sklearn.decomposition.base import BaseEstimator
 # except (AttributeError, ModuleNotFoundError):
 from sklearn.base import BaseEstimator
+import sklearn.decomposition
+
 
 class ChannelReducer(object):
     """Helper for dimensionality reduction to the innermost dimension of a tensor.
 
-  This class wraps sklearn.decomposition classes to help them apply to arbitrary
-  rank tensors. It saves lots of annoying reshaping.
+    This class wraps sklearn.decomposition classes to help them apply to arbitrary
+    rank tensors. It saves lots of annoying reshaping.
 
-  See the original sklearn.decomposition documentation:
-  http://scikit-learn.org/stable/modules/classes.html#module-sklearn.decomposition
-  """
+    See the original sklearn.decomposition documentation:
+    http://scikit-learn.org/stable/modules/classes.html#module-sklearn.decomposition
+    """
 
     def __init__(self, n_components=3, reduction_alg="NMF", **kwargs):
         """
