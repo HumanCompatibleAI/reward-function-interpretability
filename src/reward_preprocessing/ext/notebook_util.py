@@ -1,5 +1,4 @@
 """Utils only used by the notebooks."""
-# Same as ImpalaPolicy without the modifications to make it compatible with imitation.
 import torch
 from torch.distributions import Categorical
 import torch.nn as nn
@@ -12,6 +11,7 @@ from reward_preprocessing.ext.impala import (
 )
 
 
+# Same as ImpalaPolicy without the modifications to make it compatible with imitation.
 class CategoricalPolicyGM(nn.Module):
     def __init__(
         self,
@@ -40,7 +40,7 @@ class CategoricalPolicyGM(nn.Module):
     # def is_recurrent(self):
     #     return self.recurrent
 
-    def forward(self, x, hx, masks):
+    def forward(self, x):  # , hx, masks):
         hidden = self.embedder(x)
         # if self.recurrent:
         #     hidden, hx = self.gru(hidden, hx, masks)
@@ -62,6 +62,7 @@ class ImpalaModel(nn.Module):
         self.block2 = ImpalaBlock(in_channels=16 * scale, out_channels=32 * scale)
         self.block3 = ImpalaBlock(in_channels=32 * scale, out_channels=32 * scale)
         self.fc = nn.Linear(in_features=32 * scale * 8 * 8, out_features=256)
+        self.relu_after_convs = nn.ReLU()
 
         self.output_dim = 256
         self.apply(xavier_uniform_init)
@@ -70,7 +71,7 @@ class ImpalaModel(nn.Module):
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
-        x = nn.ReLU()(x)
+        x = self.relu_after_convs(x)
         x = Flatten()(x)
         x = self.fc(x)
         x = nn.ReLU()(x)
