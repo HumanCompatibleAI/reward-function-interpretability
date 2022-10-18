@@ -59,23 +59,30 @@ class LayerNMF:
         layer_name,
         obses,
         obses_full=None,
-        features=10,
+        features: Optional[int] = 10,
         *,
-        attr_layer_name=None,
+        attr_layer_name: Optional[str] = None,
         attr_opts={"integrate_steps": 10},
         activation_fn: Optional[str] = None,
     ):
-        """Use NMF dimensionality reduction to then do visualization.
+        """Use Non-negative matrix factorization dimensionality reduction to then do
+        visualization.
+
 
         Args:
             model: The PyTorch model to analyze. Can be reward net or policy net.
             layer_name: The name of the layer to analyze.
             obses: Dataset of observations to analyze.
             obses_full:
-            features: Number of features to use in NMF.
+            features:
+                Number of features to use in NMF. None performs no dimensionality
+                reduction.
             attr_layer_name:
+                Name of the layer of attributions to apply NMF to. If None, apply NMF to
+                activations.
             attr_opts:
             activation_fn:
+                An optional additional activation function to apply to the activations.
                 Sometimes "activations" in the model did not go through an actual
                 activation function, e.g. the output of a reward net. If this
                 activation function is specified, we will apply the respective function
@@ -95,6 +102,7 @@ class LayerNMF:
         if self.features is None:
             self.reducer = None
         else:
+            # Dimensionality reduction using NMF.
             self.reducer = ChannelReducer(features)
         activations = get_acts(model, layer_name, obses)
 
@@ -112,13 +120,14 @@ class LayerNMF:
 
         self.patch_h = self.obses_full.shape[1] / activations.shape[1]
         self.patch_w = self.obses_full.shape[2] / activations.shape[2]
-        if self.reducer is None:
+        if self.reducer is None:  # No dimensionality reduction.
             self.acts_reduced = activations
             self.channel_dirs = np.eye(self.acts_reduced.shape[-1])
             self.transform = lambda acts: acts.copy()
             self.inverse_transform = lambda acts: acts.copy()
-        else:
+        else:  # Perform NMF dimensionality reduction
             if attr_layer_name is None:
+                # Perform the NMF reduction and return reduced tensor.
                 self.acts_reduced = self.reducer.fit_transform(activations)
             else:
                 attrs = get_attr(model, attr_layer_name, layer_name, obses, **attr_opts)
