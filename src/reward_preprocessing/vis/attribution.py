@@ -66,21 +66,29 @@ def get_grad_or_attr(
     integrate_steps=1,
 ):
     # This is a WIP port to PyTorch. The following parameters are not yet implemented
-    # and we therefore assert that they are not used. TODO: Implement or remove.
-    assert act_poses == None
-    assert override == None
-    assert integrate_steps == 1
+    # and we therefore assert that they are not used.
+    # Currently we don't need them, but maybe we want to implement them in the future
+    # for closer parity with the tf code. If They are used accidentally the exception
+    # will be thrown.TODO: Implement or remove.
+    if act_poses is not None:
+        raise NotImplementedError("act_poses not implemented. See comment above.")
+    if override is not None:
+        raise NotImplementedError("override not implemented. See comment above.")
     # with tf.Graph().as_default(), tf.Session(), gradient_override_map(override or {}):
     # t_obses = tf.placeholder_with_default(
     #     obses.astype(np.float32), (None, None, None, None)
     # )
     t_obses = th.from_numpy(obses.astype(np.float32))
-    T = render.hook_model(model, t_obses)  # , t_obses)
-    t_acts = T(layer_name)
+    hook = render.hook_model(model, t_obses)  # , t_obses)
+    # Run through model once to generate feature maps
+    model(t_obses)
+    # The activations of the layer we want to compute the attribution for.
+    t_acts = hook(layer_name)
     if prev_layer_name is None:
         t_acts_prev = t_obses
     else:
-        t_acts_prev = T(prev_layer_name)
+        # The activations of the previous layer.
+        t_acts_prev = hook(prev_layer_name)
     if act_dir is not None:
         t_acts = act_dir[None, None, None] * t_acts
     # if act_poses is not None:
@@ -92,22 +100,42 @@ def get_grad_or_attr(
     assert len(t_scores.shape) >= 1, "score_fn should not reduce the batch dim"
     t_score = th.sum(t_scores)
     # t_grad = tf.gradients(t_score, [t_acts_prev])[0]
-    t_grad = th.autograd.grad(t_score, [t_acts_prev])[0]
-    # if integrate_steps > 1:
-    #     acts_prev = t_acts_prev.eval()
-    #     grad = (
-    #         sum(
-    #             [
-    #                 t_grad.eval(feed_dict={t_acts_prev: acts_prev * alpha})
-    #                 for alpha in np.linspace(0, 1, integrate_steps + 1)[1:]
-    #             ]
-    #         )
-    #         / integrate_steps
-    #     )
-    # else:
-    acts_prev = None
-    # grad = t_grad.eval()
-    grad = t_grad
+    if integrate_steps > 1:
+        # This was the original tf 1 code. Keeping this around for transparency.
+        # acts_prev = t_acts_prev.eval()
+        # grad = (
+        #     sum(
+        #         [
+        #             t_grad.eval(feed_dict={t_acts_prev: acts_prev * alpha})
+        #             for alpha in np.linspace(0, 1, integrate_steps + 1)[1:]
+        #         ]
+        #     )
+        #     / integrate_steps
+        # )
+        # The feed_dict argument allows the caller to override the value of tensors in
+        # the graph.
+        # This is how I wrote it in PyTorch:
+        acts_prev = t_acts_prev
+        grad_list = []
+        for alpha in np.linspace(0, 1, integrate_steps + 1)[1:]:
+            t_score = th.sum(t_scores)
+            # grad = th.autograd.grad(t_score, [acts_prev * alpha])[0]
+            # This is what they did in tensorflow, equivalent:
+            # th.autograd.grad(t_score, [acts_prev * alpha])
+            # However, this doesn't work in pytorch because now PyTorch will try to
+            # compute the gradient wrt alpha, which is 0 since alpha was not involved
+            # in the input / isn't part of the graph. However, arithmetically, one can
+            # pull out the scalar like this:
+            # d t_scr / d (a_prv * alpha) = d t_scr / (alpha * d a_prv)
+            # Therefore the following:
+            grad = th.autograd.grad(t_score, [acts_prev], retain_graph=True)[0] / alpha
+            grad_list.append(grad)
+        grad = np.sum(grad_list) / integrate_steps
+    else:
+        acts_prev = None
+        # grad = t_grad.eval()
+        # Gradients from score to either observation in puts or the features at specified layer
+        grad = th.autograd.grad(t_score, [t_acts_prev])[0]
     if grad_or_attr == "grad":
         return grad
     elif grad_or_attr == "attr":
