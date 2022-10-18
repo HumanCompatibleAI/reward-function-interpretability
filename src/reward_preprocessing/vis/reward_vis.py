@@ -124,23 +124,29 @@ class LayerNMF:
                 f"LayerNMF: activations for layer {layer_name} have negative values."
             )
 
-        self.patch_h = self.obses_full.shape[1] / activations.shape[1]
-        self.patch_w = self.obses_full.shape[2] / activations.shape[2]
+        self.patch_h = self.obses_full.shape[2] / activations.shape[2]
+        self.patch_w = self.obses_full.shape[3] / activations.shape[3]
         if self.reducer is None:  # No dimensionality reduction.
             self.acts_reduced = activations
             self.channel_dirs = np.eye(self.acts_reduced.shape[-1])
             self.transform = lambda acts: acts.copy()
             self.inverse_transform = lambda acts: acts.copy()
-        else:  # Perform NMF dimensionality reduction
+        else:  # Perform NMF dimensionality reduction.
             if attr_layer_name is None:
                 # Perform the NMF reduction and return reduced tensor.
                 self.acts_reduced = self.reducer.fit_transform(activations)
             else:
-                attrs = get_attr(model, attr_layer_name, layer_name, obses, **attr_opts)
+                attrs = (
+                    get_attr(model, attr_layer_name, layer_name, obses, **attr_opts)
+                    .detach()
+                    .numpy()
+                )
                 attrs_signed = np.concatenate(
                     [np.maximum(0, attrs), np.maximum(0, -attrs)], axis=0
                 )
-                self.reducer.fit(attrs_signed)
+                # Use torch tensors so it is the same data type as 'activations", which
+                # is a torch tensor.
+                self.reducer.fit(th.tensor(attrs_signed))
                 self.acts_reduced = self.reducer.transform(activations)
             self.channel_dirs = self.reducer._reducer.components_
             self.transform = lambda acts: self.reducer.transform(acts)
@@ -189,7 +195,7 @@ class LayerNMF:
             transforms=transforms,
             # To fix order of transforms.
             # TODO: Should we enable preprocess here?
-            preprocess=False,
+            # preprocess=False,
             # This makes it so input is passed through the model at least ones, which
             # is necessary to get the feature activations.
             verbose=True,
