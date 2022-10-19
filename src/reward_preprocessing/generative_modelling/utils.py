@@ -20,7 +20,7 @@ def make_transition_to_tensor(num_acts):
     """Produces a function that takes a transition, produces a tensor.
 
     For use as something to 'map over' a torch dataset of transitions. Assumes
-    observations are (h,c,w)-formatted images, actions are discrete.
+    observations are (h,w,c)-formatted images, actions are discrete.
 
     Args:
         num_acts: Number of discrete actions. Necessary because actions are
