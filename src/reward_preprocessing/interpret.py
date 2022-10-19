@@ -55,7 +55,7 @@ def uncurry_pad_i2_of_4(arg: Any) -> tuple[None, None, Any, None]:
 
 @interpret_ex.main
 def interpret(
-    common: dict,  # from sacred config
+    common: dict,  # Sacred magic: This dict will contain the sacred config for common.
     reward_path: Optional[str],
     rollout_path: str,
     n_expert_demos: Optional[int],
