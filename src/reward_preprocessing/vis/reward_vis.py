@@ -52,6 +52,15 @@ def argmax_nd(x, axes, *, max_rep=np.inf, max_rep_strict=None):
     return np.unravel_index(result, shape[: len(axes)])
 
 
+@objectives.wrap_objective()
+def l2_objective(layer_name, coefficient, batch=None):
+    """L2 norm of specified layer, multiplied by the given coeff."""
+    @objectives.handle_batch(batch)
+    def inner(model):
+        return coefficient * th.sqrt(th.sum(model(layer_name)**2))
+    return inner
+
+
 class LayerNMF:
     def __init__(
         self,
@@ -163,7 +172,7 @@ class LayerNMF:
             assert (
                 l2_layer_name is not None
             ), "l2_layer_name must be specified if l2_coeff is non-zero"
-            obj -= objectives.L2(l2_layer_name) * l2_coeff
+            obj -= l2_objective(l2_layer_name, l2_coeff)
         param_f = lambda: param.image(64, batch=len(feature_list))
         return render.render_vis(
             self.model,
