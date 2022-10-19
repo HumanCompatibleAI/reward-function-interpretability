@@ -6,7 +6,7 @@ import torch.nn as nn
 class UncurryRewNet(RewardNetWrapper):
     """Wrapper to uncurry a reward net."""
 
-    # We brake the signature of the constructor here because some external libraries
+    # We break the signature of the constructor here because some external libraries
     # expect PyTorch models to only have one argument for forward(). In that case
     # this wrapper can be used to uncurry the reward net into a net that takes
     # exactly one tuple as argument
