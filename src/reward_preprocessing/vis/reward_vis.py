@@ -168,7 +168,8 @@ class LayerNMF:
         l2_layer_name=None,
     ):
         if feature_list is None:
-            feature_list = list(range(self.acts_reduced.shape[-1]))
+            # Feature dim is at index 1
+            feature_list = list(range(self.acts_reduced.shape[1]))
         try:
             feature_list = list(feature_list)
         except TypeError:
@@ -244,6 +245,7 @@ class LayerNMF:
         Args:
             feature: The feature to visualize. Can be an integer or a list of integers.
         """
+
         acts_h, acts_w = self.acts_reduced.shape[1:3]
         zoom_h = subdiv_mult - (subdiv_mult - 1) / (acts_h + 2)
         zoom_w = subdiv_mult - (subdiv_mult - 1) / (acts_w + 2)
