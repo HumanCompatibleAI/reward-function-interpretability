@@ -25,12 +25,12 @@ import torch as th
 #     return {"MaxPool": MaxPoolGrad}
 
 
-def get_acts(model, layer_name, obses) -> th.Tensor:
+def get_acts(model, layer_name, obses, device) -> th.Tensor:
     # with tf.Graph().as_default(), tf.Sess&ion():
     # t_obses = tf.placeholder_with_default(
     #     obses.astype(np.float32), (None, None, None, None)
     # )
-    t_obses = th.from_numpy(obses.astype(np.float32))
+    t_obses = th.from_numpy(obses.astype(np.float32)).to(device)
     hook = render.hook_model(model, t_obses)  # , t_obses)
     # Perform forward pass for model
     # model(state=None, action=None, next_state=t_obses, done=None)

@@ -67,6 +67,7 @@ class LayerNMF:
         model,
         layer_name,
         obses,
+        device,
         obses_full=None,
         features=10,
         *,
@@ -80,6 +81,8 @@ class LayerNMF:
             model: The PyTorch model to analyze. Can be reward net or policy net.
             layer_name: The name of the layer to analyze.
             obses: Dataset of observations to analyze.
+            device: PyTorch device to load observations to. Should be same device that
+                reward net is on.
             obses_full:
             features: Number of features to use in NMF.
             attr_layer_name:
@@ -105,7 +108,7 @@ class LayerNMF:
             self.reducer = None
         else:
             self.reducer = ChannelReducer(features)
-        activations = get_acts(model, layer_name, obses)
+        activations = get_acts(model, layer_name, obses, device)
 
         # Apply activation function if specified.
         if activation_fn == "sigmoid":
@@ -122,24 +125,24 @@ class LayerNMF:
         self.patch_h = self.obses_full.shape[1] / activations.shape[1]
         self.patch_w = self.obses_full.shape[2] / activations.shape[2]
         if self.reducer is None:
-            self.acts_reduced = activations
+            self.acts_reduced = activations.cpu()
             self.channel_dirs = np.eye(self.acts_reduced.shape[-1])
             self.transform = lambda acts: acts.copy()
             self.inverse_transform = lambda acts: acts.copy()
         else:
             if attr_layer_name is None:
-                self.acts_reduced = self.reducer.fit_transform(activations)
+                self.acts_reduced = self.reducer.fit_transform(activations.cpu())
             else:
                 attrs = get_attr(model, attr_layer_name, layer_name, obses, **attr_opts)
                 attrs_signed = np.concatenate(
                     [np.maximum(0, attrs), np.maximum(0, -attrs)], axis=0
                 )
                 self.reducer.fit(attrs_signed)
-                self.acts_reduced = self.reducer.transform(activations)
+                self.acts_reduced = self.reducer.transform(activations.cpu())
             self.channel_dirs = self.reducer._reducer.components_
-            self.transform = lambda acts: self.reducer.transform(acts)
+            self.transform = lambda acts: self.reducer.transform(acts.cpu())
             self.inverse_transform = lambda acts_r: ChannelReducer._apply_flat(
-                self.reducer._reducer.inverse_transform, acts_r
+                self.reducer._reducer.inverse_transform, acts_r.cpu()
             )
         # Transform into torch tensor instead of numpy array, because this is expected
         # later on.

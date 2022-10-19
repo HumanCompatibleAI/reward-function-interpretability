@@ -157,6 +157,7 @@ def interpret(
         # layer_name="cnn_regressor_avg_pool",
         obses=obses,
         activation_fn="sigmoid",
+        device=device,
     )
 
     # Visualization
