@@ -19,6 +19,7 @@ from reward_preprocessing.common.networks import (
     FourDimOutput,
     NextStateOnlyModel,
 )
+from reward_preprocessing.generative_modelling.utils import tensor_to_transition
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
 interpret_ex = Experiment(
@@ -27,6 +28,7 @@ interpret_ex = Experiment(
     # ingredients=[demonstrations.demonstrations_ingredient],
 )
 
+# TODO(df): deal with what happens when you specify gan path and also do vis_type=dataset
 
 @interpret_ex.config
 def defaults():
@@ -42,6 +44,7 @@ def defaults():
     vis_type = "traditional"  # "traditional" or "dataset"
     layer_name = "reshaped_out"  # Name of the layer to visualize.
     num_features = 2  # Number of features to use for visualization.
+    gan_path = None
 
     locals()  # quieten flake8
 
@@ -65,12 +68,18 @@ def interpret(
     vis_type: str,
     layer_name: str,
     num_features: int,
+    gan_path: Optional[str],
 ):
     """Sanity check a learned supervised reward net. Evaluate 4 things:
     - Random policy on env reward
     - Random policy on learned reward function
     - Expert policy on env reward
     - Expert policy on learned reward function
+    Daniel modifications:
+      - Take in generator (or saved gan, i guess)
+      - combine with reward function
+      - plug in correct args to vis function
+      - maybe don't do all the other interpret stuff
     """
     if pyplot:
         matplotlib.use("TkAgg")
@@ -81,6 +90,11 @@ def interpret(
     else:  # CUDA not available
         rew_net = th.load(str(reward_path), map_location=th.device("cpu"))  # Force CPU
 
+    # If GAN path is specified, combine with a GAN.
+    if gan_path is not None:
+        gan = th.load(gan_path) if th.cuda.is_available() else th.load(gan_path, map_location=th.device("cpu"))
+        rew_net = RewardGeneratorCombo(reward_net=rew_net, generator=gan.generator)
+
     # Set up imitation-style logging
     custom_logger, log_dir = common_config.setup_logging()
 
@@ -88,7 +102,7 @@ def interpret(
 
     rew_net.eval()
 
-    if vis_type == "traditional":
+    if vis_type == "traditional" and gan_path is None:
         rew_net = rew_net.cnn_regressor
     elif vis_type == "dataset":
         # See description of class for explanation
@@ -149,7 +163,7 @@ def interpret(
         print(i)
 
         # Get the visualization as image
-        if vis_type == "traditional":
+        if vis_type == "traditional" and gan_path is None:
             # List of transforms
             transforms = [
                 transform.jitter(2),  # Jitters input by 2 pixel
@@ -158,7 +172,14 @@ def interpret(
                 # uncurry_pad_i2_of_4,
             ]
 
-            img = nmf.vis_traditional(transforms=transforms)
+            next_obs = nmf.vis_traditional(transforms=transforms)
+            obs = next_obs
+        elif vis_type == "traditional" and gan_path is not None:
+            # TODO(df): see if "input" is a legit name.
+            latent = nmf.vis_traditional(l2_coeff=0.1, l2_layer_name="input")
+            trans_tens = gan.generator(latent)
+            # TODO (df): oops, latent is numpy - need to move it to wherever gan.generator is.
+            obs, _, next_obs = tensor_to_transition(trans_tens)
         elif vis_type == "dataset":
             img, indices = nmf.vis_dataset_thumbnail(
                 feature=i, num_mult=4, expand_mult=1
@@ -168,6 +189,13 @@ def interpret(
         # img = img.astype(np.uint8)
         # index = indices[0][0]
         # img = observations[index]
+
+        # TODO(df):
+        # how to rewrite:
+        # - always produce obs, next_obs
+        # - save both in wandb
+        # - save both locally
+        # I don't think this is actually too hard.
 
         if wandb_logging:
             p_img = Image.fromarray(np.uint8(img * 255), mode="RGBA").resize(
