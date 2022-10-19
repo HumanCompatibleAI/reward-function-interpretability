@@ -152,7 +152,7 @@ class LayerNMF:
         transforms=[transform.jitter(2)],
         l2_coeff=0.0,
         l2_layer_name=None,
-    ):
+    ) -> np.ndarray:
         if feature_list is None:
             feature_list = list(range(self.acts_reduced.shape[-1]))
         try:
