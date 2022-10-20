@@ -140,6 +140,8 @@ def interpret(
         activation_fn="sigmoid",
     )
 
+    print(f"Dimensionality reduction: {nmf.channel_dirs.shape}")
+
     # Visualization
     num_features = nmf.features
     rows, columns = 1, num_features
