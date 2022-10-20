@@ -21,6 +21,8 @@ def make_transition_to_tensor(num_acts):
 
     For use as something to 'map over' a torch dataset of transitions. Assumes
     observations are (h,w,c)-formatted images, actions are discrete.
+    Output tensor will have shape (2*c + num_acts, h, w).
+    Order is (obs, act, next_obs).
 
     Args:
         num_acts: Number of discrete actions. Necessary because actions are
@@ -126,7 +128,8 @@ def process_image_array(img: np.array) -> np.array:
 def tensor_to_transition(
     trans_tens: th.Tensor,
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
-    """Turn a generated 'transition tensor' into a bona fide transition."""
+    """Turn a generated 'transition tensor' batch into a batch of bona fide transitions.
+    """
     num_acts = trans_tens.size(1) - 6
     # process first observation
     obs_raw = trans_tens[:, 0:3, :, :]
