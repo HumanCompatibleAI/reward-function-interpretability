@@ -17,7 +17,7 @@ import wandb
 from reward_preprocessing.common.networks import (
     ChannelsFirstToChannelsLast,
     FourDimOutput,
-    NextStateOnlyModel,
+    NextStateOnlyModel, Repeat3Dim,
 )
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
@@ -113,15 +113,18 @@ def interpret(
     # Get observations from trajectories
     observations = np.concatenate([traj.obs for traj in expert_trajs])
 
+    # Transpose all observations because lucent expects channels first (after
+    # batch dim)
+    observations = np.transpose(observations, (0, 3, 1, 2))
+
+    # TODO: for debugging only
+    rew_net = Repeat3Dim(rew_net, target_shape=observations.shape[1:])
+    observations = observations[:, 0, :, 0]
+    observations = observations[:, None, :, None]
+    layer_name = "net_" + layer_name
+
     print("Available layers:")
     print(get_model_layers(rew_net))
-
-    # vis traditional -> channel first,
-    # vid dataset -> channel last
-    if vis_type == "traditional":
-        # Transpose all observations because lucent expects channels first (after
-        # batch dim)
-        observations = np.transpose(observations, (0, 3, 1, 2))
 
     if limit_num_obs < 0:
         obses = observations

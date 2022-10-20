@@ -162,7 +162,7 @@ class LayerNMF:
         self.patch_h = self.obses_full.shape[2] / activations.shape[2]
         self.patch_w = self.obses_full.shape[3] / activations.shape[3]
         if self.reducer is None:  # No dimensionality reduction.
-            self.acts_reduced = activations
+            self.acts_reduced = activations.numpy()
             self.channel_dirs = np.eye(self.acts_reduced.shape[-1])
             self.transform = lambda acts: acts.copy()
             self.inverse_transform = lambda acts: acts.copy()
@@ -223,7 +223,8 @@ class LayerNMF:
                 l2_layer_name is not None
             ), "l2_layer_name must be specified if l2_coeff is non-zero"
             obj -= objectives.L2(l2_layer_name) * l2_coeff
-        param_f = lambda: param.image(64, batch=len(feature_list))
+        # param_f = lambda: param.image(64, batch=len(feature_list))
+        param_f = lambda: param.image(h=64, w=1, channels=1, batch=len(feature_list))  # Debugging
         return render.render_vis(
             self.model,
             obj,
@@ -231,12 +232,15 @@ class LayerNMF:
             transforms=transforms,
             # To fix order of transforms.
             # TODO: Should we enable preprocess here?
-            # preprocess=False,
+            # Definitely disable for 1D, maybe for others as well? Will enable
+            # normalization which should not be done with the default values presumably.
+            preprocess=False,
             # This makes it so input is passed through the model at least ones, which
             # is necessary to get the feature activations.
             verbose=True,
             # We work with images of size 64, the model does not accept arbitrary sizes.
-            fixed_image_size=64,
+            fixed_image_size=(64,1),  # For debug, normal is 64
+            show_image=False,  # Need to disable if input is not actually an observation
         )[-1]
 
     def pad_obses(self, *, expand_mult=1):

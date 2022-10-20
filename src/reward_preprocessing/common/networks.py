@@ -63,6 +63,22 @@ class FourDimOutput(nn.Module):
         return out
 
 
+class Repeat3Dim(nn.Module):
+    """Used for debugging."""
+
+    def __init__(self, net: nn.Module, target_shape: tuple):
+        super().__init__()
+        self.net = net
+        self.target_shape = target_shape
+
+    def forward(self, x: th.Tensor) -> th.Tensor:
+        # Input: [bs, 1, size, 1]
+        new = th.zeros([x.shape[0]] + list(self.target_shape))
+        minimum = min(x.shape[2], self.target_shape[2])
+        new[:, :1, :minimum, :1] = x[:, :, :minimum, :]
+        return self.net(new)
+
+
 class ReshapeLayer(nn.Module):
     """Torch module that reshapes 1D to 4D."""
 
