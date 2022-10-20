@@ -163,7 +163,7 @@ class LayerNMF:
         self.patch_w = self.obses_full.shape[3] / activations.shape[3]
         if self.reducer is None:  # No dimensionality reduction.
             self.acts_reduced = activations
-            self.channel_dirs = np.eye(self.acts_reduced.shape[-1])
+            self.channel_dirs = np.eye(self.acts_reduced.shape[1])
             self.transform = lambda acts: acts.copy()
             self.inverse_transform = lambda acts: acts.copy()
         else:  # Perform NMF dimensionality reduction.
