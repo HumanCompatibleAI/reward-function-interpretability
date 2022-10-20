@@ -88,6 +88,8 @@ def argmax_nd(x: np.ndarray, axes: list[int], *, max_rep=np.inf, max_rep_strict=
 
 
 class LayerNMF:
+    acts_reduced: np.ndarray
+
     def __init__(
         self,
         model,
@@ -134,7 +136,6 @@ class LayerNMF:
         self.pad_h = 0
         self.pad_w = 0
         self.padded_obses = self.obses_full
-
         # We want to reduce dim 1, which is the convention for channel dim in *lucent*
         # (not lucid). We assume different channels correspond to different features
         # for benefits of interpretability (as the do e.g. in the rl vision distill
