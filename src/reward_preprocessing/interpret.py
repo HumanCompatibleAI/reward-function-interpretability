@@ -14,11 +14,7 @@ from sacred.observers import FileStorageObserver
 import torch as th
 import wandb
 
-from reward_preprocessing.common.networks import (
-    ChannelsFirstToChannelsLast,
-    FourDimOutput,
-    NextStateOnlyModel,
-)
+from reward_preprocessing.common.networks import FourDimOutput, NextStateOnlyModel
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
 interpret_ex = Experiment(
@@ -39,8 +35,10 @@ def defaults():
     limit_num_obs = -1
     pyplot = False  # Plot images as pyplot figures
     vis_scale = 4  # Scale the visualization img by this factor
-    vis_type = "traditional"  # "traditional" or "dataset"
-    layer_name = "reshaped_out"  # Name of the layer to visualize.
+    vis_type = "traditional"  # "traditional" (gradient-based) or "dataset"
+    # Name of the layer to visualize. To figure this out run interpret and the
+    # available layers will be printed. For additional notes see interpret doc comment.
+    layer_name = "reshaped_out"  
     num_features = 2  # Number of features to use for visualization.
 
     locals()  # quieten flake8
@@ -66,11 +64,11 @@ def interpret(
     layer_name: str,
     num_features: int,
 ):
-    """Sanity check a learned supervised reward net. Evaluate 4 things:
-    - Random policy on env reward
-    - Random policy on learned reward function
-    - Expert policy on env reward
-    - Expert policy on learned reward function
+    """Run interpretability techniques.
+
+    Args:
+        For expalanation of params see sacred config,
+        i.e. comments in defaults function above.
     """
     if pyplot:
         matplotlib.use("TkAgg")
@@ -147,52 +145,83 @@ def interpret(
     rows, columns = 1, num_features
     if pyplot:
         fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches
-    for i in range(num_features):
-        print(i)
 
-        # Get the visualization as image
-        if vis_type == "traditional":
-            # List of transforms
-            transforms = [
-                transform.jitter(2),  # Jitters input by 2 pixel
-                # Input into model should be 4 tuple, where next_state (3rd arg) is the
-                # observation and other inputs are ignored.
-                # uncurry_pad_i2_of_4,
-            ]
+    # Do Visualziation
+    if vis_type == "traditional":
+        # List of transforms
+        transforms = [
+            transform.jitter(2),  # Jitters input by 2 pixel
+            # Input into model should be 4 tuple, where next_state (3rd arg) is the
+            # observation and other inputs are ignored.
+            # uncurry_pad_i2_of_4,
+        ]
 
-            img = nmf.vis_traditional(transforms=transforms)
-        elif vis_type == "dataset":
+        img = nmf.vis_traditional(transforms=transforms)
+        # Set of images, one for each feature, add each to plot
+        for feature_i in range(img.shape[0]):
+            sub_img = img[feature_i]
+            plot_img(
+                columns,
+                custom_logger,
+                feature_i,
+                fig,
+                sub_img,
+                pyplot,
+                rows,
+                vis_scale,
+                wandb_logging,
+            )
+    elif vis_type == "dataset":
+        for feature_i in range(num_features):
+            print(f"Feature {feature_i}")
+
             img, indices = nmf.vis_dataset_thumbnail(
-                feature=i, num_mult=4, expand_mult=1
+                feature=feature_i, num_mult=4, expand_mult=1
             )
-        else:
-            raise ValueError(f"Unknown vis_type: {vis_type}.")
-        # img = img.astype(np.uint8)
-        # index = indices[0][0]
-        # img = observations[index]
 
-        if wandb_logging:
-            p_img = Image.fromarray(np.uint8(img * 255), mode="RGBA").resize(
-                size=(img.shape[0] * vis_scale, img.shape[1] * vis_scale),
-                resample=Image.NEAREST,
+            plot_img(
+                columns,
+                custom_logger,
+                feature_i,
+                fig,
+                img,
+                pyplot,
+                rows,
+                vis_scale,
+                wandb_logging,
             )
-            wb_img = wandb.Image(p_img, caption=f"Feature {i}")
-            custom_logger.record(f"feature_{i}", wb_img)
-            # Can't re-use steps unfortunately, so each feature img gets its own step.
-            custom_logger.dump(step=i)
-        if pyplot:
-            if len(img.shape) == 3:
-                fig.add_subplot(rows, columns, i + 1)
-                plt.imshow(img)
-            elif len(img.shape) == 4:
-                for img_i in range(img.shape[0]):
-                    fig.add_subplot(rows, columns, i + 1)
-                    plt.imshow(img[img_i])
+    else:
+        raise ValueError(f"Unknown vis_type: {vis_type}.")
 
         # show()
     if pyplot:
         plt.show()
     custom_logger.log("Done with dataset visualization.")
+
+
+def plot_img(
+    columns, custom_logger, feature_i, fig, img, pyplot, rows, vis_scale, wandb_logging
+):
+    """Plot the passed image to pyplot and wandb as appropriate."""
+    _wandb_log(custom_logger, feature_i, img, vis_scale, wandb_logging)
+    if pyplot:
+        fig.add_subplot(rows, columns, feature_i + 1)
+        plt.imshow(img)
+
+
+def _wandb_log(
+    custom_logger, feature_i: int, img: np.ndarray, vis_scale: int, wandb_logging: bool
+):
+    """Plot to wandb if wandb logging is enabled."""
+    if wandb_logging:
+        p_img = Image.fromarray(np.uint8(img * 255), mode="RGB").resize(
+            size=(img.shape[0] * vis_scale, img.shape[1] * vis_scale),
+            resample=Image.NEAREST,
+        )
+        wb_img = wandb.Image(p_img, caption=f"Feature {feature_i}")
+        custom_logger.record(f"feature_{feature_i}", wb_img)
+        # Can't re-use steps unfortunately, so each feature img gets its own step.
+        custom_logger.dump(step=feature_i)
 
 
 def main():
