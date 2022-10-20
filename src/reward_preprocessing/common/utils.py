@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Tuple
 
 import PIL
+from imitation.data import rollout, types
 import numpy as np
 import torch as th
-from imitation.data import types, rollout
 from torch import nn as nn
 from torch.utils import data as torch_data
 
@@ -121,8 +121,7 @@ def process_image_array(img: np.array) -> np.array:
 def tensor_to_transition(
     trans_tens: th.Tensor,
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
-    """Turn a generated 'transition tensor' batch into a batch of bona fide transitions.
-    """
+    """Turn a generated 'transition tensor' batch into a batch of bona fide transitions."""
     num_acts = trans_tens.size(1) - 6
     # process first observation
     obs_raw = trans_tens[:, 0:3, :, :]

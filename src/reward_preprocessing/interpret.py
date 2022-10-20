@@ -39,7 +39,7 @@ def defaults():
     vis_type = "traditional"  # "traditional" (gradient-based) or "dataset"
     # Name of the layer to visualize. To figure this out run interpret and the
     # available layers will be printed. For additional notes see interpret doc comment.
-    layer_name = "reshaped_out"  
+    layer_name = "reshaped_out"
     num_features = 2  # Number of features to use for visualization.
 
     locals()  # quieten flake8
