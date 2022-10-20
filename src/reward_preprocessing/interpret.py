@@ -31,7 +31,8 @@ def defaults():
     # Rollouts to use vor dataset visualization
     rollout_path = None
     n_expert_demos = None
-    # Limit the number of observations to use for visualization, -1 for all
+    # Limit the number of observations to use for dim reduction, -1 for all.
+    # The RL Vision paper uses "a few thousand" observations.
     limit_num_obs = -1
     pyplot = False  # Plot images as pyplot figures
     vis_scale = 4  # Scale the visualization img by this factor
@@ -109,15 +110,12 @@ def interpret(
     # Get observations from trajectories
     observations = np.concatenate([traj.obs for traj in expert_trajs])
 
-    print("Available layers:")
-    print(get_model_layers(rew_net))
+    custom_logger.log("Available layers:")
+    custom_logger.log(get_model_layers(rew_net))
 
-    # vis traditional -> channel first,
-    # vid dataset -> channel last
-    if vis_type == "traditional":
-        # Transpose all observations because lucent expects channels first (after
-        # batch dim)
-        observations = np.transpose(observations, (0, 3, 1, 2))
+    # Transpose all observations because lucent expects channels first (after
+    # batch dim)
+    observations = np.transpose(observations, (0, 3, 1, 2))
 
     if limit_num_obs < 0:
         obses = observations
@@ -136,7 +134,7 @@ def interpret(
         activation_fn="sigmoid",
     )
 
-    print(f"Dimensionality reduction: {nmf.channel_dirs.shape}")
+    custom_logger.log(f"Dimensionality reduction: {nmf.channel_dirs.shape}")
 
     # Visualization
     num_features = nmf.features
@@ -171,7 +169,7 @@ def interpret(
             )
     elif vis_type == "dataset":
         for feature_i in range(num_features):
-            print(f"Feature {feature_i}")
+            custom_logger.log(f"Feature {feature_i}")
 
             img, indices = nmf.vis_dataset_thumbnail(
                 feature=feature_i, num_mult=4, expand_mult=1
