@@ -162,7 +162,12 @@ class LayerNMF:
         self.patch_h = self.obses_full.shape[2] / activations.shape[2]
         self.patch_w = self.obses_full.shape[3] / activations.shape[3]
         if self.reducer is None:  # No dimensionality reduction.
-            self.acts_reduced = activations
+            # Activations are only used for dim reduction and to determine the shape
+            # of the feauteres. The former is compatible between torch and numpy (both
+            # support .shape), so calling .numpy() is not really necessary. However,
+            # for consistency we do it here. Consequently, self.acts_reduced is always
+            # a numpy array.
+            self.acts_reduced = activations.numpy()
             self.channel_dirs = np.eye(self.acts_reduced.shape[1])
             self.transform = lambda acts: acts.copy()
             self.inverse_transform = lambda acts: acts.copy()
