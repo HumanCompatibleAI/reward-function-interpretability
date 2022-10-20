@@ -67,17 +67,15 @@ def interpret(
     """Run interpretability techniques.
 
     Args:
-        For expalanation of params see sacred config,
+        For explanation of params see sacred config,
         i.e. comments in defaults function above.
     """
     if pyplot:
         matplotlib.use("TkAgg")
 
+    device = "cuda" if th.cuda.is_available() else "cpu"
     # Load reward not pytorch module
-    if th.cuda.is_available():
-        rew_net = th.load(str(reward_path))  # Load from same device as saved
-    else:  # CUDA not available
-        rew_net = th.load(str(reward_path), map_location=th.device("cpu"))  # Force CPU
+    rew_net = th.load(str(reward_path), map_location=th.device(device))
 
     # Set up imitation-style logging
     custom_logger, log_dir = common_config.setup_logging()
