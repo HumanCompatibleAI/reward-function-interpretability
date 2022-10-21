@@ -33,7 +33,6 @@ def defaults():
     reward_path = None
     # Rollouts to use vor dataset visualization
     rollout_path = None
-    n_expert_demos = None
     # Limit the number of observations to use for dim reduction.
     # The RL Vision paper uses "a few thousand" observations.
     limit_num_obs = 2048
@@ -62,7 +61,6 @@ def interpret(
     common: dict,  # Sacred magic: This dict will contain the sacred config for common.
     reward_path: Optional[str],
     rollout_path: str,
-    n_expert_demos: Optional[int],
     limit_num_obs: int,
     pyplot: bool,
     vis_scale: int,
