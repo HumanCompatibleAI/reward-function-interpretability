@@ -153,9 +153,10 @@ def interpret(
     )
 
     custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
+    # If these are equal, then of course there is no actual reduction.
 
     # Visualization
-    num_features = nmf.features
+    num_features = nmf.channel_dirs.shape[0]
     rows, columns = 1, num_features
     if pyplot:
         fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches

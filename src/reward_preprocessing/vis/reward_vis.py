@@ -13,6 +13,7 @@ import torch as th
 
 from reward_preprocessing.ext.channel_reducer import ChannelReducer
 from reward_preprocessing.vis.attribution import get_acts, get_attr
+import reward_preprocessing.vis.objectives as objectives_rfi
 
 
 def argmax_nd(x: np.ndarray, axes: list[int], *, max_rep=np.inf, max_rep_strict=None):
@@ -218,7 +219,7 @@ class LayerNMF:
 
         obj = sum(
             [
-                objectives.direction_neuron(
+                objectives_rfi.direction_neuron_dim_agnostic(
                     self.layer_name, self.channel_dirs[feature], batch=feature
                 )
                 for feature in feature_list
