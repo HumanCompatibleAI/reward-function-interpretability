@@ -5,6 +5,7 @@ import PIL
 from imitation.data import rollout, types
 import numpy as np
 import torch as th
+from imitation.rewards.reward_nets import RewardNet
 from torch import nn as nn
 from torch.utils import data as torch_data
 
@@ -161,7 +162,7 @@ class TensorTransitionModel(nn.Module):
     """Wraps an imitation-style reward net such that it accepts transitions tensors.
     Dones will always be a batch of zeros."""
 
-    def __init__(self, rew_net: nn.Module):
+    def __init__(self, rew_net: RewardNet):
         """rew_net should be a reward net that takes in (obs, act, next_obs, done) as
         arguments."""
         super().__init__()
@@ -171,10 +172,15 @@ class TensorTransitionModel(nn.Module):
         # Input data must be between 0 and 1 because that is what
         # tensor_to_transition expects.
         obs, act, next_obs = tensor_to_transition(transition_tensor)
-        # The reward net expects values from 0 to 255 (which it will then normalize).
-        # Therefore:
-        obs = obs * 255
-        next_obs = next_obs * 255
+
+        if self.rew_net.normalize_images:
+            # Imitation reward nets have this flag which basically decides whether
+            # observations will be divided by 255 (before being passed to the conv
+            # layers). If this flag is set they expect images to be between 0 and 255.
+            # The interpret and lucent code provides images between 0 and 1, so we
+            # scale up.
+            obs = obs * 255
+            next_obs = next_obs * 255
 
         dones = th.zeros_like(obs[:, 0])
         return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)
