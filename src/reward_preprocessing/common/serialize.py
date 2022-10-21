@@ -1,3 +1,6 @@
+"""Extend imitation's serialization by adding an additional reward net that can be
+deserialized to the registry. This works, but we ended up using different
+deserialization. We might end up never using this, in that case this can be removed."""
 from imitation.rewards.serialize import ValidateRewardFn, _make_functional
 from imitation.rewards.serialize import load_reward as imitation_load_reward
 from imitation.rewards.serialize import reward_registry

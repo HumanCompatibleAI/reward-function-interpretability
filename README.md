@@ -25,6 +25,8 @@ You can also use docker by building the image and running the scripts from insid
 
 ## Usage
 
+Use `print_config` to get details of the config params of the sacred scripts.
+
 ## Code Structure
 
 - `src`
@@ -42,6 +44,17 @@ You can also use docker by building the image and running the scripts from insid
     - `vis`
     - `interpret.py`: The main script that provides the functionality for this project.
 - `tests`
+
+## Philosophy on Dependencies
+
+### Lucent
+
+Unless there is an outright bug in `lucent`, when extending `lucent` add the code here and leave the dependency to vanilla lucent (see e.g. `reward_preprocessing.vis.objectives`).
+
+### Imitation
+
+So far we tried to keep everything as compatible with `imitation` as possible to the point where this project could (almost) be an extension for imitation.
+This also gives us imitation's logging and sacred integration for free.
 
 ## Tests
 Run
