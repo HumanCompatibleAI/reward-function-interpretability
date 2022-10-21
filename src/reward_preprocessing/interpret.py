@@ -1,10 +1,8 @@
 import os.path as osp
-from typing import Any, Optional, Sequence, cast
+from typing import Any, Optional
 
 from PIL import Image
-from imitation.data import types
 from imitation.scripts.common import common as common_config
-from imitation.scripts.common import demonstrations
 from lucent.modelzoo.util import get_model_layers
 from lucent.optvis import transform
 import matplotlib
@@ -15,7 +13,6 @@ from sacred.observers import FileStorageObserver
 import torch as th
 import wandb
 
-from reward_preprocessing.common.networks import FourDimOutput, NextStateOnlyModel
 from reward_preprocessing.common.utils import (
     TensorTransitionModel,
     rollouts_to_dataloader,

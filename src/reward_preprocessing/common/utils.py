@@ -3,9 +3,9 @@ from typing import Tuple
 
 import PIL
 from imitation.data import rollout, types
+from imitation.rewards.reward_nets import RewardNet
 import numpy as np
 import torch as th
-from imitation.rewards.reward_nets import RewardNet
 from torch import nn as nn
 from torch.utils import data as torch_data
 
