@@ -379,6 +379,9 @@ class LayerNMF:
             expand_mult: Multiplier for the size of the thumbnails.
             max_rep: Maximum number of times the same observation can appear.
         """
+        logging.warning(
+            "Dataset-based feature visualization seems to still have some problems."
+        )
         if max_rep is None:
             max_rep = num_mult
         if self.acts_reduced.shape[0] < num_mult**2:
