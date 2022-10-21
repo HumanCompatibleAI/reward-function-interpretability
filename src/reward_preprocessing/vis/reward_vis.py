@@ -127,6 +127,12 @@ class LayerNMF:
                 before doing NMF. This is especially important if activations (such as
                 reward outpu) can have negative values.
         """
+        if attr_layer_name is not None:
+            logging.warning(
+                "Doing gradient-based feature visualization on attributions might not "
+                "work 100% correctly yet."
+            )
+
         self.model = model
         self.layer_name = layer_name
         self.obses = obses
@@ -304,7 +310,9 @@ class LayerNMF:
         Args:
             feature: The feature to visualize. Can be an integer or a list of integers.
         """
-
+        logging.warning(
+            "Dataset-based feature visualization seems to still have some problems."
+        )
         acts_h, acts_w = self.acts_reduced.shape[2:]
         zoom_h = subdiv_mult - (subdiv_mult - 1) / (acts_h + 2)
         zoom_w = subdiv_mult - (subdiv_mult - 1) / (acts_w + 2)
