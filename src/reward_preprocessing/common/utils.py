@@ -24,7 +24,7 @@ def make_transition_to_tensor(num_acts):
 
     def transition_to_tensor(transition):
         obs = transition["obs"]
-        act = transition["acts"]
+        act = int(transition["acts"])
         next_obs = transition["next_obs"]
         transp_obs = np.transpose(obs, (2, 0, 1))
         obs_height = transp_obs.shape[1]
@@ -142,3 +142,19 @@ def process_image_tensor(obs: th.Tensor) -> th.Tensor:
     clipped_obs = th.clamp(obs, 0, 1)
     transposed = th.permute(clipped_obs, (0, 2, 3, 1))
     return transposed
+
+
+class TensorTransitionModel(nn.Module):
+    """Wraps an imitation-style reward net such that it accepts transitions tensors.
+    Dones will always be a batch of zeros."""
+
+    def __init__(self, rew_net: nn.Module):
+        """rew_net should be a reward net that takes in (obs, act, next_obs, done) as
+        arguments."""
+        super().__init__()
+        self.rew_net = rew_net
+
+    def forward(self, transition_tensor: th.Tensor) -> th.Tensor:
+        obs, act, next_obs = tensor_to_transition(transition_tensor)
+        dones = th.zeros_like(obs[:, 0])
+        return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)

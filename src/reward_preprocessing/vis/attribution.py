@@ -3,6 +3,7 @@
 import lucent.optvis.render as render
 import numpy as np
 import torch as th
+from torch import nn
 
 # import itertools
 # from lucent.misc.gradient_override import gradient_override_map
@@ -25,20 +26,22 @@ import torch as th
 #     return {"MaxPool": MaxPoolGrad}
 
 
-def get_acts(model, layer_name, obses) -> th.Tensor:
+def get_acts(model: nn.Module, layer_name: str, obses: th.Tensor) -> th.Tensor:
     # with tf.Graph().as_default(), tf.Sess&ion():
     # t_obses = tf.placeholder_with_default(
     #     obses.astype(np.float32), (None, None, None, None)
     # )
-    t_obses = th.from_numpy(obses.astype(np.float32))
-    hook = render.hook_model(model, t_obses)  # , t_obses)
-    # Perform forward pass for model
+    # t_obses = th.from_numpy(obses.astype(np.float32))
+    hook = render.hook_model(model, obses)
     # model(state=None, action=None, next_state=t_obses, done=None)
-    model(t_obses)
-    # model((None, None, t_obses, None))  # (state, action, next_state, done)
+
+    # Perform forward pass through input to hook activations.
+    model(obses)
+
+    # Get activations at layer.
     t_acts = hook(layer_name)
 
-    # Reward activations might be 1 dimensional (apart from the batch dimension) e.g.
+    # Reward activations might be 2 dimensional (scalar + batch dimension) e.g.
     # for linear layers. In this case we unsqueeze.
     if len(t_acts.shape) == 2:
         t_acts = t_acts.unsqueeze(-1).unsqueeze(-1)

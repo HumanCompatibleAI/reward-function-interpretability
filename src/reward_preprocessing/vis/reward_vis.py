@@ -229,20 +229,33 @@ class LayerNMF:
                 l2_layer_name is not None
             ), "l2_layer_name must be specified if l2_coeff is non-zero"
             obj -= objectives.L2(l2_layer_name) * l2_coeff
-        param_f = lambda: param.image(64, batch=len(feature_list))
+        input_shape = tuple(self.obses.shape[1:])
+        param_f = lambda: param.image(
+            channels=input_shape[0],
+            h=input_shape[1],
+            w=input_shape[2],
+            batch=len(feature_list),
+        )
         return render.render_vis(
             self.model,
             obj,
             param_f=param_f,
             transforms=transforms,
-            # To fix order of transforms.
-            # TODO: Should we enable preprocess here?
-            # preprocess=False,
+            # Don't use this preprocessing, this uses some default normalization for
+            # ImageNet torchvision models, which of course assumes 3 channels and square
+            # images as inputs
+            preprocess=False,
             # This makes it so input is passed through the model at least ones, which
             # is necessary to get the feature activations.
             verbose=True,
-            # We work with images of size 64, the model does not accept arbitrary sizes.
-            fixed_image_size=64,
+            # We work with fixed image sizes since our models do not accept arbitrary
+            # sizes. If this is set to None (the default), the image will be upsampled
+            # to (3, 224, 224).
+            # Image size should be the spatial size (excluding channels).
+            fixed_image_size=input_shape[1:],
+            # Disable because our inputs ("images") are not actually images but
+            # multidimensional tensors.
+            show_image=False,
         )[-1]
 
     def pad_obses(self, *, expand_mult=1):

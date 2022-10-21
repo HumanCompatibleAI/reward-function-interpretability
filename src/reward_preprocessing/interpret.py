@@ -5,6 +5,7 @@ from PIL import Image
 from imitation.data import types
 from imitation.scripts.common import common as common_config
 from imitation.scripts.common import demonstrations
+from lucent.modelzoo.util import get_model_layers
 from lucent.optvis import transform
 import matplotlib
 from matplotlib import pyplot as plt
@@ -15,6 +16,10 @@ import torch as th
 import wandb
 
 from reward_preprocessing.common.networks import FourDimOutput, NextStateOnlyModel
+from reward_preprocessing.common.utils import (
+    TensorTransitionModel,
+    rollouts_to_dataloader,
+)
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
 interpret_ex = Experiment(
@@ -31,9 +36,9 @@ def defaults():
     # Rollouts to use vor dataset visualization
     rollout_path = None
     n_expert_demos = None
-    # Limit the number of observations to use for dim reduction, -1 for all.
+    # Limit the number of observations to use for dim reduction.
     # The RL Vision paper uses "a few thousand" observations.
-    limit_num_obs = -1
+    limit_num_obs = 2048
     pyplot = False  # Plot images as pyplot figures
     vis_scale = 4  # Scale the visualization img by this factor
     vis_type = "traditional"  # "traditional" (gradient-based) or "dataset"
@@ -41,6 +46,8 @@ def defaults():
     # available layers will be printed. For additional notes see interpret doc comment.
     layer_name = "reshaped_out"
     num_features = 2  # Number of features to use for visualization.
+    # Path to the GAN model. If None simpy visualize reward net without the use of GAN.
+    gan_path = None
 
     locals()  # quieten flake8
 
@@ -64,6 +71,7 @@ def interpret(
     vis_type: str,
     layer_name: str,
     num_features: int,
+    gan_path: Optional[str],
 ):
     """Run interpretability techniques.
 
@@ -71,70 +79,85 @@ def interpret(
         For explanation of params see sacred config,
         i.e. comments in defaults function above.
     """
+    if limit_num_obs <= 0:
+        raise ValueError(
+            f"limit_num_obs must be positive, got {limit_num_obs}. "
+            f"It used to be possible to specify -1 to use all observations, however "
+            f"I don't think we actually ever want to use all so this is currently not "
+            f"implemented."
+        )
+    # Set up imitation-style logging.
+    custom_logger, log_dir = common_config.setup_logging()
+    wandb_logging = "wandb" in common["log_format_strs"]
+
     if pyplot:
         matplotlib.use("TkAgg")
 
     device = "cuda" if th.cuda.is_available() else "cpu"
+
     # Load reward not pytorch module
     rew_net = th.load(str(reward_path), map_location=th.device(device))
 
-    # Set up imitation-style logging
-    custom_logger, log_dir = common_config.setup_logging()
+    if gan_path is None:
+        # Imitation reward nets have 4 input args, lucent expects models to only have 1.
+        # This wrapper makes it so rew_net accepts a single input which is a
+        # transition tensor.
+        rew_net = TensorTransitionModel(rew_net)
+    else:  # Use GAN
+        # Combine rew net with GAN.
+        raise NotImplementedError()
 
-    wandb_logging = "wandb" in common["log_format_strs"]
-
-    rew_net.eval()
-
-    if vis_type == "traditional":
-        rew_net = rew_net.cnn_regressor
-    elif vis_type == "dataset":
-        # See description of class for explanation
-        rew_net = NextStateOnlyModel(rew_net)
-
-    # rew_net = ChannelsFirstToChannelsLast(rew_net)
+    rew_net.eval()  # Eval for visualization.
 
     # This is due to how lucent works
-    # TODO: this should probably be unified instead of having many different exceptions
-    if vis_type == "traditional":
-        rew_net = FourDimOutput(rew_net)
+    # if vis_type == "traditional":
+    #     rew_net = FourDimOutput(rew_net)
     # Argument venv not necessary, as it is ignored for SupvervisedRewardNet
     # rew_fn = load_reward("SupervisedRewardNet", reward_path, venv=None)
-    # trajs = types.load(rollout_path)
-
-    # Load trajectories for dataset visualization
-    expert_trajs = demonstrations.load_expert_trajs(rollout_path, n_expert_demos)
-    assert isinstance(expert_trajs[0], types.TrajectoryWithRew)
-    expert_trajs = cast(Sequence[types.TrajectoryWithRew], expert_trajs)
-    from lucent.modelzoo.util import get_model_layers
-
-    # Get observations from trajectories
-    observations = np.concatenate([traj.obs for traj in expert_trajs])
 
     custom_logger.log("Available layers:")
     custom_logger.log(get_model_layers(rew_net))
 
-    # Transpose all observations because lucent expects channels first (after
-    # batch dim)
-    observations = np.transpose(observations, (0, 3, 1, 2))
-
-    if limit_num_obs < 0:
-        obses = observations
-    else:
-        custom_logger.log(
-            f"Limiting number of observations to {limit_num_obs} of "
-            f"{len(observations)} total."
+    # Load the inputs into the model that are used to do dimensionality reduction and
+    # getting the shape of activations.
+    if gan_path is None:  # This is when analyzing a reward net only.
+        # Load trajectories and transform them into transition tensors.
+        transition_tensor_dataloader = rollouts_to_dataloader(
+            rollouts_paths=rollout_path,
+            num_acts=15,
+            batch_size=limit_num_obs,
         )
-        obses = observations[:limit_num_obs]
+        # For dim reductions and gettings activations in LayerNMF we want one big batch
+        # of limit_num_obs transitions. So, we simply use that as batch_size and sample
+        # the first element from the dataloader.
+        # for batch in transition_tensor_dataloader:
+        #     transition_tensor = batch
+        #     break
+        inputs = next(iter(transition_tensor_dataloader))
+    else:  # When using GAN.
+        # Inputs should be some samples of input vectors? Not sure if this is the best
+        # way to do this, there might be better options.
+        # The important part is that lucent expects 4D tensors as inputs, so increase
+        # dimensionality accordingly.
+        raise NotImplementedError()
+
+    # The model to analyse should be a torch module that takes a single input.
+    # In our case this is one of the following:
+    # A reward net that accepts transition tensors
+    # A combo of GAN and reward net that accepts latent inputs vectors
+    model_to_analyse = rew_net
     nmf = LayerNMF(
-        model=rew_net,
+        model=model_to_analyse,
         features=num_features,
         layer_name=layer_name,
         # layer_name="cnn_regressor_avg_pool",
-        obses=obses,
+        # "obses", i.e. input samples are used for dim reduction (if features is not
+        # None) and for determining the shape of the features.
+        obses=inputs,
         activation_fn="sigmoid",
     )
 
-    custom_logger.log(f"Dimensionality reduction: {nmf.channel_dirs.shape}")
+    custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
 
     # Visualization
     num_features = nmf.features
