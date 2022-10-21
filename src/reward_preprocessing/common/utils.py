@@ -24,8 +24,17 @@ def make_transition_to_tensor(num_acts):
 
     def transition_to_tensor(transition):
         obs = transition["obs"]
+        # Only normalize for integer types.
+        if np.issubdtype(obs.dtype, np.integer):
+            obs = obs / 255.0
+            # For floats we don't divide by 255.0.
         act = int(transition["acts"])
         next_obs = transition["next_obs"]
+        # Only normalize for integer types.
+        if np.issubdtype(next_obs.dtype, np.integer):
+            next_obs = next_obs / 255.0
+            # For floats we don't divide by 255.0.
+
         transp_obs = np.transpose(obs, (2, 0, 1))
         obs_height = transp_obs.shape[1]
         obs_width = transp_obs.shape[2]
@@ -37,7 +46,7 @@ def make_transition_to_tensor(num_acts):
         assert transp_next_obs.shape[1] == obs_height
         assert transp_next_obs.shape[2] == obs_width
         tensor_transition = np.concatenate(
-            [transp_obs / 255.0, boosted_act, transp_next_obs / 255.0],
+            [transp_obs, boosted_act, transp_next_obs],
             axis=0,
         )
         return tensor_transition
@@ -121,7 +130,11 @@ def process_image_array(img: np.array) -> np.array:
 def tensor_to_transition(
     trans_tens: th.Tensor,
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
-    """Turn a generated 'transition tensor' batch into a batch of bona fide transitions."""
+    """Turn a generated 'transition tensor' batch into a batch of bona fide
+    transitions. Output observations will have channel dim last, activations will be
+    output as one-hot vectors.
+    Assumes input transition tensor has values between 0 and 1.
+    """
     num_acts = trans_tens.size(1) - 6
     # process first observation
     obs_raw = trans_tens[:, 0:3, :, :]
@@ -155,6 +168,13 @@ class TensorTransitionModel(nn.Module):
         self.rew_net = rew_net
 
     def forward(self, transition_tensor: th.Tensor) -> th.Tensor:
+        # Input data must be between 0 and 1 because that is what
+        # tensor_to_transition expects.
         obs, act, next_obs = tensor_to_transition(transition_tensor)
+        # The reward net expects values from 0 to 255 (which it will then normalize).
+        # Therefore:
+        obs = obs * 255
+        next_obs = next_obs * 255
+
         dones = th.zeros_like(obs[:, 0])
         return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)

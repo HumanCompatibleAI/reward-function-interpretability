@@ -19,6 +19,7 @@ from reward_preprocessing.common.networks import FourDimOutput, NextStateOnlyMod
 from reward_preprocessing.common.utils import (
     TensorTransitionModel,
     rollouts_to_dataloader,
+    tensor_to_transition,
 )
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
@@ -130,9 +131,6 @@ def interpret(
         # For dim reductions and gettings activations in LayerNMF we want one big batch
         # of limit_num_obs transitions. So, we simply use that as batch_size and sample
         # the first element from the dataloader.
-        # for batch in transition_tensor_dataloader:
-        #     transition_tensor = batch
-        #     break
         inputs = next(iter(transition_tensor_dataloader))
     else:  # When using GAN.
         # Inputs should be some samples of input vectors? Not sure if this is the best
@@ -175,10 +173,21 @@ def interpret(
             # uncurry_pad_i2_of_4,
         ]
 
-        img = nmf.vis_traditional(transforms=transforms)
+        opt_transitions = nmf.vis_traditional(transforms=transforms)
+        # This gives as an array that optimizes the objectives, in the shape of the
+        # input which is a transition tensor. However, lucent helpfully transposes the\
+        # output such that the channel dimension is last. Our functions expect channel
+        # dim before spatial dims, so we need to transpose it back.
+        opt_transitions = opt_transitions.transpose(0, 3, 1, 2)
+        # Split the optimized transitions, one fore each feature, into separate
+        # observations and actions. This function only works with torch tensors.
+        obs, acts, next_obs = tensor_to_transition(th.tensor(opt_transitions))
+        # obs and next_obs output have channel dim last.
+        # acts is output as one-hot vector.
+
         # Set of images, one for each feature, add each to plot
-        for feature_i in range(img.shape[0]):
-            sub_img = img[feature_i]
+        for feature_i in range(next_obs.shape[0]):
+            sub_img = next_obs[feature_i]
             plot_img(
                 columns,
                 custom_logger,
