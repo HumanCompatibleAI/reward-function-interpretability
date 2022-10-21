@@ -99,7 +99,7 @@ def eval_reward(
 
 
 def main():
-    observer = FileStorageObserver(osp.join("output", "sacred", "eval_supervised"))
+    observer = FileStorageObserver(osp.join("../output", "sacred", "eval_supervised"))
     eval_supervised_ex.observers.append(observer)
     eval_supervised_ex.run_commandline()
 
