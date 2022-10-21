@@ -107,12 +107,6 @@ def interpret(
 
     rew_net.eval()  # Eval for visualization.
 
-    # This is due to how lucent works
-    # if vis_type == "traditional":
-    #     rew_net = FourDimOutput(rew_net)
-    # Argument venv not necessary, as it is ignored for SupvervisedRewardNet
-    # rew_fn = load_reward("SupervisedRewardNet", reward_path, venv=None)
-
     custom_logger.log("Available layers:")
     custom_logger.log(get_model_layers(rew_net))
 

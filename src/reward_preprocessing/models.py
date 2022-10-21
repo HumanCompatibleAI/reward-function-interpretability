@@ -7,9 +7,7 @@ from imitation.util.networks import build_cnn
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 import torch as th
-import torch.nn as nn
 
-from reward_preprocessing.common.networks import ReshapeLayer
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
 logger = logging.getLogger(__name__)
