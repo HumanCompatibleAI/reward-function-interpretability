@@ -1,4 +1,4 @@
-"""Extend imitation's serialization by adding an additional reward net that can be
+"""Extend imitation's serialization by adding a reward net that can be
 deserialized to the registry. This works, but we ended up using different
 deserialization. We might end up never using this, in that case this can be removed."""
 from imitation.rewards.serialize import ValidateRewardFn, _make_functional
@@ -20,7 +20,9 @@ def _loader_helper(path, _, **kwargs):
 
 
 # Register our custom reward so that imitation internals can e.g. load the specified
-# type. We register in a very similar way to imitation.reward.serialize
+# type. We register in a very similar way to imitation.reward.serialize.
+# The key is used is passed to the loader function in imitation to determine which
+# loader to use for a given path to a saved reward net.
 reward_registry.register(
     key="SupervisedRewardNet",
     # Validate the shape returned by the reward net
