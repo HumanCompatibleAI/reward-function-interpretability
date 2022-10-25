@@ -3,7 +3,6 @@ from functools import reduce
 import logging
 from typing import Optional
 
-import lucent.optvis.objectives as objectives
 import lucent.optvis.param as param
 import lucent.optvis.render as render
 import lucent.optvis.transform as transform

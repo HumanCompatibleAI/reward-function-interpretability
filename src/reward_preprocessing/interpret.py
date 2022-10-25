@@ -1,5 +1,5 @@
 import os.path as osp
-from typing import Any, Optional
+from typing import Optional
 
 from PIL import Image
 from imitation.scripts.common import common as common_config
@@ -8,7 +8,6 @@ from lucent.optvis import transform
 import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
-from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import torch as th
 import wandb
@@ -18,31 +17,8 @@ from reward_preprocessing.common.utils import (
     rollouts_to_dataloader,
     tensor_to_transition,
 )
+from reward_preprocessing.scripts.config.interpret import interpret_ex
 from reward_preprocessing.vis.reward_vis import LayerNMF
-
-interpret_ex = Experiment("interpret", ingredients=[common_config.common_ingredient])
-
-
-@interpret_ex.config
-def defaults():
-    # Path to the learned supervised reward net
-    reward_path = None
-    # Rollouts to use vor dataset visualization
-    rollout_path = None
-    # Limit the number of observations to use for dim reduction.
-    # The RL Vision paper uses "a few thousand" observations.
-    limit_num_obs = 2048
-    pyplot = False  # Plot images as pyplot figures
-    vis_scale = 4  # Scale the visualization img by this factor
-    vis_type = "traditional"  # "traditional" (gradient-based) or "dataset"
-    # Name of the layer to visualize. To figure this out run interpret and the
-    # available layers will be printed. For additional notes see interpret doc comment.
-    layer_name = "reshaped_out"
-    num_features = 2  # Number of features to use for visualization.
-    # Path to the GAN model. If None simply visualize reward net without the use of GAN.
-    gan_path = None
-
-    locals()  # quieten flake8
 
 
 @interpret_ex.main
