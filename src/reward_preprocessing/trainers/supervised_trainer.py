@@ -1,5 +1,6 @@
 from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple, Type
 
+from gym import spaces
 from imitation.algorithms import base
 from imitation.data import types
 from imitation.data.rollout import flatten_trajectories_with_rew
@@ -9,24 +10,6 @@ from imitation.util import logger as imit_logger
 import torch as th
 from torch.utils import data as th_data
 from tqdm import tqdm
-
-
-def _data_dict_to_model_args_and_target(
-    data_dict: Dict[str, th.Tensor], device: str
-) -> Tuple[tuple, th.Tensor]:
-    """Move data to correct device and return for model args.
-
-    Args:
-        data_dict: Dictionary of data from Transitions dataloader to be passed to model.
-        device: Device to move data to.
-    """
-    obs = data_dict["obs"].to(device)
-    act = data_dict["acts"].to(device)
-    next_obs = data_dict["next_obs"].to(device)
-    done = data_dict["dones"].to(device)
-    target = data_dict["rews"].to(device)
-
-    return (obs, act, next_obs, done), target
 
 
 class SupervisedTrainer(base.BaseImitationAlgorithm):
@@ -166,7 +149,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.reward_net.train()
         for batch_idx, data_dict in enumerate(self._train_loader):
             self._global_batch_step += 1
-            model_args, target = _data_dict_to_model_args_and_target(data_dict, device)
+            model_args, target = self._data_dict_to_model_args_and_target(
+                data_dict, device
+            )
 
             self._opt.zero_grad()
             output = self.reward_net(*model_args)
@@ -186,7 +171,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         test_loss = 0.0
         with th.no_grad():
             for data_dict in self._test_loader:
-                model_args, target = _data_dict_to_model_args_and_target(
+                model_args, target = self._data_dict_to_model_args_and_target(
                     data_dict, device
                 )
                 output = self.reward_net(*model_args)
@@ -196,3 +181,32 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.reward_net.train()
 
         return test_loss
+
+    def _data_dict_to_model_args_and_target(
+        self, data_dict: Dict[str, th.Tensor], device: str
+    ) -> Tuple[tuple, th.Tensor]:
+        """Move data to correct device and return for model args.
+        Transform actions into one-hot vectors, since that is the format reward nets
+        expect.
+
+        Args:
+            data_dict: Dictionary of data from Transitions dataloader to be passed to
+                model.
+            device: Device to move data to.
+        """
+        obs = data_dict["obs"].to(device)
+        act = data_dict["acts"].to(device)
+        next_obs = data_dict["next_obs"].to(device)
+        done = data_dict["dones"].to(device)
+        target = data_dict["rews"].to(device)
+
+        if isinstance(self.reward_net.action_space, spaces.Discrete):
+            num_actions = self.reward_net.action_space.n
+        else:
+            raise NotImplementedError("Trainer only supports discrete action spaces.")
+        if act.dtype == th.float:
+            self.logger.warn("Actions are of float type. Converting to int.")
+            act = act.long()  # long necessary for one_hot function below.
+        act = th.nn.functional.one_hot(act, num_actions)
+
+        return (obs, act, next_obs, done), target
