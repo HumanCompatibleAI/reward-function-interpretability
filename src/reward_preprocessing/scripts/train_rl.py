@@ -1,9 +1,9 @@
-"""Thin wrapper around imitation's train_rl script to """
+"""Thin wrapper around imitation's train_rl script to add named configs."""
 from imitation.scripts.config.train_rl import train_rl_ex
 from imitation.scripts.train_rl import main_console
 
 from reward_preprocessing.env.maze import use_config
-from reward_preprocessing.ext.impala import ImpalaGMPolicy, ImpalaModel
+from reward_preprocessing.ext.impala import ImpalaGMPolicy
 import reward_preprocessing.policies.base
 
 use_config(train_rl_ex)
@@ -11,14 +11,14 @@ use_config(train_rl_ex)
 
 @train_rl_ex.named_config
 def coinrun_aisc_fixed_coin():
-    """Coinrun with hparams from goal misgeneralization paper."""
-    # Hparams inferred from https://github.com/jbkjr/train-procgen-pytorch/blob/master/hyperparams/procgen/config.yml
+    """Coinrun with hyperparams from goal misgeneralization paper."""
+    # Hyperparams inferred from
+    # https://github.com/jbkjr/train-procgen-pytorch/blob/master/hyperparams/procgen/config.yml
     # (hard-500)
     # This is the procgen version from procgenAISC, but the version that has the coin
     # always fixed at the end of the level, as in the original coinrun.
     train = dict(
         policy_cls=reward_preprocessing.policies.base.ImpalaPolicy,
-        # policy_kwargs=dict(features_extractor_class=ImpalaModel),
     )
     policy_save_interval = 1_000_000
     common = dict(

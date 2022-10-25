@@ -31,12 +31,6 @@ apply to arbitrary rank tensors. It saves lots of annoying reshaping.
 """
 
 import numpy as np
-
-# I assume this was fix for some problems with different versions of sklearn?
-# We shouldn't need this.
-# try:
-#     from sklearn.decomposition.base import BaseEstimator
-# except (AttributeError, ModuleNotFoundError):
 from sklearn.base import BaseEstimator
 import sklearn.decomposition
 
@@ -56,7 +50,7 @@ class ChannelReducer(object):
         Constructor for ChannelReducer.
 
         Inputs:
-          n_components: Number of dimensions to reduce inner most dimension to.
+          n_components: Number of dimensions to reduce innermost dimension to.
           reduction_alg: A string or sklearn.decomposition class. Defaults to
             "NMF" (non-negative matrix factorization). Other options include:
             "PCA", "FastICA", and "MiniBatchDictionaryLearning". The name of any of

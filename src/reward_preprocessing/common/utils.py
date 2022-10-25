@@ -35,7 +35,6 @@ def make_transition_to_tensor(num_acts):
         # Only normalize for integer types.
         if np.issubdtype(next_obs.dtype, np.integer):
             next_obs = next_obs / 255.0
-            # For floats we don't divide by 255.0.
 
         transp_obs = np.transpose(obs, (2, 0, 1))
         obs_height = transp_obs.shape[1]
@@ -103,9 +102,13 @@ def rollouts_to_dataloader(rollouts_paths, num_acts, batch_size):
     return rollout_dataloader
 
 
-def visualize_samples(samples: np.ndarray, num_acts: int, save_dir):
-    """Visualize samples from a GAN."""
+def visualize_samples(samples: np.ndarray, save_dir):
+    """Visualize samples from a GAN. Saves obs and next obs as png files, and takes
+    mean over height and width dimensions to turn act into a numpy array, before
+    saving it.
+    """
     for i, transition in enumerate(samples):
+        num_acts = transition.shape[0] - 6
         s = transition[0:3, :, :]
         s = process_image_array(s)
         act = transition[3 : 3 + num_acts, :, :]
@@ -120,7 +123,7 @@ def visualize_samples(samples: np.ndarray, num_acts: int, save_dir):
         np.save(Path(save_dir) / str(i) / "act_vec.npy", act_slim)
 
 
-def process_image_array(img: np.array) -> np.array:
+def process_image_array(img: np.ndarray) -> np.ndarray:
     """Process a numpy array for feeding into PIL.Image.fromarray."""
     up_multiplied = img * 255
     clipped = np.clip(up_multiplied, 0, 255)
@@ -159,9 +162,10 @@ def process_image_tensor(obs: th.Tensor) -> th.Tensor:
     return transposed
 
 
-class TensorTransitionModel(nn.Module):
+class TensorTransitionWrapper(nn.Module):
     """Wraps an imitation-style reward net such that it accepts transitions tensors.
-    Dones will always be a batch of zeros."""
+    Dones will always be a batch of zeros.
+    """
 
     def __init__(self, rew_net: RewardNet):
         """rew_net should be a reward net that takes in (obs, act, next_obs, done) as
@@ -174,6 +178,7 @@ class TensorTransitionModel(nn.Module):
         # tensor_to_transition expects.
         obs, act, next_obs = tensor_to_transition(transition_tensor)
 
+        # TODO: Remove this once this becomes superfluous.
         if self.rew_net.normalize_images:
             # Imitation reward nets have this flag which basically decides whether
             # observations will be divided by 255 (before being passed to the conv

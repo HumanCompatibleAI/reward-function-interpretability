@@ -1,5 +1,5 @@
 import os.path as osp
-from typing import Any, Optional
+from typing import Optional
 
 from PIL import Image
 from imitation.scripts.common import common as common_config
@@ -8,57 +8,25 @@ from lucent.optvis import transform
 import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
-from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import torch as th
 import wandb
 
 from reward_preprocessing.common.utils import (
-    TensorTransitionModel,
+    TensorTransitionWrapper,
     rollouts_to_dataloader,
     tensor_to_transition,
 )
+from reward_preprocessing.scripts.config.interpret import interpret_ex
 from reward_preprocessing.vis.reward_vis import LayerNMF
-
-interpret_ex = Experiment(
-    "interpret",
-    ingredients=[common_config.common_ingredient]
-    # ingredients=[demonstrations.demonstrations_ingredient],
-)
-
-
-@interpret_ex.config
-def defaults():
-    # Path to the learned supervised reward net
-    reward_path = None
-    # Rollouts to use vor dataset visualization
-    rollout_path = None
-    # Limit the number of observations to use for dim reduction.
-    # The RL Vision paper uses "a few thousand" observations.
-    limit_num_obs = 2048
-    pyplot = False  # Plot images as pyplot figures
-    vis_scale = 4  # Scale the visualization img by this factor
-    vis_type = "traditional"  # "traditional" (gradient-based) or "dataset"
-    # Name of the layer to visualize. To figure this out run interpret and the
-    # available layers will be printed. For additional notes see interpret doc comment.
-    layer_name = "reshaped_out"
-    num_features = 2  # Number of features to use for visualization.
-    # Path to the GAN model. If None simpy visualize reward net without the use of GAN.
-    gan_path = None
-
-    locals()  # quieten flake8
-
-
-def uncurry_pad_i2_of_4(arg: Any) -> tuple[None, None, Any, None]:
-    """Pads output with None such that input arg is at index 2 in the output 4-tuple.
-    arg -> (None, None, arg, None)"""
-    tuple = (None, None, arg, None)
-    return tuple
 
 
 @interpret_ex.main
 def interpret(
-    common: dict,  # Sacred magic: This dict will contain the sacred config for common.
+    # Sacred magic: This dict will contain the sacred config settings for the
+    # sub_section 'common' in the sacred config. These settings are defined in the
+    # sacred ingredient 'common' in imitation.scripts.common.
+    common: dict,
     reward_path: Optional[str],
     rollout_path: str,
     limit_num_obs: int,
@@ -98,7 +66,7 @@ def interpret(
         # Imitation reward nets have 4 input args, lucent expects models to only have 1.
         # This wrapper makes it so rew_net accepts a single input which is a
         # transition tensor.
-        rew_net = TensorTransitionModel(rew_net)
+        rew_net = TensorTransitionWrapper(rew_net)
     else:  # Use GAN
         # Combine rew net with GAN.
         raise NotImplementedError()
@@ -130,46 +98,41 @@ def interpret(
 
     # The model to analyse should be a torch module that takes a single input.
     # In our case this is one of the following:
-    # A reward net that accepts transition tensors
-    # A combo of GAN and reward net that accepts latent inputs vectors
+    # - A reward net that accepts transition tensors, or
+    # - A combo of GAN and reward net that accepts latent inputs vectors
     model_to_analyse = rew_net
     nmf = LayerNMF(
         model=model_to_analyse,
         features=num_features,
         layer_name=layer_name,
-        # layer_name="cnn_regressor_avg_pool",
         # "obses", i.e. input samples are used for dim reduction (if features is not
         # None) and for determining the shape of the features.
-        obses=inputs,
+        model_inputs_preprocess=inputs,
         activation_fn="sigmoid",
     )
 
     custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
     # If these are equal, then of course there is no actual reduction.
 
-    # Visualization
     num_features = nmf.channel_dirs.shape[0]
     rows, columns = 1, num_features
     if pyplot:
         fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches
 
-    # Do Visualziation
+    # Visualize
     if vis_type == "traditional":
         # List of transforms
         transforms = [
             transform.jitter(2),  # Jitters input by 2 pixel
-            # Input into model should be 4 tuple, where next_state (3rd arg) is the
-            # observation and other inputs are ignored.
-            # uncurry_pad_i2_of_4,
         ]
 
         opt_transitions = nmf.vis_traditional(transforms=transforms)
         # This gives as an array that optimizes the objectives, in the shape of the
-        # input which is a transition tensor. However, lucent helpfully transposes the\
+        # input which is a transition tensor. However, lucent helpfully transposes the
         # output such that the channel dimension is last. Our functions expect channel
         # dim before spatial dims, so we need to transpose it back.
         opt_transitions = opt_transitions.transpose(0, 3, 1, 2)
-        # Split the optimized transitions, one fore each feature, into separate
+        # Split the optimized transitions, one for each feature, into separate
         # observations and actions. This function only works with torch tensors.
         obs, acts, next_obs = tensor_to_transition(th.tensor(opt_transitions))
         # obs and next_obs output have channel dim last.
@@ -211,7 +174,6 @@ def interpret(
     else:
         raise ValueError(f"Unknown vis_type: {vis_type}.")
 
-        # show()
     if pyplot:
         plt.show()
     custom_logger.log("Done with dataset visualization.")
