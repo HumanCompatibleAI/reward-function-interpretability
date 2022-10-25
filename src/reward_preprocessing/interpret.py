@@ -153,7 +153,7 @@ def interpret(
     if pyplot:
         fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches
 
-    # Do Visualziation
+    # Visualize
     if vis_type == "traditional":
         # List of transforms
         transforms = [
