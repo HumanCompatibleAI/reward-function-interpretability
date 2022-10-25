@@ -43,7 +43,7 @@ def defaults():
     # available layers will be printed. For additional notes see interpret doc comment.
     layer_name = "reshaped_out"
     num_features = 2  # Number of features to use for visualization.
-    # Path to the GAN model. If None simpy visualize reward net without the use of GAN.
+    # Path to the GAN model. If None simply visualize reward net without the use of GAN.
     gan_path = None
 
     locals()  # quieten flake8
