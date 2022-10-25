@@ -255,7 +255,7 @@ class LayerNMF:
             # ImageNet torchvision models, which of course assumes 3 channels and square
             # images as inputs
             preprocess=False,
-            # This makes it so input is passed through the model at least ones, which
+            # This makes it so input is passed through the model at least once, which
             # is necessary to get the feature activations.
             verbose=True,
             # We work with fixed image sizes since our models do not accept arbitrary
