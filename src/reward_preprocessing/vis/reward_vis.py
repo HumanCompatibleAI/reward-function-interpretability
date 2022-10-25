@@ -192,7 +192,13 @@ class LayerNMF:
                 self.acts_reduced = self.reducer.fit_transform(activations)
             else:
                 attrs = (
-                    get_attr(model, attr_layer_name, layer_name, model_inputs_preprocess, **attr_opts)
+                    get_attr(
+                        model,
+                        attr_layer_name,
+                        layer_name,
+                        model_inputs_preprocess,
+                        **attr_opts,
+                    )
                     .detach()
                     .numpy()
                 )

@@ -20,10 +20,7 @@ from reward_preprocessing.common.utils import (
 )
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
-interpret_ex = Experiment(
-    "interpret",
-    ingredients=[common_config.common_ingredient]
-)
+interpret_ex = Experiment("interpret", ingredients=[common_config.common_ingredient])
 
 
 @interpret_ex.config
@@ -208,7 +205,6 @@ def interpret(
     else:
         raise ValueError(f"Unknown vis_type: {vis_type}.")
 
-        # show()
     if pyplot:
         plt.show()
     custom_logger.log("Done with dataset visualization.")
