@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import gym
 from imitation.rewards.reward_nets import RewardNet
@@ -11,6 +11,7 @@ import torch as th
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
 logger = logging.getLogger(__name__)
+
 
 def _make_concat_inputs(action_space, regressor_input):
     """Produces a function that takes the relevant inputs to a reward net, that being

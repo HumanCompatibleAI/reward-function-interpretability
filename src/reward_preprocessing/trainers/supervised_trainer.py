@@ -4,12 +4,11 @@ from imitation.algorithms import base
 from imitation.data import types
 from imitation.data.rollout import flatten_trajectories_with_rew
 from imitation.data.types import transitions_collate_fn
+from imitation.rewards.reward_nets import RewardNet
 from imitation.util import logger as imit_logger
 import torch as th
 from torch.utils import data as th_data
 from tqdm import tqdm
-
-from reward_preprocessing.models import ProcgenCnnRegressionRewardNet
 
 
 def _data_dict_to_model_args_and_target(
@@ -38,7 +37,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
     def __init__(
         self,
         demonstrations: Sequence[types.TrajectoryWithRew],
-        reward_net: ProcgenCnnRegressionRewardNet,
+        reward_net: RewardNet,
         batch_size: int,
         test_frac: float,
         test_freq: int,
@@ -53,8 +52,16 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         """Creates an algorithm that learns from demonstrations.
 
         Args:
-            demonstrations: Demonstrations from an expert (optional). Trajectories
-                will be used as the dataset for supervised learning.
+            demonstrations: Demonstrations from an expert as trajectories with reward.
+                Trajectories will be used as the dataset for supervised learning.
+            reward_net: Reward network to train.
+            batch_size: Batch size to use for training.
+            test_frac: Fraction of dataset to use for testing.
+            test_freq: Number of batches to train on before testing and logging.
+            num_loader_workers: Number of workers to use for dataloader.
+            loss_fn: Loss function to use for training.
+            opt_cls: Optimizer class to use for training.
+            opt_kwargs: Keyword arguments to pass to optimizer.
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
