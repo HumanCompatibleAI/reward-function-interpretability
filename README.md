@@ -33,7 +33,7 @@ Use `print_config` to get details of the config params of the sacred scripts.
   - `notebooks`: Currently only a WIP port of the rl vision notebook.
   - `reward_preprocessing`
     - `common`: Code used across multiple submodules.
-    - `env`: Implemented environments, mostly used for the old reward-prerpocessing code.
+    - `env`: Implemented environments, mostly used for the old reward-preprocessing code.
     - `ext`: Code that is basically unmodified from other sources. Often this will be subject to a different license than the main repo.
       - However, this is not exclusive: There are also other files which rely heavily on other sources and are therefore subject to a different license.
     - `policies`
