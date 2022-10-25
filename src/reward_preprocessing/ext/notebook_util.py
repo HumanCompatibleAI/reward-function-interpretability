@@ -83,18 +83,18 @@ class Flatten(nn.Module):
         return torch.flatten(x, start_dim=1)
 
 
-def longest_common_prefix(l):
-    l = set([s[: min(map(len, l))] for s in l])
-    while len(l) > 1:
-        l = set([s[:-1] for s in l])
-    return list(l)[0]
+def longest_common_prefix(words):
+    words = set([s[: min(map(len, words))] for s in words])
+    while len(words) > 1:
+        words = set([s[:-1] for s in words])
+    return list(words)[0]
 
 
-def longest_common_suffix(l):
-    l = set([s[-min(map(len, l)) :] for s in l])
-    while len(l) > 1:
-        l = set([s[1:] for s in l])
-    return list(l)[0]
+def longest_common_suffix(words):
+    words = set([s[-min(map(len, words)) :] for s in words])
+    while len(words) > 1:
+        words = set([s[1:] for s in words])
+    return list(words)[0]
 
 
 def get_abbreviator(names):

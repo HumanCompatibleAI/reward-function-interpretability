@@ -237,12 +237,15 @@ class LayerNMF:
             ), "l2_layer_name must be specified if l2_coeff is non-zero"
             obj -= objectives.L2(l2_layer_name) * l2_coeff
         input_shape = tuple(self.obses.shape[1:])
-        param_f = lambda: param.image(
-            channels=input_shape[0],
-            h=input_shape[1],
-            w=input_shape[2],
-            batch=len(feature_list),
-        )
+
+        def param_f():
+            return param.image(
+                channels=input_shape[0],
+                h=input_shape[1],
+                w=input_shape[2],
+                batch=len(feature_list),
+            )
+
         return render.render_vis(
             self.model,
             obj,
