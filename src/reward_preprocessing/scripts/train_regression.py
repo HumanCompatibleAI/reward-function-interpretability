@@ -5,28 +5,11 @@ from typing import Sequence, cast
 from imitation.data import types
 from imitation.rewards.reward_nets import CnnRewardNet
 from imitation.scripts.common import common, demonstrations
-import sacred
 from sacred.observers import FileStorageObserver
 import torch as th
 
-from reward_preprocessing.scripts.common import supervised as supervised_config
+from reward_preprocessing.scripts.config.train_regression import train_regression_ex
 from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
-
-train_regression_ex = sacred.Experiment(
-    "train_regression",
-    ingredients=[
-        common.common_ingredient,
-        demonstrations.demonstrations_ingredient,
-        supervised_config.supervised_ingredient,
-    ],
-)
-
-
-@train_regression_ex.config
-def defaults():
-    # Every checkpoint_epoch_interval epochs, save the model. Epochs start at 1.
-    checkpoint_epoch_interval = 1
-    locals()  # make flake8 happy
 
 
 def save(trainer: SupervisedTrainer, save_path):
