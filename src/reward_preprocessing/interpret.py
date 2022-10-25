@@ -23,7 +23,6 @@ from reward_preprocessing.vis.reward_vis import LayerNMF
 interpret_ex = Experiment(
     "interpret",
     ingredients=[common_config.common_ingredient]
-    # ingredients=[demonstrations.demonstrations_ingredient],
 )
 
 
@@ -58,7 +57,10 @@ def uncurry_pad_i2_of_4(arg: Any) -> tuple[None, None, Any, None]:
 
 @interpret_ex.main
 def interpret(
-    common: dict,  # Sacred magic: This dict will contain the sacred config for common.
+    # Sacred magic: This dict will contain the sacred config settings for the
+    # sub_section 'common' in the sacred config. These settings are defined in the
+    # sacred ingredient 'common' in imitation.scripts.common.
+    common: dict,
     reward_path: Optional[str],
     rollout_path: str,
     limit_num_obs: int,
@@ -137,7 +139,6 @@ def interpret(
         model=model_to_analyse,
         features=num_features,
         layer_name=layer_name,
-        # layer_name="cnn_regressor_avg_pool",
         # "obses", i.e. input samples are used for dim reduction (if features is not
         # None) and for determining the shape of the features.
         obses=inputs,

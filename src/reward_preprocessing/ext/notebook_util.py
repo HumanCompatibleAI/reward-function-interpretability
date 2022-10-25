@@ -84,7 +84,9 @@ def longest_common_suffix(words):
 
 
 def get_abbreviator(names):
-    """Small utility for abbreviating a list of names."""
+    """Small utility for abbreviating a list of names.
+    Used in src/notebooks/rl_util.ipynb.
+    """
     if len(names) <= 1:
         return slice(None, None)
     prefix = longest_common_prefix(names)
