@@ -15,5 +15,24 @@ def config():
     test_freq = 64  # Frequency of running tests (in batches)
     batch_size = 32  # Batch size for training a supervised model
     num_loader_workers = 0  # Number of workers for data loading
+    net_kwargs = {}  # Keyword arguments for reward network
 
     locals()  # quieten flake8
+
+
+@supervised_ingredient.config_hook
+def config_hook(config, command_name, logger) -> dict:
+    """Sets defaults for net_kwargs if not provided."""
+    del command_name
+    res = {}
+    if (
+        "use_done" in config["supervised"]["net_kwargs"]
+        and config["supervised"]["net_kwargs"]["use_done"]
+    ):
+        logger.warning(
+            "Supervised training does not support setting use_done to "
+            "False. We don't support networks that take in the done signal. "
+            "This value will be ignored."
+        )
+
+    return res

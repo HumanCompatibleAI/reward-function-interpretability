@@ -3,12 +3,12 @@ import os.path
 from typing import Sequence, cast
 
 from imitation.data import types
+from imitation.rewards.reward_nets import CnnRewardNet
 from imitation.scripts.common import common, demonstrations
 import sacred
 from sacred.observers import FileStorageObserver
 import torch as th
 
-from reward_preprocessing.models import ProcgenCnnRegressionRewardNet
 from reward_preprocessing.scripts.common import supervised as supervised_config
 from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
 
@@ -42,14 +42,21 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
     expert_trajs = demonstrations.load_expert_trajs()
     assert isinstance(expert_trajs[0], types.TrajectoryWithRew)
     expert_trajs = cast(Sequence[types.TrajectoryWithRew], expert_trajs)
+    expert_trajs = expert_trajs[:1000]
 
     custom_logger, log_dir = common.setup_logging()
 
     with common.make_venv() as venv:
         # Init the regression CNN
-        model = ProcgenCnnRegressionRewardNet(
-            observation_space=venv.observation_space, action_space=venv.action_space
+        model = CnnRewardNet(
+            **supervised["net_kwargs"],
+            # We don't want the following to be overriden.
+            observation_space=venv.observation_space,
+            action_space=venv.action_space,
+            use_done=False,
         )
+        custom_logger.log(model)
+
         device = "cuda" if th.cuda.is_available() else "cpu"
         loss_fn = th.nn.MSELoss()
 
