@@ -25,7 +25,6 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
     expert_trajs = demonstrations.load_expert_trajs()
     assert isinstance(expert_trajs[0], types.TrajectoryWithRew)
     expert_trajs = cast(Sequence[types.TrajectoryWithRew], expert_trajs)
-    expert_trajs = expert_trajs[:1000]
 
     custom_logger, log_dir = common.setup_logging()
 
