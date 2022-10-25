@@ -131,7 +131,7 @@ def interpret(
     # The model to analyse should be a torch module that takes a single input.
     # In our case this is one of the following:
     # - A reward net that accepts transition tensors, or
-    # A combo of GAN and reward net that accepts latent inputs vectors
+    # - A combo of GAN and reward net that accepts latent inputs vectors
     model_to_analyse = rew_net
     nmf = LayerNMF(
         model=model_to_analyse,
