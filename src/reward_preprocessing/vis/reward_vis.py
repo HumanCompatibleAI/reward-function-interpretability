@@ -171,7 +171,7 @@ class LayerNMF:
         self.patch_w = self.obses_full.shape[3] / activations.shape[3]
         if self.reducer is None:  # No dimensionality reduction.
             # Activations are only used for dim reduction and to determine the shape
-            # of the feauteres. The former is compatible between torch and numpy (both
+            # of the features. The former is compatible between torch and numpy (both
             # support .shape), so calling .numpy() is not really necessary. However,
             # for consistency we do it here. Consequently, self.acts_reduced is always
             # a numpy array.
