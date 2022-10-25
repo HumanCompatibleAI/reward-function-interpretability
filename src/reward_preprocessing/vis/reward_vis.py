@@ -192,7 +192,7 @@ class LayerNMF:
                 attrs_signed = np.concatenate(
                     [np.maximum(0, attrs), np.maximum(0, -attrs)], axis=0
                 )
-                # Use torch tensors so it is the same data type as 'activations", which
+                # Use torch tensors so it is the same data type as 'activations', which
                 # is a torch tensor.
                 self.reducer.fit(th.tensor(attrs_signed))
                 self.acts_reduced = self.reducer.transform(activations)
