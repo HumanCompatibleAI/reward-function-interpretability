@@ -28,7 +28,8 @@ def make_transition_to_tensor(num_acts):
         # Only normalize for integer types.
         if np.issubdtype(obs.dtype, np.integer):
             obs = obs / 255.0
-            # For floats we don't divide by 255.0.
+            # For floats we don't divide by 255.0. In that case we assume the
+            # observation is already in the range [0, 1].
         act = int(transition["acts"])
         next_obs = transition["next_obs"]
         # Only normalize for integer types.
