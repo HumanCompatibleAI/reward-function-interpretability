@@ -10,7 +10,7 @@ import torch as th
 
 from reward_preprocessing.models import ProcgenCnnRegressionRewardNet
 from reward_preprocessing.scripts.common import supervised as supervised_config
-from reward_preprocessing.trainers.supervised import SupervisedTrainer
+from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
 
 train_regression_ex = sacred.Experiment(
     "train_regression",
