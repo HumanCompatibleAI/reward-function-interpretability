@@ -45,13 +45,6 @@ def defaults():
     locals()  # quieten flake8
 
 
-def uncurry_pad_i2_of_4(arg: Any) -> tuple[None, None, Any, None]:
-    """Pads output with None such that input arg is at index 2 in the output 4-tuple.
-    arg -> (None, None, arg, None)"""
-    tuple = (None, None, arg, None)
-    return tuple
-
-
 @interpret_ex.main
 def interpret(
     # Sacred magic: This dict will contain the sacred config settings for the
