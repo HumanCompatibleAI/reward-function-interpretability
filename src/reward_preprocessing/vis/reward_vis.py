@@ -125,7 +125,7 @@ class LayerNMF:
                 activation function, e.g. the output of a reward net. If this
                 activation function is specified, we will apply the respective function
                 before doing NMF. This is especially important if activations (such as
-                reward outpu) can have negative values.
+                reward output) can have negative values.
         """
         if attr_layer_name is not None:
             logging.warning(
