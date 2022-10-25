@@ -124,13 +124,6 @@ class ImpalaGMPolicy(ActorCriticPolicy):
             nn.Linear(self.embedder.output_dim, 1), gain=1.0
         )
 
-        # self.recurrent = recurrent
-        # if self.recurrent:
-        #     self.gru = GRU(self.embedder.output_dim, self.embedder.output_dim)
-
-    def is_recurrent(self):
-        return self.recurrent
-
     def forward(
         self, obs: th.Tensor, deterministic: bool = False
     ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
@@ -146,12 +139,9 @@ class ImpalaGMPolicy(ActorCriticPolicy):
         )
 
         hidden = self.embedder(preprocessed_obs)
-        # if self.recurrent:
-        #     hidden, hx = self.gru(hidden, hx, masks)
         logits = self.fc_policy(hidden)
         log_probs = F.log_softmax(logits, dim=1)
         # Below here I had to make changes to make it compatible with SB3
-        # p = Categorical(logits=log_probs)  # From the original code
         distro = CategoricalDistribution(self.action_dim)
         distro = distro.proba_distribution(action_logits=log_probs)
         actions = distro.get_actions(deterministic=deterministic)
