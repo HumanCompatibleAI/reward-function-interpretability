@@ -177,6 +177,7 @@ class TensorTransitionModel(nn.Module):
         # tensor_to_transition expects.
         obs, act, next_obs = tensor_to_transition(transition_tensor)
 
+        # TODO: Remove this once this becomes superfluous.
         if self.rew_net.normalize_images:
             # Imitation reward nets have this flag which basically decides whether
             # observations will be divided by 255 (before being passed to the conv

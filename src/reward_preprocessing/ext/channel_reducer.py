@@ -31,12 +31,6 @@ apply to arbitrary rank tensors. It saves lots of annoying reshaping.
 """
 
 import numpy as np
-
-# I assume this was fix for some problems with different versions of sklearn?
-# We shouldn't need this.
-# try:
-#     from sklearn.decomposition.base import BaseEstimator
-# except (AttributeError, ModuleNotFoundError):
 from sklearn.base import BaseEstimator
 import sklearn.decomposition
 
