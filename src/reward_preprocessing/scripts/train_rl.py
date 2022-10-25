@@ -11,8 +11,9 @@ use_config(train_rl_ex)
 
 @train_rl_ex.named_config
 def coinrun_aisc_fixed_coin():
-    """Coinrun with hparams from goal misgeneralization paper."""
-    # Hparams inferred from https://github.com/jbkjr/train-procgen-pytorch/blob/master/hyperparams/procgen/config.yml
+    """Coinrun with hyperparams from goal misgeneralization paper."""
+    # Hyperparams inferred from
+    # https://github.com/jbkjr/train-procgen-pytorch/blob/master/hyperparams/procgen/config.yml
     # (hard-500)
     # This is the procgen version from procgenAISC, but the version that has the coin
     # always fixed at the end of the level, as in the original coinrun.

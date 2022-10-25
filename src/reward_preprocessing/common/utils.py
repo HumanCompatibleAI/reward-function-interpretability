@@ -163,7 +163,8 @@ def process_image_tensor(obs: th.Tensor) -> th.Tensor:
 
 class TensorTransitionModel(nn.Module):
     """Wraps an imitation-style reward net such that it accepts transitions tensors.
-    Dones will always be a batch of zeros."""
+    Dones will always be a batch of zeros.
+    """
 
     def __init__(self, rew_net: RewardNet):
         """rew_net should be a reward net that takes in (obs, act, next_obs, done) as

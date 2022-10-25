@@ -147,7 +147,6 @@ def interpret(
     custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
     # If these are equal, then of course there is no actual reduction.
 
-    # Visualization
     num_features = nmf.channel_dirs.shape[0]
     rows, columns = 1, num_features
     if pyplot:
@@ -165,11 +164,11 @@ def interpret(
 
         opt_transitions = nmf.vis_traditional(transforms=transforms)
         # This gives as an array that optimizes the objectives, in the shape of the
-        # input which is a transition tensor. However, lucent helpfully transposes the\
+        # input which is a transition tensor. However, lucent helpfully transposes the
         # output such that the channel dimension is last. Our functions expect channel
         # dim before spatial dims, so we need to transpose it back.
         opt_transitions = opt_transitions.transpose(0, 3, 1, 2)
-        # Split the optimized transitions, one fore each feature, into separate
+        # Split the optimized transitions, one for each feature, into separate
         # observations and actions. This function only works with torch tensors.
         obs, acts, next_obs = tensor_to_transition(th.tensor(opt_transitions))
         # obs and next_obs output have channel dim last.

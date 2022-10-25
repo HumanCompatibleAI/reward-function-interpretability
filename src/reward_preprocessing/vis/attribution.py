@@ -71,8 +71,8 @@ def get_grad_or_attr(
     # This is a WIP port to PyTorch. The following parameters are not yet implemented
     # and we therefore assert that they are not used.
     # Currently we don't need them, but maybe we want to implement them in the future
-    # for closer parity with the tf code. If They are used accidentally the exception
-    # will be thrown.TODO: Implement or remove.
+    # for closer parity with the tf code. If they are used accidentally the exception
+    # will be thrown. TODO: Implement or remove.
     if act_poses is not None:
         raise NotImplementedError("act_poses not implemented. See comment above.")
     if override is not None:
