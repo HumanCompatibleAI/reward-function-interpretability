@@ -119,7 +119,7 @@ def visualize_samples(samples: np.ndarray, num_acts: int, save_dir):
         np.save(Path(save_dir) / str(i) / "act_vec.npy", act_slim)
 
 
-def process_image_array(img: np.array) -> np.array:
+def process_image_array(img: np.ndarray) -> np.ndarray:
     """Process a numpy array for feeding into PIL.Image.fromarray."""
     up_multiplied = img * 255
     clipped = np.clip(up_multiplied, 0, 255)
