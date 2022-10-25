@@ -14,7 +14,7 @@ import torch as th
 import wandb
 
 from reward_preprocessing.common.utils import (
-    TensorTransitionModel,
+    TensorTransitionWrapper,
     rollouts_to_dataloader,
     tensor_to_transition,
 )
@@ -100,7 +100,7 @@ def interpret(
         # Imitation reward nets have 4 input args, lucent expects models to only have 1.
         # This wrapper makes it so rew_net accepts a single input which is a
         # transition tensor.
-        rew_net = TensorTransitionModel(rew_net)
+        rew_net = TensorTransitionWrapper(rew_net)
     else:  # Use GAN
         # Combine rew net with GAN.
         raise NotImplementedError()
@@ -141,7 +141,7 @@ def interpret(
         layer_name=layer_name,
         # "obses", i.e. input samples are used for dim reduction (if features is not
         # None) and for determining the shape of the features.
-        obses=inputs,
+        model_inputs_preprocess=inputs,
         activation_fn="sigmoid",
     )
 
@@ -158,9 +158,6 @@ def interpret(
         # List of transforms
         transforms = [
             transform.jitter(2),  # Jitters input by 2 pixel
-            # Input into model should be 4 tuple, where next_state (3rd arg) is the
-            # observation and other inputs are ignored.
-            # uncurry_pad_i2_of_4,
         ]
 
         opt_transitions = nmf.vis_traditional(transforms=transforms)

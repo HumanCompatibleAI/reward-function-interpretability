@@ -95,8 +95,8 @@ class LayerNMF:
         self,
         model,
         layer_name,
-        obses,
-        obses_full=None,
+        model_inputs_preprocess,
+        model_inputs_full=None,
         features: Optional[int] = 10,
         *,
         attr_layer_name: Optional[str] = None,
@@ -110,8 +110,13 @@ class LayerNMF:
         Args:
             model: The PyTorch model to analyze. Can be reward net or policy net.
             layer_name: The name of the layer to analyze.
-            obses: Dataset of observations to analyze.
-            obses_full:
+            model_inputs_preprocess:
+                Tensor of inputs to the model to use for preprocessing for
+                visualization. Used for dimensionality reduction, if applicable, and
+                for determining shape of activations in the model.
+            model_inputs_full:
+                Tensor containing all data to use for dataset visualization. If None,
+                use model_inputs_preprocess.
             features:
                 Number of features to use in NMF. None performs no dimensionality
                 reduction.
@@ -119,6 +124,8 @@ class LayerNMF:
                 Name of the layer of attributions to apply NMF to. If None, apply NMF to
                 activations.
             attr_opts:
+               Options passed to get_grad_or_attr() from
+               reward_preprocessing.vis.attribution.
             activation_fn:
                 An optional additional activation function to apply to the activations.
                 Sometimes "activations" in the model did not go through an actual
@@ -135,14 +142,14 @@ class LayerNMF:
 
         self.model = model
         self.layer_name = layer_name
-        self.obses = obses
-        self.obses_full = obses_full
-        if self.obses_full is None:
-            self.obses_full = obses
+        self.model_inputs_preprocess = model_inputs_preprocess
+        self.model_inputs_full = model_inputs_full
+        if self.model_inputs_full is None:
+            self.model_inputs_full = model_inputs_preprocess
         self.features = features
         self.pad_h = 0
         self.pad_w = 0
-        self.padded_obses = self.obses_full
+        self.padded_obses = self.model_inputs_full
         # We want to reduce dim 1, which is the convention for channel dim in *lucent*
         # (not lucid). We assume different channels correspond to different features
         # for benefits of interpretability (as the do e.g. in the rl vision distill
@@ -153,7 +160,7 @@ class LayerNMF:
         else:
             # Dimensionality reduction using NMF.
             self.reducer = ChannelReducer(features, reduction_dim=reduction_dim)
-        activations = get_acts(model, layer_name, obses)
+        activations = get_acts(model, layer_name, model_inputs_preprocess)
 
         # Apply activation function if specified.
         if activation_fn == "sigmoid":
@@ -167,8 +174,8 @@ class LayerNMF:
                 f"LayerNMF: activations for layer {layer_name} have negative values."
             )
 
-        self.patch_h = self.obses_full.shape[2] / activations.shape[2]
-        self.patch_w = self.obses_full.shape[3] / activations.shape[3]
+        self.patch_h = self.model_inputs_full.shape[2] / activations.shape[2]
+        self.patch_w = self.model_inputs_full.shape[3] / activations.shape[3]
         if self.reducer is None:  # No dimensionality reduction.
             # Activations are only used for dim reduction and to determine the shape
             # of the features. The former is compatible between torch and numpy (both
@@ -185,7 +192,7 @@ class LayerNMF:
                 self.acts_reduced = self.reducer.fit_transform(activations)
             else:
                 attrs = (
-                    get_attr(model, attr_layer_name, layer_name, obses, **attr_opts)
+                    get_attr(model, attr_layer_name, layer_name, model_inputs_preprocess, **attr_opts)
                     .detach()
                     .numpy()
                 )
@@ -236,7 +243,7 @@ class LayerNMF:
                 l2_layer_name is not None
             ), "l2_layer_name must be specified if l2_coeff is non-zero"
             obj -= objectives.L2(l2_layer_name) * l2_coeff
-        input_shape = tuple(self.obses.shape[1:])
+        input_shape = tuple(self.model_inputs_preprocess.shape[1:])
 
         def param_f():
             return param.image(
@@ -278,25 +285,25 @@ class LayerNMF:
             self.padded_obses = (
                 np.indices(
                     (
-                        self.obses_full.shape[2] + self.pad_h * 2,
-                        self.obses_full.shape[3] + self.pad_w * 2,
+                        self.model_inputs_full.shape[2] + self.pad_h * 2,
+                        self.model_inputs_full.shape[3] + self.pad_w * 2,
                     )
                 ).sum(axis=0)
                 % 2
             )  # Checkered pattern.
             self.padded_obses = self.padded_obses * 0.25 + 0.75  # Adjust color.
-            self.padded_obses = self.padded_obses.astype(self.obses_full.dtype)
+            self.padded_obses = self.padded_obses.astype(self.model_inputs_full.dtype)
             # Add dims for batch and channel.
             self.padded_obses = self.padded_obses[None, None, ...]
             # Repeat for correct number of images.
             self.padded_obses = self.padded_obses.repeat(
-                self.obses_full.shape[0], axis=0
+                self.model_inputs_full.shape[0], axis=0
             )
             # Repeat channel dimension.
             self.padded_obses = self.padded_obses.repeat(3, axis=1)
             self.padded_obses[
                 :, :, self.pad_h : -self.pad_h, self.pad_w : -self.pad_w
-            ] = self.obses_full
+            ] = self.model_inputs_full
 
     def get_patch(self, obs_index, pos_h, pos_w, *, expand_mult=1):
         left_h = self.pad_h + (pos_h - 0.5 * expand_mult) * self.patch_h

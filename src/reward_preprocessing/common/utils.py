@@ -161,7 +161,7 @@ def process_image_tensor(obs: th.Tensor) -> th.Tensor:
     return transposed
 
 
-class TensorTransitionModel(nn.Module):
+class TensorTransitionWrapper(nn.Module):
     """Wraps an imitation-style reward net such that it accepts transitions tensors.
     Dones will always be a batch of zeros.
     """
