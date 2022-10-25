@@ -245,10 +245,12 @@ class LayerNMF:
             ]
         )
         if l2_coeff != 0.0:
-            assert (
-                l2_layer_name is not None
-            ), "l2_layer_name must be specified if l2_coeff is non-zero"
-            obj -= objectives.L2(l2_layer_name) * l2_coeff
+            raise NotImplementedError("L2 regularization coming soon.")
+            # TODO: add this back in
+            # assert (
+            #     l2_layer_name is not None
+            # ), "l2_layer_name must be specified if l2_coeff is non-zero"
+            # obj -= objectives.L2(l2_layer_name) * l2_coeff
         input_shape = tuple(self.model_inputs_preprocess.shape[1:])
 
         def param_f():

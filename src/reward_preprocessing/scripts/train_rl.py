@@ -1,4 +1,4 @@
-"""Thin wrapper around imitation's train_rl script to """
+"""Thin wrapper around imitation's train_rl script to add named configs."""
 from imitation.scripts.config.train_rl import train_rl_ex
 from imitation.scripts.train_rl import main_console
 
@@ -19,7 +19,6 @@ def coinrun_aisc_fixed_coin():
     # always fixed at the end of the level, as in the original coinrun.
     train = dict(
         policy_cls=reward_preprocessing.policies.base.ImpalaPolicy,
-        # policy_kwargs=dict(features_extractor_class=ImpalaModel),
     )
     policy_save_interval = 1_000_000
     common = dict(
