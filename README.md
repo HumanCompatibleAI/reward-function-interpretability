@@ -25,6 +25,62 @@ You can also use docker by building the image and running the scripts from insid
 
 ## Usage
 
+### Getting a Reward Model to Analyze
+
+#### Training the Supervised Reward Model
+
+- Get an expert rl agent
+  - For coinrun, use this fork: [PavelCz/train-procgen-pytorch](https://github.com/PavelCz/train-procgen-pytorch)
+  - Something like this to train:
+  ```bash
+  python train.py \
+    --exp_name coinrun \
+    --env_name coinrun \
+    --num_levels 100000 \
+    --distribution_mode hard \
+    --param_name hard-500 \
+    --num_timesteps 200000000 \
+    --num_checkpoints 5 \
+    --seed 6033 \
+    --random_percent 0 \
+    --gpu_device=3
+  ```
+  - Render videos to see how well the expert does:
+  ```bash
+  python render.py \
+    --exp_name render \
+    --env_name coinrun \
+    --num_levels 100000 \
+    --distribution_mode hard \
+    --param_name hard-500 \
+    --seed 6033 \
+    --model_file path/model_200015872.pth 
+    --vid_dir video
+  ```
+  - Add a trajectory path to save trajectories that can be used to train reward nets:
+  ```bash
+  python render.py \
+    --exp_name render \
+    --env_name coinrun \
+    --num_levels 100000 \
+    --distribution_mode hard \
+    --param_name hard-500 \
+    --seed 9073 \
+    --model_file path/model_200015872.pth \
+    --vid_dir video \
+    --traj_path rollouts.npz \
+    --noview \
+    # num_wpisodes is not actually the number of episodes, but the number of iterations
+    # n_steps (usually 256 for most hparams) each.
+    --num_episodes=1000
+  ```
+  - 
+
+
+
+
+### Interpretability
+
 Use `print_config` to get details of the config params of the sacred scripts.
 
 ## Code Structure
