@@ -10,7 +10,6 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import torch as th
-from torch.distributions import Categorical
 import torch.nn as nn
 import torch.nn.functional as F
 

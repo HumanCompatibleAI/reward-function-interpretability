@@ -3,7 +3,7 @@ from imitation.scripts.config.train_rl import train_rl_ex
 from imitation.scripts.train_rl import main_console
 
 from reward_preprocessing.env.maze import use_config
-from reward_preprocessing.ext.impala import ImpalaGMPolicy, ImpalaModel
+from reward_preprocessing.ext.impala import ImpalaGMPolicy
 import reward_preprocessing.policies.base
 
 use_config(train_rl_ex)

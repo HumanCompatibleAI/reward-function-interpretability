@@ -2,9 +2,11 @@ import os
 
 import gym
 
-from reward_preprocessing.scripts.reward_preprocessing.create_rollouts import ex as create_rollouts_ex
 from reward_preprocessing.env import maze  # noqa: F401
 from reward_preprocessing.scripts.preprocess import preprocess_ex as preprocess_ex
+from reward_preprocessing.scripts.reward_preprocessing.create_rollouts import (
+    ex as create_rollouts_ex,
+)
 from reward_preprocessing.utils import get_env_name
 
 
