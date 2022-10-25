@@ -12,7 +12,7 @@ import scipy.ndimage as nd
 import torch as th
 
 from reward_preprocessing.ext.channel_reducer import ChannelReducer
-from reward_preprocessing.vis.attribution import get_acts, get_attr
+from reward_preprocessing.vis.attribution import get_activations, get_attr
 import reward_preprocessing.vis.objectives as objectives_rfi
 
 
@@ -160,7 +160,7 @@ class LayerNMF:
         else:
             # Dimensionality reduction using NMF.
             self.reducer = ChannelReducer(features, reduction_dim=reduction_dim)
-        activations = get_acts(model, layer_name, model_inputs_preprocess)
+        activations = get_activations(model, layer_name, model_inputs_preprocess)
 
         # Apply activation function if specified.
         if activation_fn == "sigmoid":

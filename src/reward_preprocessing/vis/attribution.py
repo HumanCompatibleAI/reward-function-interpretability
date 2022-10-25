@@ -1,42 +1,18 @@
 """Port of lucid.scratch.attribution to PyTorch. APL2.0 licensed."""
-# import tensorflow as tf
 import lucent.optvis.render as render
 import numpy as np
 import torch as th
 from torch import nn
 
-# import itertools
-# from lucent.misc.gradient_override import gradient_override_map
 
-
-# def maxpool_override():
-#     def MaxPoolGrad(op, grad):
-#         inp = op.inputs[0]
-#         op_args = [
-#             op.get_attr("ksize"),
-#             op.get_attr("strides"),
-#             op.get_attr("padding"),
-#         ]
-#         smooth_out = tf.nn.avg_pool(inp ** 2, *op_args) / (
-#             1e-2 + tf.nn.avg_pool(tf.abs(inp), *op_args)
-#         )
-#         inp_smooth_grad = tf.gradients(smooth_out, [inp], grad)[0]
-#         return inp_smooth_grad
-#
-#     return {"MaxPool": MaxPoolGrad}
-
-
-def get_acts(model: nn.Module, layer_name: str, obses: th.Tensor) -> th.Tensor:
-    # with tf.Graph().as_default(), tf.Sess&ion():
-    # t_obses = tf.placeholder_with_default(
-    #     obses.astype(np.float32), (None, None, None, None)
-    # )
-    # t_obses = th.from_numpy(obses.astype(np.float32))
-    hook = render.hook_model(model, obses)
-    # model(state=None, action=None, next_state=t_obses, done=None)
+def get_activations(
+    model: nn.Module, layer_name: str, model_inputs: th.Tensor
+) -> th.Tensor:
+    """Get the activations of a layer in a model for a batch of inputs to the model."""
+    hook = render.hook_model(model, model_inputs)
 
     # Perform forward pass through input to hook activations.
-    model(obses)
+    model(model_inputs)
 
     # Get activations at layer.
     t_acts = hook(layer_name)
@@ -59,10 +35,10 @@ def get_grad_or_attr(
     model,
     layer_name,
     prev_layer_name,
-    obses,
+    model_inputs,
     *,
     act_dir=None,
-    act_poses=None,
+    activation_positions=None,
     score_fn=default_score_fn,
     grad_or_attr,
     override=None,
@@ -73,36 +49,26 @@ def get_grad_or_attr(
     # Currently we don't need them, but maybe we want to implement them in the future
     # for closer parity with the tf code. If they are used accidentally the exception
     # will be thrown. TODO: Implement or remove.
-    if act_poses is not None:
+    if activation_positions is not None:
         raise NotImplementedError("act_poses not implemented. See comment above.")
     if override is not None:
         raise NotImplementedError("override not implemented. See comment above.")
-    # with tf.Graph().as_default(), tf.Session(), gradient_override_map(override or {}):
-    # t_obses = tf.placeholder_with_default(
-    #     obses.astype(np.float32), (None, None, None, None)
-    # )
-    t_obses = th.from_numpy(obses.astype(np.float32))
-    hook = render.hook_model(model, t_obses)  # , t_obses)
+    model_inputs = th.from_numpy(model_inputs.astype(np.float32))
+    hook = render.hook_model(model, model_inputs)
     # Run through model once to generate feature maps
-    model(t_obses)
+    model(model_inputs)
     # The activations of the layer we want to compute the attribution for.
-    t_acts = hook(layer_name)
+    t_activations = hook(layer_name)
     if prev_layer_name is None:
-        t_acts_prev = t_obses
+        t_activations_prev = model_inputs
     else:
         # The activations of the previous layer.
-        t_acts_prev = hook(prev_layer_name)
+        t_activations_prev = hook(prev_layer_name)
     if act_dir is not None:
-        t_acts = act_dir[None, None, None] * t_acts
-    # if act_poses is not None:
-    #     t_acts = tf.gather_nd(
-    #         t_acts,
-    #         tf.concat([tf.range(obses.shape[0])[..., None], act_poses], axis=-1),
-    #     )
-    t_scores = score_fn(t_acts)
+        t_activations = act_dir[None, None, None] * t_activations
+    t_scores = score_fn(t_activations)
     assert len(t_scores.shape) >= 1, "score_fn should not reduce the batch dim"
     t_score = th.sum(t_scores)
-    # t_grad = tf.gradients(t_score, [t_acts_prev])[0]
     if integrate_steps > 1:
         # This was the original tf 1 code. Keeping this around for transparency.
         # acts_prev = t_acts_prev.eval()
@@ -117,14 +83,13 @@ def get_grad_or_attr(
         # )
         # The feed_dict argument allows the caller to override the value of tensors in
         # the graph.
-        # This is how I wrote it in PyTorch:
-        acts_prev = t_acts_prev
+        # This is how I wrote it in PyTorch (including the for loop):
+        acts_prev = t_activations_prev
         grad_list = []
         for alpha in np.linspace(0, 1, integrate_steps + 1)[1:]:
             t_score = th.sum(t_scores)
-            # grad = th.autograd.grad(t_score, [acts_prev * alpha])[0]
             # This is what they did in tensorflow, equivalent:
-            # th.autograd.grad(t_score, [acts_prev * alpha])
+            # grad = th.autograd.grad(t_score, [acts_prev * alpha])[0]
             # However, this doesn't work in pytorch because now PyTorch will try to
             # compute the gradient wrt alpha, which is 0 since alpha was not involved
             # in the input / isn't part of the graph. However, arithmetically, one can
@@ -136,15 +101,13 @@ def get_grad_or_attr(
         grad = np.sum(grad_list) / integrate_steps
     else:
         acts_prev = None
-        # grad = t_grad.eval()
-        # Gradients from score to either observation in puts or the features at specified layer
-        grad = th.autograd.grad(t_score, [t_acts_prev])[0]
+        # Gradients from score to either inputs or the features at specified layer
+        grad = th.autograd.grad(t_score, [t_activations_prev])[0]
     if grad_or_attr == "grad":
         return grad
     elif grad_or_attr == "attr":
         if acts_prev is None:
-            # acts_prev = t_acts_prev.eval()
-            acts_prev = t_acts_prev
+            acts_prev = t_activations_prev
         return acts_prev * grad
     else:
         raise NotImplementedError
@@ -153,104 +116,3 @@ def get_grad_or_attr(
 def get_attr(model, layer_name, prev_layer_name, obses, **kwargs):
     kwargs["grad_or_attr"] = "attr"
     return get_grad_or_attr(model, layer_name, prev_layer_name, obses, **kwargs)
-
-
-# def get_grad(model, layer_name, obses, **kwargs):
-#     kwargs["grad_or_attr"] = "grad"
-#     return get_grad_or_attr(model, layer_name, None, obses, **kwargs)
-#
-#
-# def get_paths(acts, nmf, *, max_paths, integrate_steps):
-#     acts_reduced = nmf.transform(acts)
-#     residual = acts - nmf.inverse_transform(acts_reduced)
-#     combs = itertools.combinations(range(nmf.features), nmf.features // 2)
-#     if nmf.features % 2 == 0:
-#         combs = np.array([comb for comb in combs if 0 in comb])
-#     else:
-#         combs = np.array(list(combs))
-#     if max_paths is None:
-#         splits = combs
-#     else:
-#         num_splits = min((max_paths + 1) // 2, combs.shape[0])
-#         splits = combs[
-#             np.random.choice(combs.shape[0], size=num_splits, replace=False), :
-#         ]
-#     for i, split in enumerate(splits):
-#         indices = np.zeros(nmf.features)
-#         indices[split] = 1.0
-#         indices = indices[tuple(None for _ in range(acts_reduced.ndim - 1))]
-#         complements = [False, True]
-#         if max_paths is not None and i * 2 + 1 == max_paths:
-#             complements = [np.random.choice(complements)]
-#         for complement in complements:
-#             path = []
-#             for alpha in np.linspace(0, 1, integrate_steps + 1)[1:]:
-#                 if complement:
-#                     coordinates = (1.0 - indices) * alpha ** 2 + indices * (
-#                         1.0 - (1.0 - alpha) ** 2
-#                     )
-#                 else:
-#                     coordinates = indices * alpha ** 2 + (1.0 - indices) * (
-#                         1.0 - (1.0 - alpha) ** 2
-#                     )
-#                 path.append(
-#                     nmf.inverse_transform(acts_reduced * coordinates) + residual * alpha
-#                 )
-#             yield path
-#
-#
-# def get_multi_path_attr(
-#     model,
-#     layer_name,
-#     prev_layer_name,
-#     obses,
-#     prev_nmf,
-#     *,
-#     act_dir=None,
-#     act_poses=None,
-#     score_fn=default_score_fn,
-#     override=None,
-#     max_paths=50,
-#     integrate_steps=10
-# ):
-#     with tf.Graph().as_default(), tf.Session(), gradient_override_map(override or {}):
-#         t_obses = tf.placeholder_with_default(
-#             obses.astype(np.float32), (None, None, None, None)
-#         )
-#         T = render.import_model(model, t_obses, t_obses)
-#         t_acts = T(layer_name)
-#         if prev_layer_name is None:
-#             t_acts_prev = t_obses
-#         else:
-#             t_acts_prev = T(prev_layer_name)
-#         if act_dir is not None:
-#             t_acts = act_dir[None, None, None] * t_acts
-#         if act_poses is not None:
-#             t_acts = tf.gather_nd(
-#                 t_acts,
-#                 tf.concat([tf.range(obses.shape[0])[..., None], act_poses], axis=-1),
-#             )
-#         t_scores = score_fn(t_acts)
-#         assert len(t_scores.shape) >= 1, "score_fn should not reduce the batch dim"
-#         t_score = tf.reduce_sum(t_scores)
-#         t_grad = tf.gradients(t_score, [t_acts_prev])[0]
-#         acts_prev = t_acts_prev.eval()
-#         path_acts = get_paths(
-#             acts_prev, prev_nmf, max_paths=max_paths, integrate_steps=integrate_steps
-#         )
-#         deltas_of_path = lambda path: np.array(
-#             [b - a for a, b in zip([np.zeros_like(acts_prev)] + path[:-1], path)]
-#         )
-#         grads_of_path = lambda path: np.array(
-#             [t_grad.eval(feed_dict={t_acts_prev: acts}) for acts in path]
-#         )
-#         path_attrs = map(
-#             lambda path: (deltas_of_path(path) * grads_of_path(path)).sum(axis=0),
-#             path_acts,
-#         )
-#         total_attr = 0
-#         num_paths = 0
-#         for attr in path_attrs:
-#             total_attr += attr
-#             num_paths += 1
-#         return total_attr / num_paths
