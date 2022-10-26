@@ -17,8 +17,14 @@ train_regression_ex = sacred.Experiment(
 def defaults():
     # Every checkpoint_epoch_interval epochs, save the model. Epochs start at 1.
     checkpoint_epoch_interval = 1
-    # Apparently in sacred I need default values, if I want to be able to override them
-    supervised = dict(net_kwargs=dict(hid_channels=(32, 64)))
+    # Apparently in sacred I need default values for parameters that I want to be able
+    # to override. At least that's how I interpret this information:
+    # https://github.com/IDSIA/sacred/issues/644
+    supervised = dict(
+        net_kwargs=dict(
+            use_state=True, use_action=True, use_next_state=True, hid_channels=(32, 64)
+        )
+    )
     locals()  # make flake8 happy
 
 
@@ -39,6 +45,6 @@ def use_all():
 
 
 @train_regression_ex.named_config
-def small():
-    supervised = dict(net_kwargs=dict(hid_channels=(32, 64)))
+def large():
+    supervised = dict(net_kwargs=dict(hid_channels=(32, 64, 128)))
     locals()  # make flake8 happy
