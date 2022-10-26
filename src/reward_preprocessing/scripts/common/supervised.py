@@ -22,8 +22,8 @@ def config():
 
     # Keyword arguments for reward network
     net_kwargs = dict(
-            use_state=True, use_action=True, use_next_state=True, hid_channels=(32, 64)
-        )
+        use_state=True, use_action=True, use_next_state=True, hid_channels=(32, 64)
+    )
 
     locals()  # quieten flake8
 

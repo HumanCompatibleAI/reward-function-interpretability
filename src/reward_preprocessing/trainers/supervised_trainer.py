@@ -8,14 +8,15 @@ from imitation.data.types import transitions_collate_fn
 from imitation.rewards.reward_nets import RewardNet
 from imitation.util import logger as imit_logger
 import torch as th
-from torch.utils import data as th_data
+from torch.utils import data
 from tqdm import tqdm
 
 
 class SupervisedTrainer(base.BaseImitationAlgorithm):
     """Learns from demonstrations (transitions / trajectories) using supervised
     learning. Has some overlap with base.DemonstrationAlgorithm, but does not train a
-    policy."""
+    policy.
+    """
 
     def __init__(
         self,
@@ -91,17 +92,17 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         num_test = int(len(dataset) * self._test_frac)
         num_train = len(dataset) - num_test
         if seed is None:
-            train, test = th_data.random_split(dataset, [num_train, num_test])
+            train, test = data.random_split(dataset, [num_train, num_test])
             shuffle_generator = None
         else:
-            train, test = th_data.random_split(
+            train, test = data.random_split(
                 dataset,
                 [num_train, num_test],
                 generator=th.Generator().manual_seed(seed),
             )
             shuffle_generator = th.Generator().manual_seed(seed)
 
-        self._train_loader = th_data.DataLoader(
+        self._train_loader = data.DataLoader(
             train,
             shuffle=True,
             batch_size=self._batch_size,
@@ -110,7 +111,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             drop_last=True,
             generator=shuffle_generator,
         )
-        self._test_loader = th_data.DataLoader(
+        self._test_loader = data.DataLoader(
             test,
             shuffle=False,
             batch_size=self._batch_size,
@@ -211,3 +212,51 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         act = th.nn.functional.one_hot(act, num_actions)
 
         return (obs, act, next_obs, done), target
+
+    def log_data_stats(self):
+        """Logs data statistics to logger."""
+
+        self.logger.log("Calculating stats for train data...")
+        self._record_dataset_stats("train", self._train_loader)
+        self._record_dataset_stats("test", self._test_loader)
+
+    def _record_dataset_stats(self, key: str, dataloader: data.DataLoader) -> dict:
+        """Calculate useful statistics about a dataset.
+        Calculates
+        - size of the dataset.
+        - mean and standard deviation of observations.
+        - mean and standard deviation of rewards.
+        - histogram of the rewards.
+        - histogram of actions.
+
+        Returns:
+            Dict containing the above statistics.
+        """
+        sample_count = 0
+        # Holds thea mean of each channel for every sample.
+        obs_reduced = []
+        rewards = []
+        actions = []
+        for batch_idx, data_dict in enumerate(dataloader):
+            obs = data_dict["obs"]
+            rew = data_dict["rews"]
+            act = data_dict["acts"]
+            sample_count += obs.shape[0]
+            # Dim 0 is for batch, dim 3 is for channels.
+            obs_reduced.append(th.mean(obs, dim=[1, 2]))
+            rewards.append(rew)
+            actions.append(act)
+        obs_tensor = th.cat(obs_reduced, dim=0)
+        rew_tensor = th.cat(rewards, dim=0)
+        act_tensor = th.cat(actions, dim=0)
+        obs_mean, obs_std = th.std_mean(obs_tensor, dim=0)
+        rew_mean, rew_std = th.std_mean(rew_tensor, dim=0)
+        rew_hist = th.histogram(rew_tensor, bins=10)
+        act_hist = th.histogram(act_tensor, bins=15)
+
+        # Record the calculated statistics.
+        self.logger.record(f"{key}/size", sample_count)
+        self.logger.record(f"{key}/obs_mean", obs_mean)
+        self.logger.record(f"{key}/obs_std", obs_std)
+        self.logger.record(f"{key}/rew_mean", rew_mean)
+        self.logger.record(f"{key}/rew_std", rew_std)
