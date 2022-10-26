@@ -13,7 +13,6 @@ def direction_neuron_dim_agnostic(layer, direction, x=None, y=None, batch=None):
 
     @handle_batch(batch)
     def inner(model):
-        # breakpoint()
         layer_t = model(layer)
         if len(layer_t.shape) == 2:
             layer_t = layer_t.unsqueeze(-1).unsqueeze(-1)

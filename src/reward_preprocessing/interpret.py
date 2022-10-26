@@ -23,25 +23,56 @@ from reward_preprocessing.vis.reward_vis import LayerNMF
 
 @interpret_ex.main
 def interpret(
-    # Sacred magic: This dict will contain the sacred config settings for the
-    # sub_section 'common' in the sacred config. These settings are defined in the
-    # sacred ingredient 'common' in imitation.scripts.common.
     common: dict,
-    reward_path: Optional[str],
+    reward_path: str,
+    # TODO: I think at some point it would be cool if this was optional, since these
+    # are only used for dataset visualization, dimensionality reduction, and
+    # determining the shape of the features. In the case that we aren't doing the first
+    # two, we could determine the shape of the features some other way.
+    # This would especially help when incorporating a GAN into the procedure, because
+    # here the notion of a "rollout" as input into the whole pipeline doesn't make as
+    # much sense.
     rollout_path: str,
     limit_num_obs: int,
     pyplot: bool,
     vis_scale: int,
     vis_type: str,
     layer_name: str,
-    num_features: int,
+    num_features: Optional[int],
     gan_path: Optional[str],
 ):
-    """Run interpretability techniques.
+    """Run visualization for interpretability.
 
     Args:
-        For explanation of params see sacred config,
-        i.e. comments in defaults function above.
+        common:
+            Sacred magic: This dict will contain the sacred config settings for the
+            sub_section 'common' in the sacred config. These settings are defined in the
+            sacred ingredient 'common' in imitation.scripts.common.
+        reward_path: Path to the learned supervised reward net.
+        rollout_path:
+            Rollouts to use vor dataset visualization, dimensionality
+            reduction, and determining the shape of the features.
+        limit_num_obs:
+            Limit how many of the transitions from `rollout_path` are used for
+            dimensionality reduction. The RL Vision paper uses "a few thousand"
+            sampled infrequently from rollouts.
+        pyplot: Whether to plot images as pyplot figures.
+        vis_scale: Scale the plotted images by this factor.
+        vis_type:
+            Type of visualization to use. Either "traditional" for gradient-based
+            visualization of activations, or "dataset" for dataset visualization.
+        layer_name:
+            Name of the layer to visualize. To figure this out run this script and the
+            available layers in the loaded model will be printed. Available layers will
+            be those that are "named" layers in the torch Module, i.e. those that are
+            declared as attributes in the torch Module.
+        num_features:
+            Number of features to use for visualization. The activations will be reduced
+            to this size using NMF. If None, performs no dimensionality reduction.
+        gan_path:
+            Path to the GAN model. This is used to regularize the output of the
+            visualization. If None simply visualize reward net without the use
+            of a GAN in the pipeline.
     """
     if limit_num_obs <= 0:
         raise ValueError(
@@ -80,6 +111,7 @@ def interpret(
     # getting the shape of activations.
     if gan_path is None:  # This is when analyzing a reward net only.
         # Load trajectories and transform them into transition tensors.
+        # TODO: Seeding so the randomly shuffled subset is always the same.
         transition_tensor_dataloader = rollouts_to_dataloader(
             rollouts_paths=rollout_path,
             num_acts=15,
@@ -96,16 +128,17 @@ def interpret(
         # dimensionality accordingly.
         raise NotImplementedError()
 
-    # The model to analyse should be a torch module that takes a single input.
+    # The model to analyse should be a torch module that takes a single input, which
+    # should be a torch Tensor.
     # In our case this is one of the following:
-    # - A reward net that accepts transition tensors, or
-    # - A combo of GAN and reward net that accepts latent inputs vectors
+    # - A reward net that has been wrapped, so it accepts transition tensors.
+    # - A combo of GAN and reward net that accepts latent inputs vectors. (TODO)
     model_to_analyse = rew_net
     nmf = LayerNMF(
         model=model_to_analyse,
         features=num_features,
         layer_name=layer_name,
-        # "obses", i.e. input samples are used for dim reduction (if features is not
+        # input samples are used for dim reduction (if features is not
         # None) and for determining the shape of the features.
         model_inputs_preprocess=inputs,
         activation_fn="sigmoid",

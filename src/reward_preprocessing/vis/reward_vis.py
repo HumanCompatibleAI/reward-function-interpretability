@@ -20,22 +20,24 @@ def argmax_nd(x: np.ndarray, axes: list[int], *, max_rep=np.inf, max_rep_strict=
 
     Args:
         x: The array to find the maximum of. Size is (N, M, ...).
-        axes: The axes to find the maximum along. I.e.
+        axes: The axes to find the maximum along.
         max_rep: The maximum number of times a value can be repeated. If the
             maximum value is repeated more than this, then the returned indices
             will be None.
         max_rep_strict: If True, then the maximum number of repetitions is
-            enforced strictly. I.e. if there are two values that are the
+            enforced strictly.
     Returns:
-        Tuple of nd arrays, each of size (N,). The values in the tuples respresent the
+        Tuple of numpy arrays, each of size (N,). The values in each array represent the
         x and y coordinates in the original array M, ... dimensions. The coordinates are
         the maximum value for that sample.
         E.g. for x of size (N, M, K), the returned tuple will be (N,) and (N,), where
         the first element of the tuple has values from 0 to M-1, and the second element
         from 0 to K-1.
     """
-    assert max_rep > 0
-    assert np.isinf(max_rep) or max_rep_strict is not None
+    if max_rep <= 0:
+        raise ValueError("max_rep must be greater than 0.")
+    if max_rep_strict is None and not np.isinf(max_rep):
+        raise ValueError("if max_rep_strict is not set if max_rep must be infinite.")
     # Make it so the axes we want to find the maximum along are the first ones...
     perm = list(range(len(x.shape)))
     for axis in reversed(axes):
@@ -468,23 +470,3 @@ class LayerNMF:
             ),
             obs_indices.tolist(),
         )
-
-
-# def rescale_opacity(
-#     images, min_opacity=15 / 255, opaque_frac=0.1, max_scale=10, keep_zeros=False
-# ):
-#     images_orig = images
-#     images = images_orig.copy()
-#     opacities_flat = images[..., 3].reshape(
-#         images.shape[:-3] + (images.shape[-3] * images.shape[-2],)
-#     )
-#     opaque_threshold = np.percentile(opacities_flat, (1 - opaque_frac) * 100, axis=-1)
-#     opaque_threshold = np.maximum(
-#         opaque_threshold, np.amax(opacities_flat, axis=-1) / max_scale
-#     )[..., None, None]
-#     opaque_threshold[opaque_threshold == 0] = 1
-#     images[..., 3] = images[..., 3] * (1 - min_opacity) / opaque_threshold
-#     images[..., 3] = np.minimum(1, min_opacity + images[..., 3])
-#     if keep_zeros:
-#         images[..., 3][images_orig[..., 3] == 0] = 0
-#     return images

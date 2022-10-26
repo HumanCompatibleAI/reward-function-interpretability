@@ -93,8 +93,8 @@ Use `print_config` to get details of the config params of the sacred scripts.
     - `ext`: Code that is basically unmodified from other sources. Often this will be subject to a different license than the main repo.
       - However, this is not exclusive: There are other files which rely heavily on other sources and are therefore subject to a different license.
     - `policies`: RL policies for training experts with train_rl.
-    - `preprocessing` Reward preprocessing / reward shaping code
-    - `scripts`: All scripts that are not the main scripts of the projects. Helpers and scripts that produce artifacts that are used by the main script. Everything here should either be an executable file or config for one.
+    - `preprocessing` Reward preprocessing / reward shaping code.
+    - `scripts`: All scripts that are not the main scripts of the projects. Helpers and scripts that produce artifacts that are used by the main script. Everything here should either be an executable file or a config for one.
        - `helpers`: Helper scripts that are bash executables.
     - `trainers`: Our additions to the suite of reward learning algorithms available in imitation. Currently this contains the trainer for training reward nets with supervised learning.
     - `vis`: Visualization code for interpreting reward functions.
@@ -109,7 +109,7 @@ Unless there is an outright bug in `lucent`, when extending `lucent` add the cod
 
 ### Imitation
 
-So far we tried to keep everything as compatible with `imitation` as possible to the point where this project could (almost) be an extension for imitation.
+So far we have tried to keep everything as compatible with `imitation` as possible to the point where this project could (almost) be an extension for imitation.
 This also gives us imitation's logging and sacred integration for free.
 
 ## Tests
