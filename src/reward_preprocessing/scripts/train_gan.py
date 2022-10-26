@@ -27,7 +27,7 @@ def train_gan(
     device="cpu",
     ngpu=None,
     optimizer=th.optim.Adam,
-    steps={"Adversary": 5},
+    adv_steps=5,
     print_every="1e",
     save_losses_every="0.25e",
     save_model_every="1e",
@@ -56,9 +56,8 @@ def train_gan(
         device: "cpu" or "cuda", depending on what you're training on.
         ngpu: Number of GPUs to train on, if training on GPUs.
         optimizer: torch.optim. Optimizer to train GAN with.
-        steps: Dictionary specifying how many steps to train the
-            discriminator for for every generator training step, or vice
-            versa.
+        adv_steps: Number of steps to train the adversary for for each step the
+            generator is trained for.
         print_every: String specifying how many epochs should elapse between
             successive printings of training information.
         save_losses_every: String specifying how many epochs should elapse
@@ -89,6 +88,7 @@ def train_gan(
     # print out summary
     gan.summary()
     # fit gan
+    steps = {"Adversary": adv_steps}
     gan.fit(
         transitions_loader,
         batch_size=batch_size,
