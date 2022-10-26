@@ -1,5 +1,6 @@
 from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple, Type
 
+from PIL import Image
 from gym import spaces
 from imitation.algorithms import base
 from imitation.data import types
@@ -220,7 +221,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self._record_dataset_stats("train", self._train_loader)
         self._record_dataset_stats("test", self._test_loader)
 
-    def _record_dataset_stats(self, key: str, dataloader: data.DataLoader) -> dict:
+    def _record_dataset_stats(self, key: str, dataloader: data.DataLoader) -> None:
         """Calculate useful statistics about a dataset.
         Calculates
         - size of the dataset.
@@ -228,9 +229,6 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         - mean and standard deviation of rewards.
         - histogram of the rewards.
         - histogram of actions.
-
-        Returns:
-            Dict containing the above statistics.
         """
         sample_count = 0
         # Holds thea mean of each channel for every sample.
@@ -251,8 +249,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         act_tensor = th.cat(actions, dim=0)
         obs_mean, obs_std = th.std_mean(obs_tensor, dim=0)
         rew_mean, rew_std = th.std_mean(rew_tensor, dim=0)
-        rew_hist = th.histogram(rew_tensor, bins=10)
-        act_hist = th.histogram(act_tensor, bins=15)
+        rew_hist, rew_bin_edges = th.histogram(rew_tensor, bins=10)
+        act_hist, act_bin_edges = th.histogram(act_tensor, bins=15)
 
         # Record the calculated statistics.
         self.logger.record(f"{key}/size", sample_count)
@@ -260,3 +258,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.record(f"{key}/obs_std", obs_std)
         self.logger.record(f"{key}/rew_mean", rew_mean)
         self.logger.record(f"{key}/rew_std", rew_std)
+
+        self.logger.record(f"{key}/rew_hist", rew_hist)
+        self.logger.record(f"{key}/rew_bin_edges", rew_bin_edges)
+        self.logger.record(f"{key}/act_hist", act_hist)
+        self.logger.record(f"{key}/act_bin_edges", act_bin_edges)
+
