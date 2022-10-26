@@ -65,6 +65,7 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
             ):
                 save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
 
+        custom_logger.log("Start training regression model.")
         # Start training
         trainer.train(
             num_epochs=supervised["epochs"],
