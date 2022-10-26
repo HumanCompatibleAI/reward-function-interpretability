@@ -148,6 +148,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         device,
         epoch,
     ):
+        """Trains the model on a single batch of data."""
         self.reward_net.train()
         for batch_idx, data_dict in enumerate(self._train_loader):
             self._global_batch_step += 1
@@ -264,4 +265,3 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.record(f"{key}/rew_bin_edges", rew_bin_edges)
         self.logger.record(f"{key}/act_hist", act_hist)
         self.logger.record(f"{key}/act_bin_edges", act_bin_edges)
-
