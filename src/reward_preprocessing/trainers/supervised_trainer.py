@@ -256,7 +256,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         # act_hist, act_bin_edges = th.histogram(act_tensor, bins=15)
 
         rew_hist = wandb.Histogram(rew_tensor, num_bins=10)
-        act_hist = wandb.Histogram(act_tensor, num_bins=15)
+        act_hist = wandb.Histogram(act_tensor, num_bins=16)
 
         # Record the calculated statistics.
         self.logger.record(f"{key}/size", sample_count)
