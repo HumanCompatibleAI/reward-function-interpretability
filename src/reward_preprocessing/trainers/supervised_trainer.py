@@ -219,6 +219,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
 
         self.logger.log("Calculating stats for train data...")
         self._record_dataset_stats("train", self._train_loader)
+        self.logger.log("Calculating stats for test data...")
         self._record_dataset_stats("test", self._test_loader)
 
     def _record_dataset_stats(self, key: str, dataloader: data.DataLoader) -> None:
