@@ -151,6 +151,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
     ):
         """Trains the model on a single batch of data."""
         self.reward_net.train()
+        sum_batch_losses = 0
+        sample_count = 0
         for batch_idx, data_dict in enumerate(self._train_loader):
             self._global_batch_step += 1
             model_args, target = self._data_dict_to_model_args_and_target(
@@ -162,6 +164,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             loss = self._loss_fn(output, target)
             loss.backward()
             self._opt.step()
+            sum_batch_losses += loss.item()
+            sample_count += len(data_dict["obs"])
             if batch_idx % self._test_freq == 0:  # Test and log every test_freq batches
                 self.logger.record("epoch", epoch)
                 per_sample_loss = loss.item() / self._batch_size
@@ -169,6 +173,14 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 test_loss = self._test(device, self._loss_fn)
                 self.logger.record("test_loss", test_loss)
                 self.logger.dump(self._global_batch_step)
+
+        # At the end of the epoch.
+        per_sample_ep_loss = sum_batch_losses / sample_count
+        self.logger.record("epoch_train_loss", per_sample_ep_loss)
+        test_loss = self._test(device, self._loss_fn)
+        self.logger.record("epoch_test_loss", test_loss)
+        self._global_batch_step += 1  # dump() must be called with unique step.
+        self.logger.dump(self._global_batch_step)
 
     def _test(self, device, loss_fn) -> float:
         """Test model on data in test_loader. Returns average batch loss."""
