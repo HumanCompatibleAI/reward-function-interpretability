@@ -8,7 +8,7 @@ interpret_ex = Experiment("interpret", ingredients=[common.common_ingredient])
 def defaults():
     # Path to the learned supervised reward net
     reward_path = None
-    # Rollouts to use vor dataset visualization
+    # Rollouts to use for dataset visualization
     rollout_path = None
     # Limit the number of observations to use for dim reduction.
     # The RL Vision paper uses "a few thousand" observations.
@@ -19,7 +19,8 @@ def defaults():
     # Name of the layer to visualize. To figure this out run interpret and the
     # available layers will be printed. For additional notes see interpret doc comment.
     layer_name = "reshaped_out"
-    num_features = 2  # Number of features to use for visualization.
+    # Number of features to use for dim reduction. No dim recution if None.
+    num_features = None
     # Path to the GAN model. If None simply visualize reward net without the use of GAN.
     gan_path = None
 

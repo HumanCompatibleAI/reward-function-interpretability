@@ -8,7 +8,7 @@ import torch as th
 
 
 def _loader_helper(path, _, **kwargs):
-    # AFAICT by default imitation will load saved reward nets and then torch will move
+    # By default, imitation will load saved reward nets and then torch will move
     # them to the same devices they are saved on. This fails if e.g. GPU is not
     # available in the environment that loads. The following circumvents this problem
     # by using torch.load's map_location argument.
@@ -21,8 +21,12 @@ def _loader_helper(path, _, **kwargs):
 
 # Register our custom reward so that imitation internals can e.g. load the specified
 # type. We register in a very similar way to imitation.reward.serialize.
-# The key is used is passed to the loader function in imitation to determine which
-# loader to use for a given path to a saved reward net.
+# The key is a name we choose here that can then be passed to the loader function
+# in imitation to determine which loader to use when loading from a given path to a
+# saved reward net. We choose "SupervisedRewardNet" as the key, since this loader
+# extends the functionality to allow loading of reward nets trained with
+# supervised regression. The reward net that needs this is the
+# ProcgenCnnRegressionRewardNet.
 reward_registry.register(
     key="SupervisedRewardNet",
     # Validate the shape returned by the reward net

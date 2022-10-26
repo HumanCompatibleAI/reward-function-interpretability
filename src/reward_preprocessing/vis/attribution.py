@@ -28,7 +28,7 @@ def get_activations(
 
 
 def default_score_fn(t):
-    return th.sum(t, dim=list(range(len(t.shape)))[1:])
+    return th.sum(t, dim=list(range(1, len(t.shape))))
 
 
 def get_grad_or_attr(
