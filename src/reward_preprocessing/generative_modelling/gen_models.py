@@ -1,7 +1,7 @@
 import torch as th
 import torch.nn as nn
 
-# TODO: add test on initialization that shit has the right shape?
+# TODO(df): add test on initialization that shit has the right shape?
 
 
 class Small21To84Generator(nn.Module):

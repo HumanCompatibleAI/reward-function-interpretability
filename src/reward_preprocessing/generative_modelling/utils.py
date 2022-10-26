@@ -11,6 +11,7 @@ import numpy as np
 import torch as th
 import torch.nn as nn
 from torch.utils import data as torch_data
+import vegans.utils
 
 # TODO: add type annotations
 
@@ -19,7 +20,7 @@ def make_transition_to_tensor(num_acts):
     """Produces a function that takes a transition, produces a tensor.
 
     For use as something to 'map over' a torch dataset of transitions. Assumes
-    observations are (h,c,w)-formatted images, actions are discrete.
+    observations are (h,w,c)-formatted images, actions are discrete.
 
     Args:
         num_acts: Number of discrete actions. Necessary because actions are
@@ -164,3 +165,9 @@ class RewardGeneratorCombo(nn.Module):
         obs, action_vec, next_obs = tensor_to_transition(latent_vec)
         done = th.zeros(action_vec.shape)
         return reward_net.forward(obs, action_vec, next_obs, done)
+
+
+def save_loss_plots(losses, save_dir):
+    """Save plots of generator/adversary losses over training."""
+    fig, _ = vegans.utils.plot_losses(losses, show=False)
+    fig.savefig(Path(save_dir) / 'loss_fig.png')

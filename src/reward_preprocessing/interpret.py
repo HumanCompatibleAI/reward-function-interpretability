@@ -5,6 +5,7 @@ from PIL import Image
 from imitation.data import types
 from imitation.scripts.common import common as common_config
 from imitation.scripts.common import demonstrations
+from imitation.util import logger as imit_logger
 from lucent.optvis import transform
 import matplotlib
 from matplotlib import pyplot as plt
@@ -19,6 +20,7 @@ from reward_preprocessing.common.networks import (
     FourDimOutput,
     NextStateOnlyModel,
 )
+from reward_preprocessing.generative_modelling.utils import tensor_to_transition
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
 interpret_ex = Experiment(
@@ -42,6 +44,8 @@ def defaults():
     vis_type = "traditional"  # "traditional" or "dataset"
     layer_name = "reshaped_out"  # Name of the layer to visualize.
     num_features = 2  # Number of features to use for visualization.
+    gan_path = None
+    img_save_path = None
 
     locals()  # quieten flake8
 
@@ -65,21 +69,36 @@ def interpret(
     vis_type: str,
     layer_name: str,
     num_features: int,
+    gan_path: Optional[str] = None,
+    img_save_path: Optional[str] = None,
 ):
     """Sanity check a learned supervised reward net. Evaluate 4 things:
     - Random policy on env reward
     - Random policy on learned reward function
     - Expert policy on env reward
     - Expert policy on learned reward function
+
+    img_save_path must be a directory, end in a /.
     """
+
+    if vis_type not in ["dataset", "traditional"]:
+        raise ValueError(f"Unknown vis_type: {vis_type}")
+    if vis_type == "dataset" and gan_path is not None:
+        raise ValueError("GANs cannot be used with dataset visualization.")
+
     if pyplot:
         matplotlib.use("TkAgg")
 
     # Load reward not pytorch module
-    if th.cuda.is_available():
-        rew_net = th.load(str(reward_path))  # Load from same device as saved
-    else:  # CUDA not available
-        rew_net = th.load(str(reward_path), map_location=th.device("cpu"))  # Force CPU
+
+    device = th.device("cuda") if th.cuda.is_available() else th.device("cpu")
+
+    rew_net = th.load(str(reward_path), map_location=device)
+
+    # If GAN path is specified, combine with a GAN.
+    if gan_path is not None:
+        gan = th.load(gan_path, map_location=device)
+        rew_net = RewardGeneratorCombo(reward_net=rew_net, generator=gan.generator)
 
     # Set up imitation-style logging
     custom_logger, log_dir = common_config.setup_logging()
@@ -88,7 +107,7 @@ def interpret(
 
     rew_net.eval()
 
-    if vis_type == "traditional":
+    if vis_type == "traditional" and gan_path is None:
         rew_net = rew_net.cnn_regressor
     elif vis_type == "dataset":
         # See description of class for explanation
@@ -138,18 +157,19 @@ def interpret(
         # layer_name="cnn_regressor_avg_pool",
         obses=obses,
         activation_fn="sigmoid",
+        device=device,
     )
 
     # Visualization
     num_features = nmf.features
     rows, columns = 1, num_features
     if pyplot:
-        fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches
+        fig = plt.figure(figsize=(columns * 4, rows * 2))  # width, height in inches
     for i in range(num_features):
         print(i)
 
         # Get the visualization as image
-        if vis_type == "traditional":
+        if vis_type == "traditional" and gan_path is None:
             # List of transforms
             transforms = [
                 transform.jitter(2),  # Jitters input by 2 pixel
@@ -158,39 +178,105 @@ def interpret(
                 # uncurry_pad_i2_of_4,
             ]
 
-            img = nmf.vis_traditional(transforms=transforms)
+            next_obs = nmf.vis_traditional(transforms=transforms)
+            obs = next_obs
+        elif vis_type == "traditional" and gan_path is not None:
+            # TODO(df): see if "input" is a legit name.
+            latent = nmf.vis_traditional(l2_coeff=0.1, l2_layer_name="input")
+            latent_th = th.from_numpy(latent).to(device)
+            trans_tens = gan.generator(latent_th)
+            obs_th, _, next_obs_th = tensor_to_transition(trans_tens)
+            obs = obs_th.detach().cpu().numpy()
+            next_obs = next_obs_th.detach().cpu().numpy()
         elif vis_type == "dataset":
-            img, indices = nmf.vis_dataset_thumbnail(
+            next_obs, indices = nmf.vis_dataset_thumbnail(
                 feature=i, num_mult=4, expand_mult=1
             )
-        else:
-            raise ValueError(f"Unknown vis_type: {vis_type}.")
+            obs = next_obs
         # img = img.astype(np.uint8)
         # index = indices[0][0]
         # img = observations[index]
 
         if wandb_logging:
-            p_img = Image.fromarray(np.uint8(img * 255), mode="RGBA").resize(
-                size=(img.shape[0] * vis_scale, img.shape[1] * vis_scale),
-                resample=Image.NEAREST,
+            log_arr_to_wandb(
+                obs, vis_scale, feature=i, img_type="obs", logger=custom_logger
             )
-            wb_img = wandb.Image(p_img, caption=f"Feature {i}")
-            custom_logger.record(f"feature_{i}", wb_img)
+            log_arr_to_wandb(
+                next_obs,
+                vis_scale,
+                feature=i,
+                img_type="next_obs",
+                logger=custom_logger,
+            )
             # Can't re-use steps unfortunately, so each feature img gets its own step.
             custom_logger.dump(step=i)
+        if img_save_path is not None:
+            if img_save_path[-1] != "/":
+                raise ValueError("img_save_path is not a directory, does not end in /")
+            obs_img = array_to_image(obs, vis_scale)
+            obs_img.save(img_save_path + f"{i}_obs.png")
+            next_obs_img = array_to_image(next_obs, vis_scale)
+            next_obs_img.save(img_save_path + f"{i}_next_obs.png")
         if pyplot:
-            if len(img.shape) == 3:
-                fig.add_subplot(rows, columns, i + 1)
-                plt.imshow(img)
-            elif len(img.shape) == 4:
-                for img_i in range(img.shape[0]):
-                    fig.add_subplot(rows, columns, i + 1)
-                    plt.imshow(img[img_i])
+            add_to_figure(fig, obs, "obs")
+            add_to_figure(fig, next_obs, "next_obs")
 
         # show()
     if pyplot:
         plt.show()
     custom_logger.log("Done with dataset visualization.")
+
+
+def array_to_image(arr: np.ndarray, scale: int) -> Image:
+    """Take numpy array on [0,1] scale, return PIL image."""
+    return Image.fromarray(np.uint8(arr * 255), mode="RGBA").resize(
+        size=(arr.shape[0] * vis_scale, arr.shape[1] * vis_scale),
+        resample=Image.NEAREST,
+    )
+
+
+def log_arr_to_wandb(
+    arr: np.ndarray,
+    scale: int,
+    feature: int,
+    img_type: str,
+    logger: imit_logger.HierarchicalLogger,
+) -> None:
+    """Log visualized np.ndarray to wandb using given logger.
+
+    Args:
+        - arr: array to turn into image, save.
+        - scale: ratio by which to scale up the image.
+        - feature: which number feature is being visualized.
+        - img_type: "obs" or "next_obs"
+        - logger: logger to use.
+    """
+    if img_type not in ["obs", "next_obs"]:
+        err_str = f"img_type should be 'obs' or 'next_obs', but instead is {img_type}"
+        raise ValueError(err_str)
+
+    pil_img = array_to_image(arr, scale)
+    wb_img = wandb.Image(pil_img, caption=f"Feature {feature}, {img_type}")
+    logger.record(f"feature_{feature}_{img_type}", wb_img)
+
+
+def add_to_figure(fig, img: np.ndarray, img_type: str) -> None:
+    """Add to pyplot figure"""
+    if img_type not in ["obs", "next_obs"]:
+        err_str = f"img_type should be 'obs' or 'next_obs', but instead is {img_type}"
+        raise ValueError(err_str)
+
+    offset = 1 if img_type == "obs" else 2
+
+    if len(img.shape) == 3:
+        fig.add_subplot(rows, columns, 2 * i + offset)
+        plt.imshow(img)
+    elif len(img.shape) == 4:
+        for img_i in range(img.shape[0]):
+            fig.add_subplot(rows, columns, 2 * i + offset)
+            plt.imshow(img[img_i])
+    else:
+        raise ValueError("img should have either 3 or 4 dimensions.")
 
 
 def main():
