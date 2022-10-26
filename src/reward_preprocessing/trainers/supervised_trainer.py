@@ -250,8 +250,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         obs_tensor = th.cat(obs_reduced, dim=0)
         rew_tensor = th.cat(rewards, dim=0)
         act_tensor = th.cat(actions, dim=0)
-        obs_mean, obs_std = th.std_mean(obs_tensor, dim=0)
-        rew_mean, rew_std = th.std_mean(rew_tensor, dim=0)
+        obs_std, obs_mean = th.std_mean(obs_tensor, dim=0)
+        rew_std, rew_mean = th.std_mean(rew_tensor, dim=0)
         # rew_hist, rew_bin_edges = th.histogram(rew_tensor, bins=10)
         # act_hist, act_bin_edges = th.histogram(act_tensor, bins=15)
 
