@@ -260,8 +260,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
 
         # Record the calculated statistics.
         self.logger.record(f"{key}/size", sample_count)
-        self.logger.record(f"{key}/obs_mean", obs_mean)
-        self.logger.record(f"{key}/obs_std", obs_std)
+        for channel_i in range(len(obs_mean)):
+            self.logger.record(
+                f"{key}/obs_mean_channel{channel_i}", obs_mean[channel_i]
+            )
+            self.logger.record(f"{key}/obs_std_channel{channel_i}", obs_std[channel_i])
         self.logger.record(f"{key}/rew_mean", rew_mean)
         self.logger.record(f"{key}/rew_std", rew_std)
         self.logger.record(f"{key}/rew_hist", rew_hist)
