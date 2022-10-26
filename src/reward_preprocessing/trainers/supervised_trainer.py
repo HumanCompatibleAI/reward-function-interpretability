@@ -160,7 +160,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             self._opt.step()
             if batch_idx % self._test_freq == 0:  # Test and log every test_freq batches
                 self.logger.record("epoch", epoch)
-                self.logger.record("train_loss", loss.item())
+                per_sample_loss = loss.item() / self._batch_size
+                self.logger.record("train_loss", per_sample_loss)
                 test_loss = self._test(device, self._loss_fn)
                 self.logger.record("test_loss", test_loss)
                 self.logger.dump(self._global_batch_step)
@@ -177,7 +178,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 output = self.reward_net(*model_args)
                 test_loss += loss_fn(output, target).item()  # sum up batch loss
 
-        test_loss /= len(self._test_loader.dataset)
+        test_loss /= len(self._test_loader.dataset)  # Make it per-sample loss
         self.reward_net.train()
 
         return test_loss
