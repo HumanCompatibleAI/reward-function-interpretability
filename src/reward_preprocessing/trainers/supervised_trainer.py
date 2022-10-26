@@ -11,6 +11,7 @@ from imitation.util import logger as imit_logger
 import torch as th
 from torch.utils import data
 from tqdm import tqdm
+import wandb
 
 
 class SupervisedTrainer(base.BaseImitationAlgorithm):
@@ -251,8 +252,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         act_tensor = th.cat(actions, dim=0)
         obs_mean, obs_std = th.std_mean(obs_tensor, dim=0)
         rew_mean, rew_std = th.std_mean(rew_tensor, dim=0)
-        rew_hist, rew_bin_edges = th.histogram(rew_tensor, bins=10)
-        act_hist, act_bin_edges = th.histogram(act_tensor, bins=15)
+        # rew_hist, rew_bin_edges = th.histogram(rew_tensor, bins=10)
+        # act_hist, act_bin_edges = th.histogram(act_tensor, bins=15)
+
+        rew_hist = wandb.Histogram(rew_tensor, num_bins=10)
+        act_hist = wandb.Histogram(act_tensor, num_bins=15)
 
         # Record the calculated statistics.
         self.logger.record(f"{key}/size", sample_count)
@@ -260,8 +264,5 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.record(f"{key}/obs_std", obs_std)
         self.logger.record(f"{key}/rew_mean", rew_mean)
         self.logger.record(f"{key}/rew_std", rew_std)
-
         self.logger.record(f"{key}/rew_hist", rew_hist)
-        self.logger.record(f"{key}/rew_bin_edges", rew_bin_edges)
         self.logger.record(f"{key}/act_hist", act_hist)
-        self.logger.record(f"{key}/act_bin_edges", act_bin_edges)
