@@ -15,7 +15,15 @@ def config():
     test_freq = 64  # Frequency of running tests (in batches)
     batch_size = 32  # Batch size for training a supervised model
     num_loader_workers = 0  # Number of workers for data loading
-    net_kwargs = {}  # Keyword arguments for reward network
+
+    # Apparently in sacred I need default values for parameters that I want to be able
+    # to override. At least that's how I interpret this information:
+    # https://github.com/IDSIA/sacred/issues/644
+
+    # Keyword arguments for reward network
+    net_kwargs = dict(
+            use_state=True, use_action=True, use_next_state=True, hid_channels=(32, 64)
+        )
 
     locals()  # quieten flake8
 
