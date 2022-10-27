@@ -38,5 +38,17 @@ def use_all():
 
 @train_regression_ex.named_config
 def large_net():
-    supervised = dict(net_kwargs=dict(hid_channels=(32, 64, 128)))
+    # Similar to AlexNet architecture, only in the number of convolutional layers and
+    # the number of channels in them.
+    supervised = dict(net_kwargs=dict(hid_channels=(96, 256, 384, 384, 256)))
+    locals()  # make flake8 happy
+
+@train_regression_ex.named_config
+def very_large_net():
+    # Net that has the same convolutional networks as the Impala net used to train
+    # policies. This does not have the other bells and whistles of Impala, such as
+    # residual connections.
+    # This network is probably too unnecessarily large for predicting the rewards using
+    # supervised learning.
+    supervised = dict(net_kwargs=dict(hid_channels=(16, 16, 16, 16, 16,32, 32, 32, 32, 32, 32, 32, 32, 32, 32)))
     locals()  # make flake8 happy
