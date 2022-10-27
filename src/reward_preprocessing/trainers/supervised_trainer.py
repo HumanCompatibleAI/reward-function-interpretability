@@ -246,26 +246,27 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         - histogram of actions.
         """
         sample_count = 0
-        # Holds thea mean of each channel for every sample.
+        # Holds the mean of each channel for every sample.
         obs_reduced = []
         rewards = []
         actions = []
+        dones_count = 0
         for batch_idx, data_dict in enumerate(dataloader):
             obs = data_dict["obs"]
             rew = data_dict["rews"]
             act = data_dict["acts"]
+            done = data_dict["dones"]
             sample_count += obs.shape[0]
             # Dim 0 is for batch, dim 3 is for channels.
             obs_reduced.append(th.mean(obs, dim=[1, 2]))
             rewards.append(rew)
             actions.append(act)
+            dones_count += th.sum(done).item()
         obs_tensor = th.cat(obs_reduced, dim=0)
         rew_tensor = th.cat(rewards, dim=0)
         act_tensor = th.cat(actions, dim=0)
         obs_std, obs_mean = th.std_mean(obs_tensor, dim=0)
         rew_std, rew_mean = th.std_mean(rew_tensor, dim=0)
-        # rew_hist, rew_bin_edges = th.histogram(rew_tensor, bins=10)
-        # act_hist, act_bin_edges = th.histogram(act_tensor, bins=15)
 
         rew_hist = wandb.Histogram(rew_tensor, num_bins=11)
         act_hist = wandb.Histogram(act_tensor, num_bins=16)
@@ -281,3 +282,4 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.record(f"{key}/rew_std", rew_std)
         self.logger.record(f"{key}/rew_hist", rew_hist)
         self.logger.record(f"{key}/act_hist", act_hist)
+        self.logger.record(f"{key}/done_mean", dones_count / sample_count)
