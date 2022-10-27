@@ -43,6 +43,7 @@ def large_net():
     supervised = dict(net_kwargs=dict(hid_channels=(96, 256, 384, 384, 256)))
     locals()  # make flake8 happy
 
+
 @train_regression_ex.named_config
 def very_large_net():
     # Net that has the same convolutional networks as the Impala net used to train
@@ -50,5 +51,9 @@ def very_large_net():
     # residual connections.
     # This network is probably too unnecessarily large for predicting the rewards using
     # supervised learning.
-    supervised = dict(net_kwargs=dict(hid_channels=(16, 16, 16, 16, 16,32, 32, 32, 32, 32, 32, 32, 32, 32, 32)))
+    supervised = dict(
+        net_kwargs=dict(
+            hid_channels=(16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32)
+        )
+    )
     locals()  # make flake8 happy
