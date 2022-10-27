@@ -40,7 +40,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         Args:
             demonstrations: Demonstrations from an expert as trajectories with reward.
                 Trajectories will be used as the dataset for supervised learning.
-            reward_net: Reward network to train.
+            reward_net:
+                Reward network to train. This code assumes the net expects
+                observations to be normalized between 0 and 1.
             batch_size: Batch size to use for training.
             test_frac: Fraction of dataset to use for testing.
             test_freq: Number of batches to train on before testing and logging.
@@ -202,20 +204,34 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
     def _data_dict_to_model_args_and_target(
         self, data_dict: Dict[str, th.Tensor], device: str
     ) -> Tuple[tuple, th.Tensor]:
-        """Move data to correct device and return for model args.
-        Transform actions into one-hot vectors, since that is the format reward nets
-        expect.
+        """Turn data dict into structure that the model expects. Perform the following:
+        - Normalize observations to be between 0 and 1.
+            - Whether the data needs to be changed is determined by the type of
+            the observations.
+        - Turn actions into one-hot vectors.
+        - Move data to correct device.
+        - Return as tuple of args that can be passed to forward() and target.
 
         Args:
             data_dict: Dictionary of data from Transitions dataloader to be passed to
                 model.
             device: Device to move data to.
+
+        Returns:
+            Tuple of model_args and target.
+            modal_args is a tuple of the four model inputs: obs, next_obs, action, and
+            done. Target is the target reward.
         """
-        obs = data_dict["obs"].to(device)
+        obs: th.Tensor = data_dict["obs"].to(device)
         act = data_dict["acts"].to(device)
         next_obs = data_dict["next_obs"].to(device)
         done = data_dict["dones"].to(device)
         target = data_dict["rews"].to(device)
+
+        if obs.dtype == th.uint8:  # Observations saved as int => Normalize to [0, 1]
+            obs = obs.float() / 255.0
+        if next_obs.dtype == th.uint8:
+            next_obs = next_obs.float() / 255.0
 
         if isinstance(self.reward_net.action_space, spaces.Discrete):
             num_actions = self.reward_net.action_space.n
@@ -223,7 +239,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             raise NotImplementedError("Trainer only supports discrete action spaces.")
         if act.dtype == th.float:
             self.logger.warn("Actions are of float type. Converting to int.")
-            act = act.long()  # long necessary for one_hot function below.
+            # long necessary in order to use integer action as index for one-hot vector.
+            act = act.long()
         act = th.nn.functional.one_hot(act, num_actions)
 
         return (obs, act, next_obs, done), target
