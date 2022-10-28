@@ -7,13 +7,8 @@ Install using your python environment system of choice
 
 Either:
 ```bash
-pip install -e .
-```
-
-Or:
-```bash
 pip install -r requirements.txt
-pip install -r requirements-dev.txt
+pip install -r requirements-dev.txt  # If dev packages are needed.
 ```
 
 Note on the python version: if you use a separate installation of `imitation`
