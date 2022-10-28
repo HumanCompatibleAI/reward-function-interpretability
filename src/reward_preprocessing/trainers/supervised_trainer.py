@@ -1,6 +1,5 @@
 from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple, Type
 
-from PIL import Image
 from gym import spaces
 from imitation.algorithms import base
 from imitation.data import types
