@@ -1,6 +1,7 @@
 # To support cuda 11.6
 --extra-index-url https://download.pytorch.org/whl/cu116
 torch==1.12.1
+torchvision==1.13.1
 stable-baselines3==1.6.0
 sacred==0.8.2
 numpy==1.21.2
