@@ -13,6 +13,13 @@ from tqdm import tqdm
 import wandb
 
 
+def _normalize_obs(obs: th.Tensor) -> th.Tensor:
+    """Normalize by dividing by 255, if obs is uint8, otherwise no change."""
+    if obs.dtype == th.uint8:  # Observations saved as int => Normalize to [0, 1]
+        obs = obs.float() / 255.0
+    return obs
+
+
 class SupervisedTrainer(base.BaseImitationAlgorithm):
     """Learns from demonstrations (transitions / trajectories) using supervised
     learning. Has some overlap with base.DemonstrationAlgorithm, but does not train a
@@ -227,10 +234,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         done = data_dict["dones"].to(device)
         target = data_dict["rews"].to(device)
 
-        if obs.dtype == th.uint8:  # Observations saved as int => Normalize to [0, 1]
-            obs = obs.float() / 255.0
-        if next_obs.dtype == th.uint8:
-            next_obs = next_obs.float() / 255.0
+        obs = _normalize_obs(obs)
+        next_obs = _normalize_obs(next_obs)
 
         if isinstance(self.reward_net.action_space, spaces.Discrete):
             num_actions = self.reward_net.action_space.n
@@ -269,6 +274,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         dones_count = 0
         for batch_idx, data_dict in enumerate(dataloader):
             obs = data_dict["obs"]
+            obs = _normalize_obs(obs)
+
             rew = data_dict["rews"]
             act = data_dict["acts"]
             done = data_dict["dones"]
