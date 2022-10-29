@@ -309,7 +309,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             self.logger.record(
                 f"{name}/obs_mean_channel{channel_i}_{name}", obs_mean[channel_i]
             )
-            self.logger.record(f"{name}/obs_std_channel{channel_i}_{name}", obs_std[channel_i])
+            self.logger.record(
+                f"{name}/obs_std_channel{channel_i}_{name}", obs_std[channel_i]
+            )
         self.logger.record(f"{name}/rew_mean_{name}", rew_mean)
         self.logger.record(f"{name}/rew_std_{name}", rew_std)
         self.logger.record(f"{name}/rew_hist_{name}", rew_hist)
