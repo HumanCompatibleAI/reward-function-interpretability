@@ -30,7 +30,8 @@ def config():
 
 @supervised_ingredient.config_hook
 def config_hook(config, command_name, logger) -> dict:
-    """Sets defaults for net_kwargs if not provided."""
+    """Warn if network is set to `use_done`, since this setting will be overriden
+    in train_regression."""
     del command_name
     res = {}
     if (
@@ -39,7 +40,7 @@ def config_hook(config, command_name, logger) -> dict:
     ):
         logger.warning(
             "Supervised training does not support setting use_done to "
-            "False. We don't support networks that take in the done signal. "
+            "True. We don't support networks that take in the done signal. "
             "This value will be ignored."
         )
 
