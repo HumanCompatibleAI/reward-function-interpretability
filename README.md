@@ -25,7 +25,7 @@ You can also use docker by building the image and running the scripts from insid
 
 ## Usage
 
-### Getting a Reward Model to Analyze
+### Getting a Reward Model
 
 #### Training the Supervised Reward Model
 
