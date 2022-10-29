@@ -241,9 +241,16 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             num_actions = self.reward_net.action_space.n
         else:
             raise NotImplementedError("Trainer only supports discrete action spaces.")
-        if act.dtype == th.float:
-            self.logger.warn("Actions are of float type. Converting to int.")
-            # long necessary in order to use integer action as index for one-hot vector.
+
+        if act.dtype != th.long:
+            if act.dtype == th.float:
+                # Discrete actions should really be saved as integer values, so we
+                # give a warning.
+                self.logger.warn("Actions are of float type. Converting to int.")
+            # Convert to long. This is necessary in order to use integer action
+            # as index for one-hot vector.
+            # However, unlike above no warning is logged because saving actions as int
+            # is fine.
             act = act.long()
         act = th.nn.functional.one_hot(act, num_actions)
 
