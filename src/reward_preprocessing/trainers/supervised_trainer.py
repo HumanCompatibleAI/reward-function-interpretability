@@ -264,7 +264,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.log("Calculating stats for test data...")
         self._record_dataset_stats("test_data", self._test_loader)
 
-    def _record_dataset_stats(self, key: str, dataloader: data.DataLoader) -> None:
+    def _record_dataset_stats(self, name: str, dataloader: data.DataLoader) -> None:
         """Calculate useful statistics about a dataset.
         Calculates
         - size of the dataset.
@@ -299,17 +299,19 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         rew_std, rew_mean = th.std_mean(rew_tensor, dim=0)
 
         rew_hist = wandb.Histogram(rew_tensor, num_bins=11)
-        act_hist = wandb.Histogram(act_tensor, num_bins=16)
+        act_hist = wandb.Histogram(act_tensor.float(), num_bins=16)
 
         # Record the calculated statistics.
-        self.logger.record(f"{key}/size", sample_count)
+        # New version of sb3 doesn't allow duplicate keys after the slash so we also
+        # need to add the name there.
+        self.logger.record(f"{name}/size_{name}", sample_count)
         for channel_i in range(len(obs_mean)):
             self.logger.record(
-                f"{key}/obs_mean_channel{channel_i}", obs_mean[channel_i]
+                f"{name}/obs_mean_channel{channel_i}_{name}", obs_mean[channel_i]
             )
-            self.logger.record(f"{key}/obs_std_channel{channel_i}", obs_std[channel_i])
-        self.logger.record(f"{key}/rew_mean", rew_mean)
-        self.logger.record(f"{key}/rew_std", rew_std)
-        self.logger.record(f"{key}/rew_hist", rew_hist)
-        self.logger.record(f"{key}/act_hist", act_hist)
-        self.logger.record(f"{key}/done_mean", dones_count / sample_count)
+            self.logger.record(f"{name}/obs_std_channel{channel_i}_{name}", obs_std[channel_i])
+        self.logger.record(f"{name}/rew_mean_{name}", rew_mean)
+        self.logger.record(f"{name}/rew_std_{name}", rew_std)
+        self.logger.record(f"{name}/rew_hist_{name}", rew_hist)
+        self.logger.record(f"{name}/act_hist_{name}", act_hist)
+        self.logger.record(f"{name}/done_mean_{name}", dones_count / sample_count)
