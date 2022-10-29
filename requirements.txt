@@ -1,0 +1,20 @@
+# To support cuda 11.6
+--extra-index-url https://download.pytorch.org/whl/cu116
+torch==1.12.1
+torchvision==0.13.1
+stable-baselines3==1.6.0
+sacred==0.8.2
+numpy==1.21.2
+gym==0.21
+tqdm==4.62.2
+wandb==0.12.1
+seals==0.1.1
+torch-lucent==0.1.8
+jupyter==1.0.0
+git+https://github.com/ejnnr/mazelab.git@3042551
+git+https://github.com/HumanCompatibleAI/imitation.git@91c66b7377
+# This version includes some fixes that are not in the newest pip version
+git+https://github.com/openai/gym3.git@4c38246
+procgen @ git+https://github.com/JacobPfau/procgenAISC.git@7821f2c00b
+# Revert to this older version because some library won't work otherwise
+protobuf==3.19
