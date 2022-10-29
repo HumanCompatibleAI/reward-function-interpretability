@@ -74,14 +74,16 @@ You can also use docker by building the image and running the scripts from insid
     # n_steps (usually 256 for most hparams) each.
     --num_episodes=1000
   ```
-  - 
 
 
+### Interpreting a Reward Model
 
+Once you have a reward model, you can use visualize various interpretability methods.
+Use `print_config` to get details of the config params of the sacred scripts, as in:
 
-### Interpretability
-
-Use `print_config` to get details of the config params of the sacred scripts.
+```bash
+python -m reward_preprocessing.interpret print_config
+```
 
 ## Code Structure
 
