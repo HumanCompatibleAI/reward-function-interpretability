@@ -45,4 +45,7 @@ COPY . /reward_preprocessing
 RUN python setup.py sdist bdist_wheel
 RUN pip install dist/reward_preprocessing-*.whl
 
+# Move into src directory, so scripts can be run from outside the docker container.
+CMD cd src/
+
 CMD ["pytest"]
