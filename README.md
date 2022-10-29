@@ -3,9 +3,8 @@
 
 ## Installation
 First clone this repository.
-Install using your python environment system of choice
+Install inside your python virtual environment system of choice:
 
-Either:
 ```bash
 pip install -r requirements.txt
 pip install -r requirements-dev.txt  # If dev packages are needed.
