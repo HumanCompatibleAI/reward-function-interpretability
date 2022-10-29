@@ -94,7 +94,7 @@ python -m reward_preprocessing.interpret print_config
     - `policies`: RL policies for training experts with train_rl.
     - `preprocessing` Reward preprocessing / reward shaping code.
     - `scripts`: All scripts that are not the main scripts of the projects. Helpers and scripts that produce artifacts that are used by the main script. Everything here should either be an executable file or a config for one.
-       - `helpers`: Helper scripts that are bash executables.
+       - `helpers`: Helper scripts that are bash executables or python scripts that are not full sacred experiments.
     - `trainers`: Our additions to the suite of reward learning algorithms available in imitation. Currently this contains the trainer for training reward nets with supervised learning.
     - `vis`: Visualization code for interpreting reward functions.
     - `interpret.py`: The main script that provides the functionality for this project.
