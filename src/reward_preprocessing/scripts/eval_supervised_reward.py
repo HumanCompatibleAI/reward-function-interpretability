@@ -79,19 +79,19 @@ def eval_reward(
 
     policy = serialize.load_policy(policy_type, policy_path, venv)
 
-    logging.info(f"Evaluating random policy with env reward as sanity check.")
+    logging.info("Evaluating random policy with env reward as sanity check.")
     stats = _eval_policy(venv, num_episodes=eval_n_episodes)
     logging.info(stats)
 
-    logging.info(f"Evaluating random policy on learned reward.")
+    logging.info("Evaluating random policy on learned reward.")
     stats = _eval_policy(venv, num_episodes=eval_n_episodes, reward_fn=rew_fn)
     logging.info(stats)
 
-    logging.info(f"Evaluating expert policy on env reward.")
+    logging.info("Evaluating expert policy on env reward.")
     stats = _eval_policy(venv, num_episodes=eval_n_episodes, policy=policy)
     logging.info(stats)
 
-    logging.info(f"Evaluating expert policy on learned reward.")
+    logging.info("Evaluating expert policy on learned reward.")
     stats = _eval_policy(
         venv, num_episodes=eval_n_episodes, policy=policy, reward_fn=rew_fn
     )
@@ -99,7 +99,7 @@ def eval_reward(
 
 
 def main():
-    observer = FileStorageObserver(osp.join("output", "sacred", "eval_supervised"))
+    observer = FileStorageObserver(osp.join("../output", "sacred", "eval_supervised"))
     eval_supervised_ex.observers.append(observer)
     eval_supervised_ex.run_commandline()
 

@@ -1,5 +1,3 @@
-# Utilities for training a generative model on imitation rollouts.
-
 from pathlib import Path
 from typing import Tuple
 
@@ -8,11 +6,8 @@ from imitation.data import rollout, types
 from imitation.rewards.reward_nets import RewardNet
 import numpy as np
 import torch as th
-import torch.nn as nn
+from torch import nn as nn
 from torch.utils import data as torch_data
-import vegans.utils
-
-# TODO: add type annotations
 
 
 def make_transition_to_tensor(num_acts):
@@ -20,6 +15,8 @@ def make_transition_to_tensor(num_acts):
 
     For use as something to 'map over' a torch dataset of transitions. Assumes
     observations are (h,w,c)-formatted images, actions are discrete.
+    Output tensor will have shape (2*c + num_acts, h, w).
+    Order is (obs, act, next_obs).
 
     Args:
         num_acts: Number of discrete actions. Necessary because actions are
@@ -28,8 +25,16 @@ def make_transition_to_tensor(num_acts):
 
     def transition_to_tensor(transition):
         obs = transition["obs"]
-        act = transition["acts"]
+        # Only normalize for integer types.
+        if np.issubdtype(obs.dtype, np.integer):
+            obs = obs / 255.0
+            # For floats we don't divide by 255.0.
+        act = int(transition["acts"])
         next_obs = transition["next_obs"]
+        # Only normalize for integer types.
+        if np.issubdtype(next_obs.dtype, np.integer):
+            next_obs = next_obs / 255.0
+
         transp_obs = np.transpose(obs, (2, 0, 1))
         obs_height = transp_obs.shape[1]
         obs_width = transp_obs.shape[2]
@@ -41,7 +46,7 @@ def make_transition_to_tensor(num_acts):
         assert transp_next_obs.shape[1] == obs_height
         assert transp_next_obs.shape[2] == obs_width
         tensor_transition = np.concatenate(
-            [transp_obs / 255.0, boosted_act, transp_next_obs / 255.0],
+            [transp_obs, boosted_act, transp_next_obs],
             axis=0,
         )
         return tensor_transition
@@ -96,9 +101,13 @@ def rollouts_to_dataloader(rollouts_paths, num_acts, batch_size):
     return rollout_dataloader
 
 
-def visualize_samples(samples: np.ndarray, num_acts: int, save_dir):
-    """Visualize samples from a GAN."""
+def visualize_samples(samples: np.ndarray, save_dir):
+    """Visualize samples from a GAN. Saves obs and next obs as png files, and takes
+    mean over height and width dimensions to turn act into a numpy array, before
+    saving it.
+    """
     for i, transition in enumerate(samples):
+        num_acts = transition.shape[0] - 6
         s = transition[0:3, :, :]
         s = process_image_array(s)
         act = transition[3 : 3 + num_acts, :, :]
@@ -113,7 +122,7 @@ def visualize_samples(samples: np.ndarray, num_acts: int, save_dir):
         np.save(Path(save_dir) / str(i) / "act_vec.npy", act_slim)
 
 
-def process_image_array(img: np.array) -> np.array:
+def process_image_array(img: np.ndarray) -> np.ndarray:
     """Process a numpy array for feeding into PIL.Image.fromarray."""
     up_multiplied = img * 255
     clipped = np.clip(up_multiplied, 0, 255)
@@ -125,7 +134,11 @@ def process_image_array(img: np.array) -> np.array:
 def tensor_to_transition(
     trans_tens: th.Tensor,
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
-    """Turn a generated 'transition tensor' into a bona fide transition."""
+    """Turn a generated 'transition tensor' batch into a batch of bona fide
+    transitions. Output observations will have channel dim last, activations will be
+    output as one-hot vectors.
+    Assumes input transition tensor has values between 0 and 1.
+    """
     num_acts = trans_tens.size(1) - 6
     # process first observation
     obs_raw = trans_tens[:, 0:3, :, :]
@@ -148,25 +161,31 @@ def process_image_tensor(obs: th.Tensor) -> th.Tensor:
     return transposed
 
 
-class RewardGeneratorCombo(nn.Module):
-    """Composition of a generative model and a RewardNet.
-
-    Assumes that the RewardNet normalizes observations to [0,1].
+class TensorTransitionWrapper(nn.Module):
+    """Wraps an imitation-style reward net such that it accepts transitions tensors.
+    Dones will always be a batch of zeros.
     """
 
-    def __init__(self, reward_net: RewardNet, generator: nn.Module):
+    def __init__(self, rew_net: RewardNet):
+        """rew_net should be a reward net that takes in (obs, act, next_obs, done) as
+        arguments."""
         super().__init__()
-        self.reward_net = reward_net
-        self.generator = generator
+        self.rew_net = rew_net
 
-    def forward(latent_vec):
-        transition_tensor = generator(latent_vec)
-        obs, action_vec, next_obs = tensor_to_transition(latent_vec)
-        done = th.zeros(action_vec.shape)
-        return reward_net.forward(obs, action_vec, next_obs, done)
+    def forward(self, transition_tensor: th.Tensor) -> th.Tensor:
+        # Input data must be between 0 and 1 because that is what
+        # tensor_to_transition expects.
+        obs, act, next_obs = tensor_to_transition(transition_tensor)
 
+        # TODO: Remove this once this becomes superfluous.
+        if self.rew_net.normalize_images:
+            # Imitation reward nets have this flag which basically decides whether
+            # observations will be divided by 255 (before being passed to the conv
+            # layers). If this flag is set they expect images to be between 0 and 255.
+            # The interpret and lucent code provides images between 0 and 1, so we
+            # scale up.
+            obs = obs * 255
+            next_obs = next_obs * 255
 
-def save_loss_plots(losses, save_dir):
-    """Save plots of generator/adversary losses over training."""
-    fig, _ = vegans.utils.plot_losses(losses, show=False)
-    fig.savefig(Path(save_dir) / 'loss_fig.png')
+        dones = th.zeros_like(obs[:, 0])
+        return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)

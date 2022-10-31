@@ -10,7 +10,7 @@ import torch as th
 
 from reward_preprocessing.models import ProcgenCnnRegressionRewardNet
 from reward_preprocessing.scripts.common import supervised as supervised_config
-from reward_preprocessing.trainers.supervised import SupervisedTrainer
+from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
 
 train_regression_ex = sacred.Experiment(
     "train_regression",
@@ -89,7 +89,9 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
 
 def main():
-    observer = FileStorageObserver(os.path.join("output", "sacred", "train_regression"))
+    observer = FileStorageObserver(
+        os.path.join("../output", "sacred", "train_regression")
+    )
     train_regression_ex.observers.append(observer)
     train_regression_ex.run_commandline()
 

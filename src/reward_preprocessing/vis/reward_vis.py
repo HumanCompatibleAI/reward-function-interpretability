@@ -3,8 +3,6 @@ from functools import reduce
 import logging
 from typing import Optional
 
-from lucent.misc.channel_reducer import ChannelReducer
-import lucent.optvis.objectives as objectives
 import lucent.optvis.param as param
 import lucent.optvis.render as render
 import lucent.optvis.transform as transform
@@ -12,36 +10,74 @@ import numpy as np
 import scipy.ndimage as nd
 import torch as th
 
-from reward_preprocessing.vis.attribution import get_acts, get_attr
+from reward_preprocessing.ext.channel_reducer import ChannelReducer
+from reward_preprocessing.vis.attribution import get_activations, get_attr
+import reward_preprocessing.vis.objectives as objectives_rfi
 
 
-def argmax_nd(x, axes, *, max_rep=np.inf, max_rep_strict=None):
-    assert max_rep > 0
-    assert np.isinf(max_rep) or max_rep_strict is not None
+def argmax_nd(x: np.ndarray, axes: list[int], *, max_rep=np.inf, max_rep_strict=None):
+    """Return the indices of the maximum value along the given axes.
+
+    Args:
+        x: The array to find the maximum of. Size is (N, M, ...).
+        axes: The axes to find the maximum along.
+        max_rep: The maximum number of times a value can be repeated. If the
+            maximum value is repeated more than this, then the returned indices
+            will be None.
+        max_rep_strict: If True, then the maximum number of repetitions is
+            enforced strictly.
+    Returns:
+        Tuple of numpy arrays, each of size (N,). The values in each array represent the
+        x and y coordinates in the original array M, ... dimensions. The coordinates are
+        the maximum value for that sample.
+        E.g. for x of size (N, M, K), the returned tuple will be (N,) and (N,), where
+        the first element of the tuple has values from 0 to M-1, and the second element
+        from 0 to K-1.
+    """
+    if max_rep <= 0:
+        raise ValueError("max_rep must be greater than 0.")
+    if max_rep_strict is None and not np.isinf(max_rep):
+        raise ValueError("if max_rep_strict is not set if max_rep must be infinite.")
+    # Make it so the axes we want to find the maximum along are the first ones...
     perm = list(range(len(x.shape)))
     for axis in reversed(axes):
         loc = perm.index(axis)
         perm = [axis] + perm[:loc] + perm[loc + 1 :]
+    # ... by transposing like this.
     x = x.transpose(perm)
     shape = x.shape
+    # Number of elements in those axes.
     axes_size = reduce(lambda a, b: a * b, shape[: len(axes)], 1)
-    x = x.reshape([axes_size, -1])
+    x = x.reshape([axes_size, -1])  # Flatten
+    # Array containing for every sample the indices sorted by the values at that index,
+    # largest values first.
     indices = np.argsort(-x, axis=0)
-    result = indices[0].copy()
+    result = indices[0].copy()  # The indices of the maximum values.
     counts = np.zeros(len(indices), dtype=int)
     unique_values, unique_counts = np.unique(result, return_counts=True)
     counts[unique_values] = unique_counts
+    # For every i we look at every index and see if it is repeated too often, if so we
+    # take the ith biggest index instead. We then update the counts and repeat this
+    # with a bigger i, until we have an i where no index is repeated too often, then
+    # we stop.
     for i in range(1, len(indices) + (0 if max_rep_strict else 1)):
+        # Get the actual maxima and then sort them, order contains indices that sort
+        # maxima with smallest maximum first.
         order = np.argsort(x[result, range(len(result))])
-        result_in_order = result[order]
+        result_in_order = result[order]  # The indices of maxima, but sorted
         current_counts = counts.copy()
         changed = False
         for j in range(len(order)):
+            # Index of jth maximum (lowest maxs first) in orginal array.
             value = result_in_order[j]
-            if current_counts[value] > max_rep:
-                pos = order[j]
+            if current_counts[value] > max_rep:  # If there are more counts for this idx
+                pos = order[j]  # position of jth max in result
+                # Use the ith largest max instead. So for i=1, don't use largest max,
+                # but instead second largest and so on. new_value is not the actual
+                # maximum, but its index.
                 new_value = indices[i % len(indices)][pos]
-                result[pos] = new_value
+                result[pos] = new_value  # Update which maximum should be in results
+                # Update the respective counts.
                 current_counts[value] -= 1
                 counts[value] -= 1
                 counts[new_value] += 1
@@ -49,6 +85,7 @@ def argmax_nd(x, axes, *, max_rep=np.inf, max_rep_strict=None):
         if not changed:
             break
     result = result.reshape(shape[len(axes) :])
+    # Returns a tuple of the indexes of maximal values.
     return np.unravel_index(result, shape[: len(axes)])
 
 
@@ -62,53 +99,78 @@ def l2_objective(layer_name, coefficient, batch=None):
 
 
 class LayerNMF:
+    acts_reduced: np.ndarray
+
     def __init__(
         self,
         model,
         layer_name,
-        obses,
-        device,
-        obses_full=None,
-        features=10,
+        model_inputs_preprocess,
+        model_inputs_full=None,
+        features: Optional[int] = 10,
         *,
-        attr_layer_name=None,
+        attr_layer_name: Optional[str] = None,
         attr_opts={"integrate_steps": 10},
         activation_fn: Optional[str] = None,
     ):
-        """Use NMF dimensionality reduction to then do visualization.
+        """Use Non-negative matrix factorization dimensionality reduction to then do
+        visualization.
+
 
         Args:
             model: The PyTorch model to analyze. Can be reward net or policy net.
             layer_name: The name of the layer to analyze.
-            obses: Dataset of observations to analyze.
-            device: PyTorch device to load observations to. Should be same device that
-                reward net is on.
-            obses_full:
-            features: Number of features to use in NMF.
+            model_inputs_preprocess:
+                Tensor of inputs to the model to use for preprocessing for
+                visualization. Used for dimensionality reduction, if applicable, and
+                for determining shape of activations in the model.
+            model_inputs_full:
+                Tensor containing all data to use for dataset visualization. If None,
+                use model_inputs_preprocess.
+            features:
+                Number of features to use in NMF. None performs no dimensionality
+                reduction.
             attr_layer_name:
+                Name of the layer of attributions to apply NMF to. If None, apply NMF to
+                activations.
             attr_opts:
+               Options passed to get_grad_or_attr() from
+               reward_preprocessing.vis.attribution.
             activation_fn:
+                An optional additional activation function to apply to the activations.
                 Sometimes "activations" in the model did not go through an actual
                 activation function, e.g. the output of a reward net. If this
                 activation function is specified, we will apply the respective function
                 before doing NMF. This is especially important if activations (such as
-                reward outpu) can have negative values.
+                reward output) can have negative values.
         """
+        if attr_layer_name is not None:
+            logging.warning(
+                "Doing gradient-based feature visualization on attributions might not "
+                "work 100% correctly yet."
+            )
+
         self.model = model
         self.layer_name = layer_name
-        self.obses = obses
-        self.obses_full = obses_full
-        if self.obses_full is None:
-            self.obses_full = obses
+        self.model_inputs_preprocess = model_inputs_preprocess
+        self.model_inputs_full = model_inputs_full
+        if self.model_inputs_full is None:
+            self.model_inputs_full = model_inputs_preprocess
         self.features = features
         self.pad_h = 0
         self.pad_w = 0
-        self.padded_obses = self.obses_full
+        self.padded_obses = self.model_inputs_full
+        # We want to reduce dim 1, which is the convention for channel dim in *lucent*
+        # (not lucid). We assume different channels correspond to different features
+        # for benefits of interpretability (as the do e.g. in the rl vision distill
+        # paper). This is used for ChannelReducers.
+        reduction_dim = 1
         if self.features is None:
             self.reducer = None
         else:
-            self.reducer = ChannelReducer(features)
-        activations = get_acts(model, layer_name, obses, device)
+            # Dimensionality reduction using NMF.
+            self.reducer = ChannelReducer(features, reduction_dim=reduction_dim)
+        activations = get_activations(model, layer_name, model_inputs_preprocess)
 
         # Apply activation function if specified.
         if activation_fn == "sigmoid":
@@ -122,27 +184,48 @@ class LayerNMF:
                 f"LayerNMF: activations for layer {layer_name} have negative values."
             )
 
-        self.patch_h = self.obses_full.shape[1] / activations.shape[1]
-        self.patch_w = self.obses_full.shape[2] / activations.shape[2]
-        if self.reducer is None:
-            self.acts_reduced = activations.cpu()
-            self.channel_dirs = np.eye(self.acts_reduced.shape[-1])
+        self.patch_h = self.model_inputs_full.shape[2] / activations.shape[2]
+        self.patch_w = self.model_inputs_full.shape[3] / activations.shape[3]
+        if self.reducer is None:  # No dimensionality reduction.
+            # Activations are only used for dim reduction and to determine the shape
+            # of the features. The former is compatible between torch and numpy (both
+            # support .shape), so calling .numpy() is not really necessary. However,
+            # for consistency we do it here. Consequently, self.acts_reduced is always
+            # a numpy array.
+            self.acts_reduced = activations.numpy()
+            self.channel_dirs = np.eye(self.acts_reduced.shape[1])
             self.transform = lambda acts: acts.copy()
             self.inverse_transform = lambda acts: acts.copy()
-        else:
+        else:  # Perform NMF dimensionality reduction.
             if attr_layer_name is None:
-                self.acts_reduced = self.reducer.fit_transform(activations.cpu())
+                # Perform the NMF reduction and return reduced tensor.
+                self.acts_reduced = self.reducer.fit_transform(activations)
             else:
-                attrs = get_attr(model, attr_layer_name, layer_name, obses, **attr_opts)
+                attrs = (
+                    get_attr(
+                        model,
+                        attr_layer_name,
+                        layer_name,
+                        model_inputs_preprocess,
+                        **attr_opts,
+                    )
+                    .detach()
+                    .numpy()
+                )
                 attrs_signed = np.concatenate(
                     [np.maximum(0, attrs), np.maximum(0, -attrs)], axis=0
                 )
-                self.reducer.fit(attrs_signed)
-                self.acts_reduced = self.reducer.transform(activations.cpu())
+                # Use torch tensors so it is the same data type as 'activations', which
+                # is a torch tensor.
+                self.reducer.fit(th.tensor(attrs_signed))
+                self.acts_reduced = self.reducer.transform(activations)
+
             self.channel_dirs = self.reducer._reducer.components_
             self.transform = lambda acts: self.reducer.transform(acts.cpu())
             self.inverse_transform = lambda acts_r: ChannelReducer._apply_flat(
-                self.reducer._reducer.inverse_transform, acts_r.cpu()
+                self.reducer._reducer.inverse_transform,
+                acts_r,
+                reduction_dim=reduction_dim,
             )
         # Transform into torch tensor instead of numpy array, because this is expected
         # later on.
@@ -157,7 +240,8 @@ class LayerNMF:
         l2_layer_name=None,
     ) -> np.ndarray:
         if feature_list is None:
-            feature_list = list(range(self.acts_reduced.shape[-1]))
+            # Feature dim is at index 1
+            feature_list = list(range(self.acts_reduced.shape[1]))
         try:
             feature_list = list(feature_list)
         except TypeError:
@@ -165,29 +249,48 @@ class LayerNMF:
 
         obj = sum(
             [
-                objectives.direction_neuron(
+                objectives_rfi.direction_neuron_dim_agnostic(
                     self.layer_name, self.channel_dirs[feature], batch=feature
                 )
                 for feature in feature_list
             ]
         )
         if l2_coeff != 0.0:
-            assert (
-                l2_layer_name is not None
-            ), "l2_layer_name must be specified if l2_coeff is non-zero"
+            if l2_layer_name is None:
+                raise ValueError(
+                    "l2_layer_name must be specified if l2_coeff is non-zero"
+                )
             obj -= l2_objective(l2_layer_name, l2_coeff)
-        param_f = lambda: param.image(64, batch=len(feature_list))
+        input_shape = tuple(self.model_inputs_preprocess.shape[1:])
+
+        def param_f():
+            return param.image(
+                channels=input_shape[0],
+                h=input_shape[1],
+                w=input_shape[2],
+                batch=len(feature_list),
+            )
+
         return render.render_vis(
             self.model,
             obj,
             param_f=param_f,
             transforms=transforms,
-            # To fix order of transforms.
-            # TODO: Should we enable preprocess here?
+            # Don't use this preprocessing, this uses some default normalization for
+            # ImageNet torchvision models, which of course assumes 3 channels and square
+            # images as inputs
             preprocess=False,
-            # This makes it so input is passed through the model at least ones, which
+            # This makes it so input is passed through the model at least once, which
             # is necessary to get the feature activations.
             verbose=True,
+            # We work with fixed image sizes since our models do not accept arbitrary
+            # sizes. If this is set to None (the default), the image will be upsampled
+            # to (3, 224, 224).
+            # Image size should be the spatial size (excluding channels).
+            fixed_image_size=input_shape[1:],
+            # Disable because our inputs ("images") are not actually images but
+            # multidimensional tensors.
+            show_image=False,
         )[-1]
 
     def pad_obses(self, *, expand_mult=1):
@@ -196,25 +299,29 @@ class LayerNMF:
         if pad_h > self.pad_h or pad_w > self.pad_w:
             self.pad_h = pad_h
             self.pad_w = pad_w
+            # The image shape we want to pad to (only 2d i.e. height and width).
             self.padded_obses = (
                 np.indices(
                     (
-                        self.obses_full.shape[1] + self.pad_h * 2,
-                        self.obses_full.shape[2] + self.pad_w * 2,
+                        self.model_inputs_full.shape[2] + self.pad_h * 2,
+                        self.model_inputs_full.shape[3] + self.pad_w * 2,
                     )
                 ).sum(axis=0)
                 % 2
-            )
-            self.padded_obses = self.padded_obses * 0.25 + 0.75
-            self.padded_obses = self.padded_obses.astype(self.obses_full.dtype)
-            self.padded_obses = self.padded_obses[None, ..., None]
+            )  # Checkered pattern.
+            self.padded_obses = self.padded_obses * 0.25 + 0.75  # Adjust color.
+            self.padded_obses = self.padded_obses.astype(self.model_inputs_full.dtype)
+            # Add dims for batch and channel.
+            self.padded_obses = self.padded_obses[None, None, ...]
+            # Repeat for correct number of images.
             self.padded_obses = self.padded_obses.repeat(
-                self.obses_full.shape[0], axis=0
+                self.model_inputs_full.shape[0], axis=0
             )
-            self.padded_obses = self.padded_obses.repeat(3, axis=-1)
+            # Repeat channel dimension.
+            self.padded_obses = self.padded_obses.repeat(3, axis=1)
             self.padded_obses[
-                :, self.pad_h : -self.pad_h, self.pad_w : -self.pad_w, :
-            ] = self.obses_full
+                :, :, self.pad_h : -self.pad_h, self.pad_w : -self.pad_w
+            ] = self.model_inputs_full
 
     def get_patch(self, obs_index, pos_h, pos_w, *, expand_mult=1):
         left_h = self.pad_h + (pos_h - 0.5 * expand_mult) * self.patch_h
@@ -223,7 +330,7 @@ class LayerNMF:
         right_w = self.pad_w + (pos_w + 0.5 * expand_mult) * self.patch_w
         slice_h = slice(int(round(left_h)), int(round(right_h)))
         slice_w = slice(int(round(left_w)), int(round(right_w)))
-        return self.padded_obses[obs_index, slice_h, slice_w]
+        return self.padded_obses[obs_index, :, slice_h, slice_w]
 
     def vis_dataset(self, feature, *, subdiv_mult=1, expand_mult=1, top_frac=0.1):
         """Visualize a dataset of patches that maximize a given feature.
@@ -231,7 +338,10 @@ class LayerNMF:
         Args:
             feature: The feature to visualize. Can be an integer or a list of integers.
         """
-        acts_h, acts_w = self.acts_reduced.shape[1:3]
+        logging.warning(
+            "Dataset-based feature visualization seems to still have some problems."
+        )
+        acts_h, acts_w = self.acts_reduced.shape[2:]
         zoom_h = subdiv_mult - (subdiv_mult - 1) / (acts_h + 2)
         zoom_w = subdiv_mult - (subdiv_mult - 1) / (acts_w + 2)
         acts_subdiv = self.acts_reduced[..., feature]
@@ -295,7 +405,11 @@ class LayerNMF:
             feature: The feature to visualize. Can be an integer or a list of integers.
             num_mult: Height and width of the grid of thumbnails.
             expand_mult: Multiplier for the size of the thumbnails.
+            max_rep: Maximum number of times the same observation can appear.
         """
+        logging.warning(
+            "Dataset-based feature visualization seems to still have some problems."
+        )
         if max_rep is None:
             max_rep = num_mult
         if self.acts_reduced.shape[0] < num_mult**2:
@@ -303,23 +417,33 @@ class LayerNMF:
                 f"At least {num_mult ** 2} observations are required to produce"
                 " a thumbnail visualization."
             )
-        acts_feature = self.acts_reduced[..., feature]
+        # Feature dim = channel dim = second dim
+        acts_feature = self.acts_reduced[:, feature]
         pos_indices = argmax_nd(
             acts_feature, axes=[1, 2], max_rep=max_rep, max_rep_strict=True
         )
+        # The actual maximum values of the activations, accroding to max_rep setting.
         acts_single = acts_feature[
             range(acts_feature.shape[0]), pos_indices[0], pos_indices[1]
         ]
+        # Sort the activations in descending order and take the num_mult**2 strongest.
+        # activations.
         obs_indices = np.argsort(-acts_single, axis=0)[: num_mult**2]
+        # Coordinates of the strongest activation in each observation.
         coords = np.array(list(zip(*pos_indices)), dtype=[("h", int), ("w", int)])[
             obs_indices
         ]
+        # Sort by indices.
         indices_order = np.argsort(coords, axis=0, order=("h", "w"))
+        # Make into num_mult x num_mult grid.
         indices_order = indices_order.reshape((num_mult, num_mult))
+        # Also order in the second dimension.
         for i in range(num_mult):
             indices_order[i] = indices_order[i][
                 np.argsort(coords[indices_order[i]], axis=0, order="w")
             ]
+        # obs_indices now contains the indices of the observations in the order as
+        # ordered above.
         obs_indices = obs_indices[indices_order]
         poses = np.array(pos_indices).transpose()[obs_indices] + 0.5
         self.pad_obses(expand_mult=expand_mult)
@@ -337,39 +461,21 @@ class LayerNMF:
                 patch_shapes.append(patch.shape)
         patch_acts_max = patch_acts.max()
         opacities = patch_acts / (1 if patch_acts_max == 0 else patch_acts_max)
-        patch_min_h = np.array([s[0] for s in patch_shapes]).min()
-        patch_min_w = np.array([s[1] for s in patch_shapes]).min()
+        patch_min_h = np.array([s[1] for s in patch_shapes]).min()
+        patch_min_w = np.array([s[2] for s in patch_shapes]).min()
         for i in range(num_mult):
             for j in range(num_mult):
                 opacity = opacities[i, j][None, None, None]
-                opacity = opacity.repeat(patches[i][j].shape[0], axis=0)
                 opacity = opacity.repeat(patches[i][j].shape[1], axis=1)
-                patches[i][j] = np.concatenate([patches[i][j], opacity], axis=-1)
-                patches[i][j] = patches[i][j][:patch_min_h, :patch_min_w]
+                opacity = opacity.repeat(patches[i][j].shape[2], axis=2)
+                patches[i][j] = np.concatenate([patches[i][j], opacity], axis=0)
+                patches[i][j] = patches[i][j][:, :patch_min_h, :patch_min_w]
+        # Concat first along y dim then along x dim to have 1 big image that is a grid
+        # of the smaller images.
         return (
             np.concatenate(
-                [np.concatenate(patches[i], axis=1) for i in range(len(patches))],
-                axis=0,
+                [np.concatenate(patches[i], axis=2) for i in range(len(patches))],
+                axis=1,
             ),
             obs_indices.tolist(),
         )
-
-
-# def rescale_opacity(
-#     images, min_opacity=15 / 255, opaque_frac=0.1, max_scale=10, keep_zeros=False
-# ):
-#     images_orig = images
-#     images = images_orig.copy()
-#     opacities_flat = images[..., 3].reshape(
-#         images.shape[:-3] + (images.shape[-3] * images.shape[-2],)
-#     )
-#     opaque_threshold = np.percentile(opacities_flat, (1 - opaque_frac) * 100, axis=-1)
-#     opaque_threshold = np.maximum(
-#         opaque_threshold, np.amax(opacities_flat, axis=-1) / max_scale
-#     )[..., None, None]
-#     opaque_threshold[opaque_threshold == 0] = 1
-#     images[..., 3] = images[..., 3] * (1 - min_opacity) / opaque_threshold
-#     images[..., 3] = np.minimum(1, min_opacity + images[..., 3])
-#     if keep_zeros:
-#         images[..., 3][images_orig[..., 3] == 0] = 0
-#     return images

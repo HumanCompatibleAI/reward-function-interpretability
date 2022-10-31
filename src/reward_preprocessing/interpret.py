@@ -1,227 +1,264 @@
 import os.path as osp
-from typing import Any, Optional, Sequence, cast
+from typing import Optional, Union
 
 from PIL import Image
-from imitation.data import types
 from imitation.scripts.common import common as common_config
-from imitation.scripts.common import demonstrations
 from imitation.util import logger as imit_logger
+from lucent.modelzoo.util import get_model_layers
 from lucent.optvis import transform
 import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
-from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import torch as th
 import wandb
 
-from reward_preprocessing.common.networks import (
-    ChannelsFirstToChannelsLast,
-    FourDimOutput,
-    NextStateOnlyModel,
+from reward_preprocessing.common.utils import (
+    TensorTransitionWrapper,
+    rollouts_to_dataloader,
+    tensor_to_transition,
 )
-from reward_preprocessing.generative_modelling.utils import tensor_to_transition
+from reward_preprocessing.generative_modelling.utils import RewardGeneratorCombo
+from reward_preprocessing.scripts.config.interpret import interpret_ex
 from reward_preprocessing.vis.reward_vis import LayerNMF
-
-interpret_ex = Experiment(
-    "interpret",
-    ingredients=[common_config.common_ingredient]
-    # ingredients=[demonstrations.demonstrations_ingredient],
-)
-
-
-@interpret_ex.config
-def defaults():
-    # Path to the learned supervised reward net
-    reward_path = None
-    # Rollouts to use vor dataset visualization
-    rollout_path = None
-    n_expert_demos = None
-    # Limit the number of observations to use for visualization, -1 for all
-    limit_num_obs = -1
-    pyplot = False  # Plot images as pyplot figures
-    vis_scale = 4  # Scale the visualization img by this factor
-    vis_type = "traditional"  # "traditional" or "dataset"
-    layer_name = "reshaped_out"  # Name of the layer to visualize.
-    num_features = 2  # Number of features to use for visualization.
-    gan_path = None
-    img_save_path = None
-
-    locals()  # quieten flake8
-
-
-def uncurry_pad_i2_of_4(arg: Any) -> tuple[None, None, Any, None]:
-    """Pads output with None such that input arg is at index 2 in the output 4-tuple.
-    arg -> (None, None, arg, None)"""
-    tuple = (None, None, arg, None)
-    return tuple
 
 
 @interpret_ex.main
 def interpret(
-    common: dict,  # from sacred config
-    reward_path: Optional[str],
+    common: dict,
+    reward_path: str,
+    # TODO: I think at some point it would be cool if this was optional, since these
+    # are only used for dataset visualization, dimensionality reduction, and
+    # determining the shape of the features. In the case that we aren't doing the first
+    # two, we could determine the shape of the features some other way.
+    # This would especially help when incorporating a GAN into the procedure, because
+    # here the notion of a "rollout" as input into the whole pipeline doesn't make as
+    # much sense.
     rollout_path: str,
-    n_expert_demos: Optional[int],
     limit_num_obs: int,
     pyplot: bool,
     vis_scale: int,
     vis_type: str,
     layer_name: str,
-    num_features: int,
+    num_features: Optional[int],
     gan_path: Optional[str] = None,
+    l2_coeff: Optional[float] = None,
     img_save_path: Optional[str] = None,
 ):
-    """Sanity check a learned supervised reward net. Evaluate 4 things:
-    - Random policy on env reward
-    - Random policy on learned reward function
-    - Expert policy on env reward
-    - Expert policy on learned reward function
+    """Run visualization for interpretability.
 
-    img_save_path must be a directory, end in a /.
+    Args:
+        common:
+            Sacred magic: This dict will contain the sacred config settings for the
+            sub_section 'common' in the sacred config. These settings are defined in the
+            sacred ingredient 'common' in imitation.scripts.common.
+        reward_path: Path to the learned supervised reward net.
+        rollout_path:
+            Rollouts to use vor dataset visualization, dimensionality
+            reduction, and determining the shape of the features.
+        limit_num_obs:
+            Limit how many of the transitions from `rollout_path` are used for
+            dimensionality reduction. The RL Vision paper uses "a few thousand"
+            sampled infrequently from rollouts.
+        pyplot: Whether to plot images as pyplot figures.
+        vis_scale: Scale the plotted images by this factor.
+        vis_type:
+            Type of visualization to use. Either "traditional" for gradient-based
+            visualization of activations, or "dataset" for dataset visualization.
+        layer_name:
+            Name of the layer to visualize. To figure this out run this script and the
+            available layers in the loaded model will be printed. Available layers will
+            be those that are "named" layers in the torch Module, i.e. those that are
+            declared as attributes in the torch Module.
+        num_features:
+            Number of features to use for visualization. The activations will be reduced
+            to this size using NMF. If None, performs no dimensionality reduction.
+        gan_path:
+            Path to the GAN model. This is used to regularize the output of the
+            visualization. If None simply visualize reward net without the use
+            of a GAN in the pipeline.
+        l2_coeff:
+            Strength with which to penalize the L2 norm of generated latent vector
+            "visualizations" of a GAN-reward model combination. If gan_path is not None,
+            this must also not be None.
+        img_save_path:
+            Directory to save images in. Must end in a /. If None, do not save images.
     """
-
+    if limit_num_obs <= 0:
+        raise ValueError(
+            f"limit_num_obs must be positive, got {limit_num_obs}. "
+            f"It used to be possible to specify -1 to use all observations, however "
+            f"I don't think we actually ever want to use all so this is currently not "
+            f"implemented."
+        )
     if vis_type not in ["dataset", "traditional"]:
         raise ValueError(f"Unknown vis_type: {vis_type}")
     if vis_type == "dataset" and gan_path is not None:
         raise ValueError("GANs cannot be used with dataset visualization.")
+    if gan_path is not None and l2_coeff is None:
+        raise ValueError("When GANs are used, l2_coeff must be set.")
+    if img_save_path is not None and img_save_path[-1] != "/":
+        raise ValueError("img_save_path is not a directory, does not end in /")
+
+    
+    # Set up imitation-style logging.
+    custom_logger, log_dir = common_config.setup_logging()
+    wandb_logging = "wandb" in common["log_format_strs"]
 
     if pyplot:
         matplotlib.use("TkAgg")
 
+    device = "cuda" if th.cuda.is_available() else "cpu"
+
     # Load reward not pytorch module
+    rew_net = th.load(str(reward_path), map_location=th.device(device))
 
-    device = th.device("cuda") if th.cuda.is_available() else th.device("cpu")
-
-    rew_net = th.load(str(reward_path), map_location=device)
-
-    # If GAN path is specified, combine with a GAN.
-    if gan_path is not None:
-        gan = th.load(gan_path, map_location=device)
+    if gan_path is None:
+        # Imitation reward nets have 4 input args, lucent expects models to only have 1.
+        # This wrapper makes it so rew_net accepts a single input which is a
+        # transition tensor.
+        rew_net = TensorTransitionWrapper(rew_net)
+    else:  # Use GAN
+        # Combine rew net with GAN.
+        gan = th.load(gan_path, map_location=th.device(device))
         rew_net = RewardGeneratorCombo(reward_net=rew_net, generator=gan.generator)
 
-    # Set up imitation-style logging
-    custom_logger, log_dir = common_config.setup_logging()
+    rew_net.eval()  # Eval for visualization.
 
-    wandb_logging = "wandb" in common["log_format_strs"]
+    custom_logger.log("Available layers:")
+    custom_logger.log(get_model_layers(rew_net))
 
-    rew_net.eval()
-
-    if vis_type == "traditional" and gan_path is None:
-        rew_net = rew_net.cnn_regressor
-    elif vis_type == "dataset":
-        # See description of class for explanation
-        rew_net = NextStateOnlyModel(rew_net)
-
-    # rew_net = ChannelsFirstToChannelsLast(rew_net)
-
-    # This is due to how lucent works
-    # TODO: this should probably be unified instead of having many different exceptions
-    if vis_type == "traditional":
-        rew_net = FourDimOutput(rew_net)
-    # Argument venv not necessary, as it is ignored for SupvervisedRewardNet
-    # rew_fn = load_reward("SupervisedRewardNet", reward_path, venv=None)
-    # trajs = types.load(rollout_path)
-
-    # Load trajectories for dataset visualization
-    expert_trajs = demonstrations.load_expert_trajs(rollout_path, n_expert_demos)
-    assert isinstance(expert_trajs[0], types.TrajectoryWithRew)
-    expert_trajs = cast(Sequence[types.TrajectoryWithRew], expert_trajs)
-    from lucent.modelzoo.util import get_model_layers
-
-    print("Available layers:")
-    print(get_model_layers(rew_net))
-
-    # Get observations from trajectories
-    observations = np.concatenate([traj.obs for traj in expert_trajs])
-
-    # vis traditional -> channel first,
-    # vid dataset -> channel last
-    if vis_type == "traditional":
-        # Transpose all observations because lucent expects channels first (after
-        # batch dim)
-        observations = np.transpose(observations, (0, 3, 1, 2))
-
-    if limit_num_obs < 0:
-        obses = observations
-    else:
-        custom_logger.log(
-            f"Limiting number of observations to {limit_num_obs} of "
-            f"{len(observations)} total."
+    # Load the inputs into the model that are used to do dimensionality reduction and
+    # getting the shape of activations.
+    if gan_path is None:  # This is when analyzing a reward net only.
+        # Load trajectories and transform them into transition tensors.
+        # TODO: Seeding so the randomly shuffled subset is always the same.
+        transition_tensor_dataloader = rollouts_to_dataloader(
+            rollouts_paths=rollout_path,
+            num_acts=15,
+            batch_size=limit_num_obs,
         )
-        obses = observations[:limit_num_obs]
+        # For dim reductions and gettings activations in LayerNMF we want one big batch
+        # of limit_num_obs transitions. So, we simply use that as batch_size and sample
+        # the first element from the dataloader.
+        inputs = next(iter(transition_tensor_dataloader))
+    else:  # When using GAN.
+        # Inputs should be some samples of input vectors? Not sure if this is the best
+        # way to do this, there might be better options.
+        # The important part is that lucent expects 4D tensors as inputs, so increase
+        # dimensionality accordingly.
+        raise NotImplementedError()
+
+    # The model to analyse should be a torch module that takes a single input, which
+    # should be a torch Tensor.
+    # In our case this is one of the following:
+    # - A reward net that has been wrapped, so it accepts transition tensors.
+    # - A combo of GAN and reward net that accepts latent inputs vectors.
+    model_to_analyse = rew_net
     nmf = LayerNMF(
-        model=rew_net,
+        model=model_to_analyse,
         features=num_features,
         layer_name=layer_name,
-        # layer_name="cnn_regressor_avg_pool",
-        obses=obses,
+        # input samples are used for dim reduction (if features is not
+        # None) and for determining the shape of the features.
+        model_inputs_preprocess=inputs,
         activation_fn="sigmoid",
         device=device,
     )
 
-    # Visualization
-    num_features = nmf.features
+    custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
+    # If these are equal, then of course there is no actual reduction.
+
+    num_features = nmf.channel_dirs.shape[0]
     rows, columns = 1, num_features
     if pyplot:
-        fig = plt.figure(figsize=(columns * 4, rows * 2))  # width, height in inches
-    for i in range(num_features):
-        print(i)
+        col_mult = 4 if vis_type == "traditional" else 2
+        # figsize is width, height in inches
+        fig = plt.figure(figsize=(columns * col_mult, rows * 2)) 
 
-        # Get the visualization as image
-        if vis_type == "traditional" and gan_path is None:
+    # Visualize
+    if vis_type == "traditional":
+
+        if pyplot:
+            fig = plt.figure(figsize=(columns * 4, rows * 2)) 
+        
+        if gan_path is None:
             # List of transforms
             transforms = [
                 transform.jitter(2),  # Jitters input by 2 pixel
-                # Input into model should be 4 tuple, where next_state (3rd arg) is the
-                # observation and other inputs are ignored.
-                # uncurry_pad_i2_of_4,
             ]
 
-            next_obs = nmf.vis_traditional(transforms=transforms)
-            obs = next_obs
-        elif vis_type == "traditional" and gan_path is not None:
-            # TODO(df): see if "input" is a legit name.
-            latent = nmf.vis_traditional(l2_coeff=0.1, l2_layer_name="input")
-            latent_th = th.from_numpy(latent).to(device)
-            trans_tens = gan.generator(latent_th)
-            obs_th, _, next_obs_th = tensor_to_transition(trans_tens)
-            obs = obs_th.detach().cpu().numpy()
-            next_obs = next_obs_th.detach().cpu().numpy()
-        elif vis_type == "dataset":
-            next_obs, indices = nmf.vis_dataset_thumbnail(
-                feature=i, num_mult=4, expand_mult=1
-            )
-            obs = next_obs
-        # img = img.astype(np.uint8)
-        # index = indices[0][0]
-        # img = observations[index]
+            opt_transitions = nmf.vis_traditional(transforms=transforms)
+            # This gives as an array that optimizes the objectives, in the shape of the
+            # input which is a transition tensor. However, lucent helpfully transposes
+            # the output such that the channel dimension is last. Our functions expect
+            # channel dim before spatial dims, so we need to transpose it back.
+            opt_transitions = opt_transitions.transpose(0, 3, 1, 2)
+            # Split the optimized transitions, one for each feature, into separate
+            # observations and actions. This function only works with torch tensors.
+            obs, acts, next_obs = tensor_to_transition(th.tensor(opt_transitions))
+            # obs and next_obs output have channel dim last.
+            # acts is output as one-hot vector.
 
-        if wandb_logging:
-            log_arr_to_wandb(
-                obs, vis_scale, feature=i, img_type="obs", logger=custom_logger
+        else:
+            # We do not require the latent vectors to be transformed before optimizing.
+            # However, we do regularize the L2 norm of latent vectors, to ensure the
+            # resulting generated images are realistic.
+            # TODO(df): make that happen.
+            opt_latent = nmf.vis_traditional(
+                transforms=[], l2_coeff=l2_coeff, l2_layer_name="input",
             )
-            log_arr_to_wandb(
-                next_obs,
+            # Now, we put the latent vector thru the generator to produce transition
+            # tensors that we can get observations, actions, etc out of
+            opt_latent = np.mean(opt_latent, axis=(1,2))
+            opt_latent_th = th.from_numpy(opt_latent).to(th.device(device))
+            opt_transitions = gan.generator(opt_latent_th)
+            obs, acts, next_obs = tensor_to_transition(opt_transitions)
+
+
+        # Set of images, one for each feature, add each to plot
+        # TODO (df): fix merging thing
+        # - add obs and next_obs
+        for feature_i in range(next_obs.shape[0]):
+            sub_img_obs = obs[feature_i]
+            sub_img_next_obs = next_obs[feature_i]
+            plot_img(
+                columns,
+                custom_logger,
+                feature_i,
+                fig,
+                (sub_img_obs, sub_img_next_obs),
+                pyplot,
+                rows,
                 vis_scale,
-                feature=i,
-                img_type="next_obs",
-                logger=custom_logger,
+                wandb_logging,
             )
-            # Can't re-use steps unfortunately, so each feature img gets its own step.
-            custom_logger.dump(step=i)
-        if img_save_path is not None:
-            if img_save_path[-1] != "/":
-                raise ValueError("img_save_path is not a directory, does not end in /")
-            obs_img = array_to_image(obs, vis_scale)
-            obs_img.save(img_save_path + f"{i}_obs.png")
-            next_obs_img = array_to_image(next_obs, vis_scale)
-            next_obs_img.save(img_save_path + f"{i}_next_obs.png")
-        if pyplot:
-            add_to_figure(fig, obs, "obs")
-            add_to_figure(fig, next_obs, "next_obs")
+            if img_save_path is not None:
+                obs_PIL = array_to_image(sub_img_obs, vis_scale)
+                obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
+                next_obs_PIL = array_to_image(sub_img_next_obs, vis_scale)
+                next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
+        
+    elif vis_type == "dataset":
+        for feature_i in range(num_features):
+            custom_logger.log(f"Feature {feature_i}")
 
-        # show()
+            img, indices = nmf.vis_dataset_thumbnail(
+                feature=feature_i, num_mult=4, expand_mult=1
+            )
+
+            plot_img(
+                columns,
+                custom_logger,
+                feature_i,
+                fig,
+                img,
+                pyplot,
+                rows,
+                vis_scale,
+                wandb_logging,
+            )
+
     if pyplot:
         plt.show()
     custom_logger.log("Done with dataset visualization.")
@@ -235,7 +272,55 @@ def array_to_image(arr: np.ndarray, scale: int) -> Image:
     )
 
 
-def log_arr_to_wandb(
+def plot_img(
+    columns,
+    custom_logger,
+    feature_i,
+    fig,
+    img,
+    pyplot,
+    rows,
+    vis_scale,
+    wandb_logging,
+):
+    """Plot the passed image to pyplot and wandb as appropriate."""
+    _wandb_log(custom_logger, feature_i, img, vis_scale, wandb_logging)
+    if pyplot:
+        if isinstance(img, tuple):
+            img_obs = img[0]
+            img_next_obs = img[1]
+            fig.add_subplot(rows, columns, 2 * feature_i + 1)
+            plt.imshow(img_obs)
+            fig.add_subplot(rows, columns, 2 * feature_i + 2)
+            plt.imshow(img_next_obs)
+        else:
+            fig.add_subplot(rows, columns, feature_i + 1)
+            plt.imshow(img)
+
+
+def _wandb_log(
+    custom_logger: imit_logger.HierarchicalLogger,
+    feature_i: int,
+    img: Union[tuple[np.ndarray, np.ndarray], np.ndarray],
+    vis_scale: int,
+    wandb_logging: bool,
+):
+    """Plot to wandb if wandb logging is enabled."""
+    if wandb_logging:
+        if isinstance(img, tuple):
+            img_obs = img[0]
+            img_next_obs = img[1]
+            # TODO(df): check if I have to dump between these
+            _wandb_log_(img_obs, vis_scale, feature_i, "obs", custom_logger)
+            _wandb_log_(img_next_obs, vis_scale, feature_i, "next_obs", custom_logger)
+        else:
+            _wandb_log_(img, vis_scale, feature_i, "dataset_vis", custom_logger)
+        
+        # Can't re-use steps unfortunately, so each feature img gets its own step.
+        custom_logger.dump(step=feature_i)
+
+
+def _wandb_log_(
     arr: np.ndarray,
     scale: int,
     feature: int,
@@ -259,24 +344,6 @@ def log_arr_to_wandb(
     wb_img = wandb.Image(pil_img, caption=f"Feature {feature}, {img_type}")
     logger.record(f"feature_{feature}_{img_type}", wb_img)
 
-
-def add_to_figure(fig, img: np.ndarray, img_type: str) -> None:
-    """Add to pyplot figure"""
-    if img_type not in ["obs", "next_obs"]:
-        err_str = f"img_type should be 'obs' or 'next_obs', but instead is {img_type}"
-        raise ValueError(err_str)
-
-    offset = 1 if img_type == "obs" else 2
-
-    if len(img.shape) == 3:
-        fig.add_subplot(rows, columns, 2 * i + offset)
-        plt.imshow(img)
-    elif len(img.shape) == 4:
-        for img_i in range(img.shape[0]):
-            fig.add_subplot(rows, columns, 2 * i + offset)
-            plt.imshow(img[img_i])
-    else:
-        raise ValueError("img should have either 3 or 4 dimensions.")
 
 
 def main():
