@@ -6,7 +6,7 @@ For use in reward function feature visualization.
 import torch as th
 from sacred.observers import FileStorageObserver
 
-from reward_preprocessing.generative_modelling import utils
+from reward_preprocessing.common import utils
 from reward_preprocessing.scripts.config.train_gan import train_gan_ex
 
 # TODO: write script to use this in feature viz.
