@@ -18,3 +18,5 @@ git+https://github.com/openai/gym3.git@4c38246
 procgen @ git+https://github.com/JacobPfau/procgenAISC.git@7821f2c00b
 # Revert to this older version because some library won't work otherwise
 protobuf==3.19
+git+https://github.com/dfilan/vegans.git
+Pillow==9.2.0
