@@ -23,27 +23,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+WORKDIR /reward_preprocessing
+
 ENV PATH="/venv/bin:$PATH"
+COPY ./requirements.txt /reward_preprocessing/
+COPY ./requirements-dev.txt /reward_preprocessing/
 COPY ci/build_and_activate_venv.sh ./ci/build_and_activate_venv.sh
 RUN ci/build_and_activate_venv.sh /venv
 
-RUN curl -sSL https://install.python-poetry.org | python -
-ENV PATH="/root/.local/bin:$PATH"
-
-
-WORKDIR /reward_preprocessing
-# Copy only necessary dependencies to build virtual environment.
-# This minimizes how often this layer needs to be rebuilt.
-COPY poetry.lock pyproject.toml ./
-# Ideally, we'd clear the poetry cache but this seems annoyingly
-# difficult and not worth getting right for this project
-# (I've tried some things from https://github.com/python-poetry/poetry/issues/521
-# without success)
-RUN poetry install --no-interaction --no-ansi
-
-# clear the directory again (this is necessary so that CircleCI can checkout
-# into the directory)
-RUN rm poetry.lock pyproject.toml
 
 # full stage contains everything.
 # Can be used for deployment and local testing.
@@ -55,7 +42,10 @@ COPY . /reward_preprocessing
 # Note that all dependencies were already installed in the previous stage.
 # The purpose of this is only to make the local code available as a package for
 # easier import.
-RUN poetry run python setup.py sdist bdist_wheel
-RUN poetry run pip install dist/reward_preprocessing-*.whl
+RUN python setup.py sdist bdist_wheel
+RUN pip install dist/reward_preprocessing-*.whl
 
-CMD ["poetry", "run", "pytest"]
+# Set to src directory so scripts can be run as python -m reward_preprocessing. ...
+WORKDIR /reward_preprocessing/src/
+
+CMD ["pytest"]

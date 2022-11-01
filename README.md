@@ -3,15 +3,12 @@
 
 ## Installation
 First clone this repository.
-We use [`poetry`](https://python-poetry.org/) to manage dependencies.
-You can reproduce our environment with
+Install inside your python virtual environment system of choice:
+
+```bash
+pip install -r requirements.txt
+pip install -r requirements-dev.txt  # If dev packages are needed.
 ```
-poetry install
-pip install git+https://github.com/HumanCompatibleAI/imitation
-```
-(run this command inside the cloned repo). This will automatically create a new
-virtual environment.
-Use `poetry shell` to start a shell inside this virtual environment.
 
 Note on the python version: if you use a separate installation of `imitation`
 for creating reward models, then make sure that your environment for `imitation`
@@ -25,7 +22,65 @@ You can also use docker by building the image and running the scripts from insid
 
 ## Usage
 
-Use `print_config` to get details of the config params of the sacred scripts.
+### Getting a Reward Model
+
+#### Training the Supervised Reward Model
+
+- Get an expert rl agent
+  - For coinrun, use this fork: [PavelCz/train-procgen-pytorch](https://github.com/PavelCz/train-procgen-pytorch)
+  - Something like this to train:
+  ```bash
+  python train.py \
+    --exp_name coinrun \
+    --env_name coinrun \
+    --num_levels 100000 \
+    --distribution_mode hard \
+    --param_name hard-500 \
+    --num_timesteps 200000000 \
+    --num_checkpoints 5 \
+    --seed 6033 \
+    --random_percent 0 \
+    --gpu_device=3
+  ```
+  - Render videos to see how well the expert does:
+  ```bash
+  python render.py \
+    --exp_name render \
+    --env_name coinrun \
+    --num_levels 100000 \
+    --distribution_mode hard \
+    --param_name hard-500 \
+    --seed 6033 \
+    --model_file path/model_200015872.pth 
+    --vid_dir video
+  ```
+  - Add a trajectory path to save trajectories that can be used to train reward nets:
+  ```bash
+  python render.py \
+    --exp_name render \
+    --env_name coinrun \
+    --num_levels 100000 \
+    --distribution_mode hard \
+    --param_name hard-500 \
+    --seed 9073 \
+    --model_file path/model_200015872.pth \
+    --vid_dir video \
+    --traj_path rollouts.npz \
+    --noview \
+    # num_wpisodes is not actually the number of episodes, but the number of iterations
+    # n_steps (usually 256 for most hparams) each.
+    --num_episodes=1000
+  ```
+
+
+### Interpreting a Reward Model
+
+Once you have a reward model, you can use visualize various interpretability methods.
+Use `print_config` to get details of the config params of the sacred scripts, as in:
+
+```bash
+python -m reward_preprocessing.interpret print_config
+```
 
 ## Code Structure
 
@@ -39,7 +94,7 @@ Use `print_config` to get details of the config params of the sacred scripts.
     - `policies`: RL policies for training experts with train_rl.
     - `preprocessing` Reward preprocessing / reward shaping code.
     - `scripts`: All scripts that are not the main scripts of the projects. Helpers and scripts that produce artifacts that are used by the main script. Everything here should either be an executable file or a config for one.
-       - `helpers`: Helper scripts that are bash executables.
+       - `helpers`: Helper scripts that are bash executables or python scripts that are not full sacred experiments.
     - `trainers`: Our additions to the suite of reward learning algorithms available in imitation. Currently this contains the trainer for training reward nets with supervised learning.
     - `vis`: Visualization code for interpreting reward functions.
     - `interpret.py`: The main script that provides the functionality for this project.

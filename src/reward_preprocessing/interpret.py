@@ -54,7 +54,7 @@ def interpret(
             sacred ingredient 'common' in imitation.scripts.common.
         reward_path: Path to the learned supervised reward net.
         rollout_path:
-            Rollouts to use vor dataset visualization, dimensionality
+            Rollouts to use for dataset visualization, dimensionality
             reduction, and determining the shape of the features.
         limit_num_obs:
             Limit how many of the transitions from `rollout_path` are used for
