@@ -6,5 +6,5 @@ SRC_FILES=(src/ tests/ setup.py)
 set -x  # echo commands
 set -e  # quit immediately on error
 
-poetry run flake8 ${SRC_FILES[@]}
-poetry run black --check ${SRC_FILES[@]}
+flake8 ${SRC_FILES[@]}
+black --check ${SRC_FILES[@]}

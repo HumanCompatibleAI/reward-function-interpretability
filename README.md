@@ -3,15 +3,12 @@
 
 ## Installation
 First clone this repository.
-We use [`poetry`](https://python-poetry.org/) to manage dependencies.
-You can reproduce our environment with
+Install inside your python virtual environment system of choice:
+
+```bash
+pip install -r requirements.txt
+pip install -r requirements-dev.txt  # If dev packages are needed.
 ```
-poetry install
-pip install git+https://github.com/HumanCompatibleAI/imitation
-```
-(run this command inside the cloned repo). This will automatically create a new
-virtual environment.
-Use `poetry shell` to start a shell inside this virtual environment.
 
 Note on the python version: if you use a separate installation of `imitation`
 for creating reward models, then make sure that your environment for `imitation`
