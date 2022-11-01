@@ -203,14 +203,14 @@ class RewardGeneratorCombo(nn.Module):
         self.reward_net = reward_net
         self.generator = generator
 
-    def forward(latent_vec):
-        transition_tensor = generator(latent_vec)
-        obs, action_vec, next_obs = tensor_to_transition(latent_vec)
+    def forward(self, latent_vec):
+        transition_tensor = self.generator(latent_vec)
+        obs, action_vec, next_obs = tensor_to_transition(transition_tensor)
         done = th.zeros(action_vec.shape)
-        return reward_net.forward(obs, action_vec, next_obs, done)
+        return self.reward_net.forward(obs, action_vec, next_obs, done)
 
 
 def save_loss_plots(losses, save_dir):
     """Save plots of generator/adversary losses over training."""
     fig, _ = vegans.utils.plot_losses(losses, show=False)
-    fig.savefig(Path(save_dir) / 'loss_fig.png')
+    fig.savefig(Path(save_dir) / "loss_fig.png")

@@ -14,10 +14,10 @@ import torch as th
 import wandb
 
 from reward_preprocessing.common.utils import (
+    RewardGeneratorCombo,
     TensorTransitionWrapper,
     rollouts_to_dataloader,
     tensor_to_transition,
-    RewardGeneratorCombo,
 )
 from reward_preprocessing.scripts.config.interpret import interpret_ex
 from reward_preprocessing.vis.reward_vis import LayerNMF
@@ -100,7 +100,6 @@ def interpret(
     if img_save_path is not None and img_save_path[-1] != "/":
         raise ValueError("img_save_path is not a directory, does not end in /")
 
-    
     # Set up imitation-style logging.
     custom_logger, log_dir = common_config.setup_logging()
     wandb_logging = "wandb" in common["log_format_strs"]
@@ -174,14 +173,11 @@ def interpret(
     if pyplot:
         col_mult = 4 if vis_type == "traditional" else 2
         # figsize is width, height in inches
-        fig = plt.figure(figsize=(columns * col_mult, rows * 2)) 
+        fig = plt.figure(figsize=(columns * col_mult, rows * 2))
 
     # Visualize
     if vis_type == "traditional":
 
-        if pyplot:
-            fig = plt.figure(figsize=(columns * 4, rows * 2)) 
-        
         if gan_path is None:
             # List of transforms
             transforms = [
@@ -206,15 +202,16 @@ def interpret(
             # resulting generated images are realistic.
             # TODO(df): make that happen.
             opt_latent = nmf.vis_traditional(
-                transforms=[], l2_coeff=l2_coeff, l2_layer_name="input",
+                transforms=[],
+                l2_coeff=l2_coeff,
+                l2_layer_name="input",
             )
             # Now, we put the latent vector thru the generator to produce transition
             # tensors that we can get observations, actions, etc out of
-            opt_latent = np.mean(opt_latent, axis=(1,2))
+            opt_latent = np.mean(opt_latent, axis=(1, 2))
             opt_latent_th = th.from_numpy(opt_latent).to(th.device(device))
             opt_transitions = gan.generator(opt_latent_th)
             obs, acts, next_obs = tensor_to_transition(opt_transitions)
-
 
         # Set of images, one for each feature, add each to plot
         # TODO (df): fix merging thing
@@ -238,7 +235,7 @@ def interpret(
                 obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
                 next_obs_PIL = array_to_image(sub_img_next_obs, vis_scale)
                 next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
-        
+
     elif vis_type == "dataset":
         for feature_i in range(num_features):
             custom_logger.log(f"Feature {feature_i}")
@@ -267,7 +264,7 @@ def interpret(
 def array_to_image(arr: np.ndarray, scale: int) -> Image:
     """Take numpy array on [0,1] scale, return PIL image."""
     return Image.fromarray(np.uint8(arr * 255), mode="RGBA").resize(
-        size=(arr.shape[0] * vis_scale, arr.shape[1] * vis_scale),
+        size=(arr.shape[0] * scale, arr.shape[1] * scale),
         resample=Image.NEAREST,
     )
 
@@ -315,7 +312,7 @@ def _wandb_log(
             _wandb_log_(img_next_obs, vis_scale, feature_i, "next_obs", custom_logger)
         else:
             _wandb_log_(img, vis_scale, feature_i, "dataset_vis", custom_logger)
-        
+
         # Can't re-use steps unfortunately, so each feature img gets its own step.
         custom_logger.dump(step=feature_i)
 
@@ -343,7 +340,6 @@ def _wandb_log_(
     pil_img = array_to_image(arr, scale)
     wb_img = wandb.Image(pil_img, caption=f"Feature {feature}, {img_type}")
     logger.record(f"feature_{feature}_{img_type}", wb_img)
-
 
 
 def main():

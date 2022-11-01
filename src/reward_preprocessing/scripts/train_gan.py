@@ -3,8 +3,8 @@
 For use in reward function feature visualization.
 """
 
-import torch as th
 from sacred.observers import FileStorageObserver
+import torch as th
 
 from reward_preprocessing.common import utils
 from reward_preprocessing.scripts.config.train_gan import train_gan_ex
