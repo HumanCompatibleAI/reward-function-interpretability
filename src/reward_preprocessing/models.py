@@ -3,69 +3,12 @@ from typing import Tuple
 
 import gym
 from imitation.rewards.reward_nets import RewardNet
-from imitation.util.networks import build_cnn
 import numpy as np
-from stable_baselines3.common.preprocessing import preprocess_obs
 import torch as th
 
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
 logger = logging.getLogger(__name__)
-
-
-class ProcgenCnnRegressionRewardNet(RewardNet):
-    """RewardNet using a CNN for learning reward using supervised regression on obs, rew
-    pairs."""
-
-    def __init__(self, observation_space: gym.Space, action_space: gym.Space):
-        super().__init__(observation_space=observation_space, action_space=action_space)
-
-        # TODO: Not sure if Cnn (from this module) or build_cnn is better here. The
-        # former gives us more freedom in the architecture.
-        self.cnn_regressor = build_cnn(
-            in_channels=3,
-            hid_channels=[32, 64],
-            out_size=1,
-        )
-
-    def forward(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ) -> th.Tensor:
-        """
-        Args:
-            state: Tensor of shape (batch_size, height, width, channels)
-            action: Tensor of shape (batch_size, action_size)
-            next_state: Tensor of shape (batch_size, state_size)
-            done: Tensor of shape (batch_size,)
-        Returns:
-            Tensor of shape (batch_size,)
-        """
-        # TODO: We always assume shape (batch_size, height, width, channels) for inputs,
-        # do we actually want that or do we want to allow different shapes?
-        # Performs preprocessing for images
-        preprocessed_obs = preprocess_obs(
-            next_state, self.observation_space, normalize_images=self.normalize_images
-        )
-        assert isinstance(preprocessed_obs, th.Tensor)
-        # Reshape from (batch_size [0], height [1], width [2], channels [3])
-        # to (batch_size [0], channels [3], height [1], width [2])
-        if len(preprocessed_obs.shape) == 4:
-            transposed = th.permute(preprocessed_obs, [0, 3, 1, 2])
-        else:
-            logging.warning(
-                f"Encountered unexpected shape {preprocessed_obs.shape}. "
-                "Skipping transpose."
-            )
-            transposed = preprocessed_obs
-        batch_size = transposed.shape[0]
-
-        # Reshape into shape expected by imitation (see RewardNet predict_th())
-        out = self.cnn_regressor(transposed).reshape((batch_size,))
-        return out
 
 
 class MazeRewardNet(RewardNet):

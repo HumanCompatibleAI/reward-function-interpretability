@@ -3,30 +3,13 @@ import os.path
 from typing import Sequence, cast
 
 from imitation.data import types
+from imitation.rewards.reward_nets import CnnRewardNet
 from imitation.scripts.common import common, demonstrations
-import sacred
 from sacred.observers import FileStorageObserver
 import torch as th
 
-from reward_preprocessing.models import ProcgenCnnRegressionRewardNet
-from reward_preprocessing.scripts.common import supervised as supervised_config
+from reward_preprocessing.scripts.config.train_regression import train_regression_ex
 from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
-
-train_regression_ex = sacred.Experiment(
-    "train_regression",
-    ingredients=[
-        common.common_ingredient,
-        demonstrations.demonstrations_ingredient,
-        supervised_config.supervised_ingredient,
-    ],
-)
-
-
-@train_regression_ex.config
-def defaults():
-    # Every checkpoint_epoch_interval epochs, save the model. Epochs start at 1.
-    checkpoint_epoch_interval = 1
-    locals()  # make flake8 happy
 
 
 def save(trainer: SupervisedTrainer, save_path):
@@ -47,9 +30,15 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
     with common.make_venv() as venv:
         # Init the regression CNN
-        model = ProcgenCnnRegressionRewardNet(
-            observation_space=venv.observation_space, action_space=venv.action_space
+        model = CnnRewardNet(
+            **supervised["net_kwargs"],
+            # We don't want the following to be overriden.
+            observation_space=venv.observation_space,
+            action_space=venv.action_space,
+            use_done=False,
         )
+        custom_logger.log(model)
+
         device = "cuda" if th.cuda.is_available() else "cpu"
         loss_fn = th.nn.MSELoss()
 
@@ -69,6 +58,8 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
         # Move model to correct device
         model.to(device)
 
+        trainer.log_data_stats()
+
         def checkpoint_callback(epoch_num):
             if (
                 checkpoint_epoch_interval > 0
@@ -76,6 +67,7 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
             ):
                 save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
 
+        custom_logger.log("Start training regression model.")
         # Start training
         trainer.train(
             num_epochs=supervised["epochs"],

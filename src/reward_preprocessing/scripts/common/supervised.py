@@ -16,4 +16,32 @@ def config():
     batch_size = 32  # Batch size for training a supervised model
     num_loader_workers = 0  # Number of workers for data loading
 
+    # Apparently in sacred I need default values for parameters that I want to be able
+    # to override. At least that's how I interpret this information:
+    # https://github.com/IDSIA/sacred/issues/644
+
+    # Keyword arguments for reward network
+    net_kwargs = dict(
+        use_state=True, use_action=True, use_next_state=True, hid_channels=(32, 64)
+    )
+
     locals()  # quieten flake8
+
+
+@supervised_ingredient.config_hook
+def config_hook(config, command_name, logger) -> dict:
+    """Warn if network is set to `use_done`, since this setting will be overriden
+    in train_regression."""
+    del command_name
+    res = {}
+    if (
+        "use_done" in config["supervised"]["net_kwargs"]
+        and config["supervised"]["net_kwargs"]["use_done"]
+    ):
+        logger.warning(
+            "Supervised training does not support setting use_done to "
+            "True. We don't support networks that take in the done signal. "
+            "This value will be ignored."
+        )
+
+    return res
