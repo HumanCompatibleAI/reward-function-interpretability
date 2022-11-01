@@ -17,8 +17,8 @@ from reward_preprocessing.common.utils import (
     TensorTransitionWrapper,
     rollouts_to_dataloader,
     tensor_to_transition,
+    RewardGeneratorCombo,
 )
-from reward_preprocessing.generative_modelling.utils import RewardGeneratorCombo
 from reward_preprocessing.scripts.config.interpret import interpret_ex
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
