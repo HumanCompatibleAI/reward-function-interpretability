@@ -1,5 +1,5 @@
 import os.path as osp
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
 from PIL import Image
 from imitation.scripts.common import common as common_config
@@ -298,7 +298,7 @@ def plot_img(
 def _wandb_log(
     custom_logger: imit_logger.HierarchicalLogger,
     feature_i: int,
-    img: Union[tuple[np.ndarray, np.ndarray], np.ndarray],
+    img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
     vis_scale: int,
     wandb_logging: bool,
 ):
