@@ -8,7 +8,7 @@ numpy==1.21.2
 gym==0.21
 tqdm==4.62.2
 wandb==0.12.1
-seals==0.1.1
+seals==0.1.5
 torch-lucent==0.1.8
 jupyter==1.0.0
 git+https://github.com/ejnnr/mazelab.git@3042551
