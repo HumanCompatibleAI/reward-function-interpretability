@@ -3,6 +3,7 @@ from functools import reduce
 import logging
 from typing import List, Optional
 
+from lucent.optvis.objectives import wrap_objective
 import lucent.optvis.param as param
 import lucent.optvis.render as render
 import lucent.optvis.transform as transform
@@ -89,7 +90,7 @@ def argmax_nd(x: np.ndarray, axes: List[int], *, max_rep=np.inf, max_rep_strict=
     return np.unravel_index(result, shape[: len(axes)])
 
 
-@objectives.wrap_objective()
+@wrap_objective()
 def l2_objective(layer_name, coefficient, batch=None):
     """L2 norm of specified layer, multiplied by the given coeff."""
     @objectives.handle_batch(batch)
