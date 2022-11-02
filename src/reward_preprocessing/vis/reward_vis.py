@@ -1,7 +1,7 @@
 """Port of lucid.scratch.rl_util to PyTorch. APL2.0 licensed."""
 from functools import reduce
 import logging
-from typing import Optional
+from typing import List, Optional
 
 import lucent.optvis.param as param
 import lucent.optvis.render as render
@@ -15,7 +15,7 @@ from reward_preprocessing.vis.attribution import get_activations, get_attr
 import reward_preprocessing.vis.objectives as objectives_rfi
 
 
-def argmax_nd(x: np.ndarray, axes: list[int], *, max_rep=np.inf, max_rep_strict=None):
+def argmax_nd(x: np.ndarray, axes: List[int], *, max_rep=np.inf, max_rep_strict=None):
     """Return the indices of the maximum value along the given axes.
 
     Args:
