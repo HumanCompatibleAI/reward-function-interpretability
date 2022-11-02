@@ -157,6 +157,8 @@ def interpret(
     rows, columns = 1, num_features
     if pyplot:
         fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches
+    else:
+        fig = None
 
     # Visualize
     if vis_type == "traditional":
@@ -219,11 +221,19 @@ def interpret(
 
 
 def plot_img(
-    columns, custom_logger, feature_i, fig, img, pyplot, rows, vis_scale, wandb_logging
+    columns,
+    custom_logger,
+    feature_i,
+    fig: Optional,
+    img,
+    pyplot,
+    rows,
+    vis_scale,
+    wandb_logging,
 ):
     """Plot the passed image to pyplot and wandb as appropriate."""
     _wandb_log(custom_logger, feature_i, img, vis_scale, wandb_logging)
-    if pyplot:
+    if fig is not None and pyplot:
         fig.add_subplot(rows, columns, feature_i + 1)
         plt.imshow(img)
 
