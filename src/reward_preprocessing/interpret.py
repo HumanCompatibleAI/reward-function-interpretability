@@ -116,6 +116,9 @@ def interpret(
             rollouts_paths=rollout_path,
             num_acts=15,
             batch_size=limit_num_obs,
+            # This is an upper bound of the number of trajectories we need, since every
+            # trajectory has at least 1 transition.
+            n_trajectories=limit_num_obs,
         )
         # For dim reductions and gettings activations in LayerNMF we want one big batch
         # of limit_num_obs transitions. So, we simply use that as batch_size and sample
