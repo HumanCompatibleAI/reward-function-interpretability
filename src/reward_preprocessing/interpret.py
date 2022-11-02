@@ -40,6 +40,7 @@ def interpret(
     layer_name: str,
     num_features: Optional[int],
     contrast_factor: Optional[float],
+    activation_fn: Optional[str],
     gan_path: Optional[str],
 ):
     """Run visualization for interpretability.
@@ -76,6 +77,8 @@ def interpret(
             0.5 smaller by a factor of 1.5 and values above 0.5 larger by this
             factor. The resulting image has a higher contrast compared to the
             original.
+        activation_fn:
+            tbd
         gan_path:
             Path to the GAN model. This is used to regularize the output of the
             visualization. If None simply visualize reward net without the use
@@ -154,7 +157,8 @@ def interpret(
         # input samples are used for dim reduction (if features is not
         # None) and for determining the shape of the features.
         model_inputs_preprocess=inputs,
-        # activation_fn="sigmoid",
+        activation_fn=activation_fn,
+
     )
 
     custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")

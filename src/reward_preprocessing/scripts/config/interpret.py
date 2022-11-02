@@ -26,6 +26,7 @@ def defaults():
     # a factor of 1.5 and values above 0.5 larger by this factor. The resulting image
     # has a higher contrast compared to the original.
     contrast_factor = None
+    activation_fn = None  # None or "sigmoid"
     # Path to the GAN model. If None simply visualize reward net without the use of GAN.
     gan_path = None
 
