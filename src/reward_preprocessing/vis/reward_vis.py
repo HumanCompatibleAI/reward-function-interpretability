@@ -223,7 +223,9 @@ class LayerNMF:
             )
         # Transform into torch tensor instead of numpy array, because this is expected
         # later on.
-        self.channel_dirs = th.tensor(self.channel_dirs)
+        self.channel_dirs = th.tensor(self.channel_dirs).to(
+            self.model_inputs_full.device
+        )
 
     def vis_traditional(
         self,
