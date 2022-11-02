@@ -238,6 +238,7 @@ def interpret(
             )
 
             plot_img(
+                feature_i,  # Use feature i simply as step.
                 columns,
                 custom_logger,
                 feature_i,
