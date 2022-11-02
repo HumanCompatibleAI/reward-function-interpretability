@@ -177,13 +177,17 @@ class LayerNMF:
 
         self.patch_h = self.model_inputs_full.shape[2] / activations.shape[2]
         self.patch_w = self.model_inputs_full.shape[3] / activations.shape[3]
+
+        # From here on activations should be numpy array and not pytorch tensor anymore.
+        activations = activations.detach().cpu().numpy()
+
         if self.reducer is None:  # No dimensionality reduction.
             # Activations are only used for dim reduction and to determine the shape
             # of the features. The former is compatible between torch and numpy (both
             # support .shape), so calling .numpy() is not really necessary. However,
             # for consistency we do it here. Consequently, self.acts_reduced is always
             # a numpy array.
-            self.acts_reduced = activations.numpy()
+            self.acts_reduced = activations
             self.channel_dirs = np.eye(self.acts_reduced.shape[1])
             self.transform = lambda acts: acts.copy()
             self.inverse_transform = lambda acts: acts.copy()
