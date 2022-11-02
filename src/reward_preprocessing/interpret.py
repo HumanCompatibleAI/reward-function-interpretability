@@ -123,7 +123,10 @@ def interpret(
         # For dim reductions and gettings activations in LayerNMF we want one big batch
         # of limit_num_obs transitions. So, we simply use that as batch_size and sample
         # the first element from the dataloader.
-        inputs = next(iter(transition_tensor_dataloader))
+        inputs: th.Tensor = next(iter(transition_tensor_dataloader))
+        inputs = inputs.to(device)
+        # Ensure loaded data is FloatTensor and not DoubleTensor.
+        inputs = inputs.float()
     else:  # When using GAN.
         # Inputs should be some samples of input vectors? Not sure if this is the best
         # way to do this, there might be better options.
