@@ -162,6 +162,10 @@ def interpret(
 
     num_features = nmf.channel_dirs.shape[0]
     rows, columns = 1, num_features
+    if contrast_factor is not None:
+        # We plot an extra image with increased contrast for each original image.
+        # Therefore, we will polot twice as many images.
+        columns *= 2
     if pyplot:
         fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches
     else:
@@ -186,11 +190,15 @@ def interpret(
         # obs and next_obs output have channel dim last.
         # acts is output as one-hot vector.
 
-        # Set of images, one for each feature, add each to plot
+        # Step is used so each image can be dumped to the logger (wandb) in a different
+        # call. Each call to dump() needs to be called with a consecutive step number.
+        # Additionally, this will determine where in the grid pyplot an image is added.
+        step = 0
         for feature_i in range(next_obs.shape[0]):
             sub_img = next_obs[feature_i]
 
             plot_img(
+                step,
                 columns,
                 custom_logger,
                 feature_i,
@@ -201,12 +209,14 @@ def interpret(
                 vis_scale,
                 wandb_logging,
             )
+            step += 1
 
             if contrast_factor is not None:
                 # Increase the contrast of the image by scaling values away from gray.
                 sub_img = (sub_img - 0.5) * contrast_factor + 0.5
 
                 plot_img(
+                    step,
                     columns,
                     custom_logger,
                     feature_i,
@@ -218,6 +228,7 @@ def interpret(
                     wandb_logging,
                     scale=contrast_factor,
                 )
+                step += 1
     elif vis_type == "dataset":
         for feature_i in range(num_features):
             custom_logger.log(f"Feature {feature_i}")
@@ -246,6 +257,7 @@ def interpret(
 
 
 def plot_img(
+    step: int,
     columns,
     custom_logger,
     feature_i,
@@ -263,19 +275,21 @@ def plot_img(
     This function will not perform the scaling itself.
     The scaled image will never be plotted to pyplot.
     """
-    _wandb_log(custom_logger, feature_i, img, vis_scale, wandb_logging, scale)
-    if scale is None and fig is not None and pyplot:
-        fig.add_subplot(rows, columns, feature_i + 1)
+    _wandb_log(step, custom_logger, feature_i, img, vis_scale, wandb_logging, scale)
+    if fig is not None and pyplot:
+        fig.add_subplot(rows, columns, step + 1)
         plt.imshow(img)
 
 
 def _wandb_log(
+    step: int,
     custom_logger,
     feature_i: int,
     img: np.ndarray,
     vis_scale: int,
     wandb_logging: bool,
     scale: Optional[float] = None,
+    skip_dump: bool = False,
 ):
     """Plot to wandb if wandb logging is enabled. If the argument scale is passed, this
     signifies that the image was scaled. This is used to add this information to wandb.
@@ -293,8 +307,9 @@ def _wandb_log(
         )
         wb_img = wandb.Image(p_img, caption=caption)
         custom_logger.record(wandb_key, wb_img)
-        # Can't re-use steps unfortunately, so each feature img gets its own step.
-        custom_logger.dump(step=feature_i)
+        if not skip_dump:
+            # Can't re-use steps unfortunately, so each feature img gets its own step.
+            custom_logger.dump(step=step)
 
 
 def main():
