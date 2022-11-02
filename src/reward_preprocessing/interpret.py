@@ -39,6 +39,7 @@ def interpret(
     vis_type: str,
     layer_name: str,
     num_features: Optional[int],
+    contrast_factor: Optional[float],
     gan_path: Optional[str],
 ):
     """Run visualization for interpretability.
@@ -69,6 +70,12 @@ def interpret(
         num_features:
             Number of features to use for visualization. The activations will be reduced
             to this size using NMF. If None, performs no dimensionality reduction.
+        contrast_factor:
+            Optionally, scale the values of the visualization by this factor *away*
+            from a gray image. I.e. if this is set to 1.5 it will make values under
+            0.5 smaller by a factor of 1.5 and values above 0.5 larger by this
+            factor. The resulting image has a higher contrast compared to the
+            original.
         gan_path:
             Path to the GAN model. This is used to regularize the output of the
             visualization. If None simply visualize reward net without the use
@@ -147,7 +154,7 @@ def interpret(
         # input samples are used for dim reduction (if features is not
         # None) and for determining the shape of the features.
         model_inputs_preprocess=inputs,
-        activation_fn="sigmoid",
+        # activation_fn="sigmoid",
     )
 
     custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
@@ -182,6 +189,7 @@ def interpret(
         # Set of images, one for each feature, add each to plot
         for feature_i in range(next_obs.shape[0]):
             sub_img = next_obs[feature_i]
+
             plot_img(
                 columns,
                 custom_logger,
@@ -193,6 +201,23 @@ def interpret(
                 vis_scale,
                 wandb_logging,
             )
+
+            if contrast_factor is not None:
+                # Increase the contrast of the image by scaling values away from gray.
+                sub_img = (sub_img - 0.5) * contrast_factor + 0.5
+
+                plot_img(
+                    columns,
+                    custom_logger,
+                    feature_i,
+                    fig,
+                    sub_img,
+                    pyplot,
+                    rows,
+                    vis_scale,
+                    wandb_logging,
+                    scale=contrast_factor,
+                )
     elif vis_type == "dataset":
         for feature_i in range(num_features):
             custom_logger.log(f"Feature {feature_i}")
@@ -230,25 +255,44 @@ def plot_img(
     rows,
     vis_scale,
     wandb_logging,
+    scale: Optional[float] = None,
 ):
-    """Plot the passed image to pyplot and wandb as appropriate."""
-    _wandb_log(custom_logger, feature_i, img, vis_scale, wandb_logging)
-    if fig is not None and pyplot:
+    """Plot the passed image to pyplot and wandb as appropriate. If the argument scale
+    is passed, this signifies that the image was scaled. This is used to add this
+    information to wandb.
+    This function will not perform the scaling itself.
+    The scaled image will never be plotted to pyplot.
+    """
+    _wandb_log(custom_logger, feature_i, img, vis_scale, wandb_logging, scale)
+    if scale is None and fig is not None and pyplot:
         fig.add_subplot(rows, columns, feature_i + 1)
         plt.imshow(img)
 
 
 def _wandb_log(
-    custom_logger, feature_i: int, img: np.ndarray, vis_scale: int, wandb_logging: bool
+    custom_logger,
+    feature_i: int,
+    img: np.ndarray,
+    vis_scale: int,
+    wandb_logging: bool,
+    scale: Optional[float] = None,
 ):
-    """Plot to wandb if wandb logging is enabled."""
+    """Plot to wandb if wandb logging is enabled. If the argument scale is passed, this
+    signifies that the image was scaled. This is used to add this information to wandb.
+    This function will not perform the scaling itself.
+    """
     if wandb_logging:
+        wandb_key = f"feature_{feature_i}"
+        caption = f"Feature {feature_i}"
+        if scale is not None:
+            wandb_key += f"_{scale}_scale"
+            caption += f" (scaled by {scale})"
         p_img = Image.fromarray(np.uint8(img * 255), mode="RGB").resize(
             size=(img.shape[0] * vis_scale, img.shape[1] * vis_scale),
             resample=Image.NEAREST,
         )
-        wb_img = wandb.Image(p_img, caption=f"Feature {feature_i}")
-        custom_logger.record(f"feature_{feature_i}", wb_img)
+        wb_img = wandb.Image(p_img, caption=caption)
+        custom_logger.record(wandb_key, wb_img)
         # Can't re-use steps unfortunately, so each feature img gets its own step.
         custom_logger.dump(step=feature_i)
 

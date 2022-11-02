@@ -14,13 +14,18 @@ def defaults():
     # The RL Vision paper uses "a few thousand" observations.
     limit_num_obs = 2048
     pyplot = False  # Plot images as pyplot figures
-    vis_scale = 4  # Scale the visualization img by this factor
+    vis_scale = 4  # Scale the size of the visualization img by this factor
     vis_type = "traditional"  # "traditional" (gradient-based) or "dataset"
     # Name of the layer to visualize. To figure this out run interpret and the
     # available layers will be printed. For additional notes see interpret doc comment.
     layer_name = "reshaped_out"
     # Number of features to use for dim reduction. No dim recution if None.
     num_features = None
+    # Optionally, scale the values of the visualization by this factor *away* from a
+    # gray image. I.e. if this is set to 1.5 it will make values under 0.5 smaller by
+    # a factor of 1.5 and values above 0.5 larger by this factor. The resulting image
+    # has a higher contrast compared to the original.
+    contrast_factor = None
     # Path to the GAN model. If None simply visualize reward net without the use of GAN.
     gan_path = None
 
