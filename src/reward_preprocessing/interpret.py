@@ -168,7 +168,6 @@ def interpret(
         # None) and for determining the shape of the features.
         model_inputs_preprocess=inputs,
         activation_fn="sigmoid",
-        device=device,
     )
 
     custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
