@@ -3,6 +3,7 @@ from typing import Optional
 
 from PIL import Image
 from imitation.scripts.common import common as common_config
+from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
 from lucent.optvis import transform
 import matplotlib
@@ -262,16 +263,15 @@ def interpret(
 
 
 def plot_img(
-    step: int,
-    columns,
-    custom_logger,
-    feature_i,
-    fig: Optional,
-    img,
-    pyplot,
-    rows,
-    vis_scale,
-    wandb_logging,
+    columns: int,
+    custom_logger: HierarchicalLogger,
+    feature_i: int,
+    fig: Optional[matplotlib.figure.Figure],
+    img: np.ndarray,
+    pyplot: bool,
+    rows: int,
+    vis_scale: int,
+    wandb_logging: bool,
     scale: Optional[float] = None,
 ):
     """Plot the passed image to pyplot and wandb as appropriate. If the argument scale
@@ -288,7 +288,7 @@ def plot_img(
 
 def _wandb_log(
     step: int,
-    custom_logger,
+    custom_logger: HierarchicalLogger,
     feature_i: int,
     img: np.ndarray,
     vis_scale: int,
