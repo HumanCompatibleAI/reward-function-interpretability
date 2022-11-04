@@ -210,7 +210,7 @@ def interpret(
             opt_latent = nmf.vis_traditional(
                 transforms=[],
                 l2_coeff=l2_coeff,
-                l2_layer_name="input",
+                l2_layer_name="generator_network_latent_vec",
             )
             # Now, we put the latent vector thru the generator to produce transition
             # tensors that we can get observations, actions, etc out of
