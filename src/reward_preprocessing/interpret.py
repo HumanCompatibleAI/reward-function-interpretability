@@ -221,8 +221,8 @@ def interpret(
 
         # Set of images, one for each feature, add each to plot
         for feature_i in range(next_obs.shape[0]):
-            sub_img_obs = obs[feature_i]
-            sub_img_next_obs = next_obs[feature_i]
+            sub_img_obs = obs[feature_i].detach().cpu().numpy()
+            sub_img_next_obs = next_obs[feature_i].detach().cpu().numpy()
             plot_img(
                 columns,
                 custom_logger,
