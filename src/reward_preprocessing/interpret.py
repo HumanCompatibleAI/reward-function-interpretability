@@ -148,11 +148,11 @@ def interpret(
         # Ensure loaded data is FloatTensor and not DoubleTensor.
         inputs = inputs.float()
     else:  # When using GAN.
-        # Inputs should be some samples of input vectors? Not sure if this is the best
-        # way to do this, there might be better options.
-        # The important part is that lucent expects 4D tensors as inputs, so increase
-        # dimensionality accordingly.
-        raise NotImplementedError()
+        # Inputs are GAN samples
+        samples = gan.sample(limit_num_obs)
+        inputs = samples[:, :, None, None]
+        inputs = inputs.to(device)
+        inputs = inputs.float()
 
     # The model to analyse should be a torch module that takes a single input, which
     # should be a torch Tensor.

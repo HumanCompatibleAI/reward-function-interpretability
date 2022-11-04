@@ -220,7 +220,8 @@ class RewardGeneratorCombo(nn.Module):
         self.reward_net = reward_net
         self.generator = generator
 
-    def forward(self, latent_vec):
+    def forward(self, latent_tens: th.Tensor):
+        latent_vec = th.mean(latent_tens, dim=[2, 3])
         transition_tensor = self.generator(latent_vec)
         obs, action_vec, next_obs = tensor_to_transition(transition_tensor)
         done = th.zeros(action_vec.shape)
