@@ -239,6 +239,9 @@ def interpret(
                 obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
                 next_obs_PIL = array_to_image(sub_img_next_obs, vis_scale)
                 next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
+                custom_logger.log(
+                    f"Saved feature {feature_i} viz " f"in dir {img_save_path}"
+                )
 
     elif vis_type == "dataset":
         for feature_i in range(num_features):
@@ -267,7 +270,7 @@ def interpret(
 
 def array_to_image(arr: np.ndarray, scale: int) -> Image:
     """Take numpy array on [0,1] scale, return PIL image."""
-    return Image.fromarray(np.uint8(arr * 255), mode="RGBA").resize(
+    return Image.fromarray(np.uint8(arr * 255), mode="RGB").resize(
         size=(arr.shape[0] * scale, arr.shape[1] * scale),
         resample=Image.NEAREST,
     )
