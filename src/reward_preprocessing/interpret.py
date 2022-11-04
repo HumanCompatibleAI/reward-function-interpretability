@@ -3,7 +3,7 @@ from typing import Optional, Tuple, Union
 
 from PIL import Image
 from imitation.scripts.common import common as common_config
-from imitation.util import logger as imit_logger
+from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
 from lucent.optvis import transform
 import matplotlib
@@ -136,11 +136,17 @@ def interpret(
             rollouts_paths=rollout_path,
             num_acts=15,
             batch_size=limit_num_obs,
+            # This is an upper bound of the number of trajectories we need, since every
+            # trajectory has at least 1 transition.
+            n_trajectories=limit_num_obs,
         )
         # For dim reductions and gettings activations in LayerNMF we want one big batch
         # of limit_num_obs transitions. So, we simply use that as batch_size and sample
         # the first element from the dataloader.
-        inputs = next(iter(transition_tensor_dataloader))
+        inputs: th.Tensor = next(iter(transition_tensor_dataloader))
+        inputs = inputs.to(device)
+        # Ensure loaded data is FloatTensor and not DoubleTensor.
+        inputs = inputs.float()
     else:  # When using GAN.
         # Inputs should be some samples of input vectors? Not sure if this is the best
         # way to do this, there might be better options.
@@ -174,6 +180,8 @@ def interpret(
         col_mult = 4 if vis_type == "traditional" else 2
         # figsize is width, height in inches
         fig = plt.figure(figsize=(columns * col_mult, rows * 2))
+    else:
+        fig = None
 
     # Visualize
     if vis_type == "traditional":
@@ -270,17 +278,17 @@ def array_to_image(arr: np.ndarray, scale: int) -> Image:
 
 
 def plot_img(
-    columns,
-    custom_logger,
-    feature_i,
-    fig,
-    img,
-    pyplot,
-    rows,
-    vis_scale,
-    wandb_logging,
+    columns: int,
+    custom_logger: HierarchicalLogger,
+    feature_i: int,
+    fig: Optional[matplotlib.figure.Figure],
+    img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
+    pyplot: bool,
+    rows: int,
+    vis_scale: int,
+    wandb_logging: bool,
 ):
-    """Plot the passed image to pyplot and wandb as appropriate."""
+    """Plot the passed image(s) to pyplot and wandb as appropriate."""
     _wandb_log(custom_logger, feature_i, img, vis_scale, wandb_logging)
     if pyplot:
         if isinstance(img, tuple):
@@ -296,7 +304,7 @@ def plot_img(
 
 
 def _wandb_log(
-    custom_logger: imit_logger.HierarchicalLogger,
+    custom_logger: HierarchicalLogger,
     feature_i: int,
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
     vis_scale: int,
@@ -322,7 +330,7 @@ def _wandb_log_(
     scale: int,
     feature: int,
     img_type: str,
-    logger: imit_logger.HierarchicalLogger,
+    logger: HierarchicalLogger,
 ) -> None:
     """Log visualized np.ndarray to wandb using given logger.
 
