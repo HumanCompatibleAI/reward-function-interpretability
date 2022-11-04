@@ -263,6 +263,7 @@ def interpret(
 
 
 def plot_img(
+    step: int,
     columns: int,
     custom_logger: HierarchicalLogger,
     feature_i: int,
