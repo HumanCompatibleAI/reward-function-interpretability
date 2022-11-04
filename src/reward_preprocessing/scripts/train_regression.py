@@ -40,7 +40,9 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
         custom_logger.log(model)
 
         device = "cuda" if th.cuda.is_available() else "cpu"
-        loss_fn = th.nn.MSELoss()
+
+        # Use "sum" so batch loss is not divided by batch size.
+        loss_fn = th.nn.MSELoss(reduction="sum")
 
         trainer = SupervisedTrainer(
             demonstrations=expert_trajs,
