@@ -240,7 +240,7 @@ def interpret(
                 next_obs_PIL = array_to_image(sub_img_next_obs, vis_scale)
                 next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
                 custom_logger.log(
-                    f"Saved feature {feature_i} viz " f"in dir {img_save_path}"
+                    f"Saved feature {feature_i} viz in dir {img_save_path}."
                 )
 
     elif vis_type == "dataset":
