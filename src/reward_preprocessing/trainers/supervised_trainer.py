@@ -100,7 +100,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         dataset = flatten_trajectories_with_rew(demonstrations)
         # Calculate the dataset split.
         num_test = int(len(dataset) * self._test_frac)
-        assert num_test > 0, "Test set is empty"
+        assert num_test > 0, "Test fraction too small, would result in empty test set"
         num_train = len(dataset) - num_test
         if seed is None:
             train, test = data.random_split(dataset, [num_train, num_test])
@@ -112,6 +112,15 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 generator=th.Generator().manual_seed(seed),
             )
             shuffle_generator = th.Generator().manual_seed(seed)
+
+        assert len(train) > 0, "Train set is empty"
+        assert len(test) > 0, "Test set is empty"
+        assert (
+            len(train) == num_train
+        ), f"Train set has wrong length. Is {len(train)}, should be {num_train}"
+        assert (
+            len(test) == num_test
+        ), f"Test set has wrong length. Is {len(test)}, should be {num_test}"
 
         self._train_loader = data.DataLoader(
             train,
