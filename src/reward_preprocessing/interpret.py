@@ -1,7 +1,6 @@
 import os.path as osp
 from typing import Optional
 
-from PIL import Image
 from imitation.scripts.common import common as common_config
 from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
@@ -11,10 +10,10 @@ from matplotlib import pyplot as plt
 import numpy as np
 from sacred.observers import FileStorageObserver
 import torch as th
-import wandb
 
 from reward_preprocessing.common.utils import (
     TensorTransitionWrapper,
+    log_np_img_wandb,
     rollouts_to_dataloader,
     tensor_to_transition,
 )
@@ -233,29 +232,10 @@ def plot_img(
     wandb_logging: bool,
 ):
     """Plot the passed image to pyplot and wandb as appropriate."""
-    _wandb_log(custom_logger, feature_i, img, vis_scale, wandb_logging)
+    log_np_img_wandb(custom_logger, feature_i, img, vis_scale, wandb_logging)
     if fig is not None and pyplot:
         fig.add_subplot(rows, columns, feature_i + 1)
         plt.imshow(img)
-
-
-def _wandb_log(
-    custom_logger: HierarchicalLogger,
-    feature_i: int,
-    img: np.ndarray,
-    vis_scale: int,
-    wandb_logging: bool,
-):
-    """Plot to wandb if wandb logging is enabled."""
-    if wandb_logging:
-        p_img = Image.fromarray(np.uint8(img * 255), mode="RGB").resize(
-            size=(img.shape[0] * vis_scale, img.shape[1] * vis_scale),
-            resample=Image.NEAREST,
-        )
-        wb_img = wandb.Image(p_img, caption=f"Feature {feature_i}")
-        custom_logger.record(f"feature_{feature_i}", wb_img)
-        # Can't re-use steps unfortunately, so each feature img gets its own step.
-        custom_logger.dump(step=feature_i)
 
 
 def main():

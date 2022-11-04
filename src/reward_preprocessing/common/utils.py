@@ -2,12 +2,15 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 import PIL
+from PIL import Image
 from imitation.data import rollout, types
 from imitation.rewards.reward_nets import RewardNet
+from imitation.util.logger import HierarchicalLogger
 import numpy as np
 import torch as th
 from torch import nn as nn
 from torch.utils import data as torch_data
+import wandb
 
 
 def make_transition_to_tensor(num_acts):
@@ -206,3 +209,22 @@ class TensorTransitionWrapper(nn.Module):
 
         dones = th.zeros_like(obs[:, 0])
         return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)
+
+
+def log_np_img_wandb(
+    logger: HierarchicalLogger,
+    step: int,
+    img: np.ndarray,
+    vis_scale: int,
+    wandb_logging: bool,
+):
+    """Plot to wandb if wandb logging is enabled."""
+    if wandb_logging:
+        p_img = Image.fromarray(np.uint8(img * 255), mode="RGB").resize(
+            size=(img.shape[0] * vis_scale, img.shape[1] * vis_scale),
+            resample=Image.NEAREST,
+        )
+        wb_img = wandb.Image(p_img, caption=f"Feature {step}")
+        logger.record(f"feature_{step}", wb_img)
+        # Can't re-use steps unfortunately, so each feature img gets its own step.
+        logger.dump(step=step)
