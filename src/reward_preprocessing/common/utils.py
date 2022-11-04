@@ -212,19 +212,32 @@ class TensorTransitionWrapper(nn.Module):
 
 
 def log_np_img_wandb(
-    logger: HierarchicalLogger,
-    step: int,
     img: np.ndarray,
-    vis_scale: int,
+    logger: HierarchicalLogger,
+    caption: str,
+    wandb_key: str,
     wandb_logging: bool,
+    vis_scale: int = 1,
+    step: Optional[int] = None,
 ):
-    """Plot to wandb if wandb logging is enabled."""
+    """Plot to wandb if wandb logging is enabled.
+
+    Args:
+        img: Image to plot. Should be a numpy array with shape (H, W, C).
+        logger: Logger to use for logging to wandb.
+        caption: Caption to give the image.
+        wandb_key: Key to use for logging to wandb.
+        wandb_logging: Whether to log to wandb.
+        vis_scale: Scale image by this integer factor.
+        step:
+            Step for logging. If not provided, the logger dumping will be skipped.
+            Logs will be dumped with the next dump().
+    """
     if wandb_logging:
         p_img = Image.fromarray(np.uint8(img * 255), mode="RGB").resize(
             size=(img.shape[0] * vis_scale, img.shape[1] * vis_scale),
             resample=Image.NEAREST,
         )
-        wb_img = wandb.Image(p_img, caption=f"Feature {step}")
-        logger.record(f"feature_{step}", wb_img)
-        # Can't re-use steps unfortunately, so each feature img gets its own step.
+        wb_img = wandb.Image(p_img, caption=caption)
+        logger.record(wandb_key, wb_img)
         logger.dump(step=step)

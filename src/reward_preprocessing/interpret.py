@@ -232,7 +232,17 @@ def plot_img(
     wandb_logging: bool,
 ):
     """Plot the passed image to pyplot and wandb as appropriate."""
-    log_np_img_wandb(custom_logger, feature_i, img, vis_scale, wandb_logging)
+
+    log_np_img_wandb(
+        img,
+        custom_logger,
+        caption=f"Feature {feature_i}",
+        wandb_key=f"feature_{feature_i}",
+        wandb_logging=wandb_logging,
+        vis_scale=vis_scale,
+        # Can't re-use steps unfortunately, so each feature img gets its own step.
+        step=feature_i,
+    )
     if fig is not None and pyplot:
         fig.add_subplot(rows, columns, feature_i + 1)
         plt.imshow(img)
