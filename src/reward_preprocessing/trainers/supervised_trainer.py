@@ -100,6 +100,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         dataset = flatten_trajectories_with_rew(demonstrations)
         # Calculate the dataset split.
         num_test = int(len(dataset) * self._test_frac)
+        assert num_test > 0, "Test set is empty"
         num_train = len(dataset) - num_test
         if seed is None:
             train, test = data.random_split(dataset, [num_train, num_test])
