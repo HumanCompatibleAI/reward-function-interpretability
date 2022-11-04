@@ -24,6 +24,8 @@ def config():
     net_kwargs = dict(
         use_state=True, use_action=True, use_next_state=True, hid_channels=(32, 64)
     )
+    # Keyword arguments for Adam optimizer
+    opt_kwargs = dict(lr=1e-3)
 
     locals()  # quieten flake8
 

@@ -52,7 +52,7 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
             test_freq=supervised["test_freq"],
             num_loader_workers=supervised["num_loader_workers"],
             loss_fn=loss_fn,
-            opt_kwargs={"lr": 1e-3},
+            opt_kwargs=supervised["opt_kwargs"],
             custom_logger=custom_logger,
             allow_variable_horizon=True,
         )

@@ -152,6 +152,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             callback: Optional callback to call after each epoch, takes the epoch number
                 as the single argument (epoch numbers start at 1).
         """
+        self._logger.log(f"Using optimizer {self._opt}")
+        self._logger.log(f"Using loss function {self._loss_fn}")
+        self._logger.log("Starting training")
         for epoch in tqdm(range(1, num_epochs + 1), desc="Epoch"):
             self._train_batch(
                 device,
