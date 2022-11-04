@@ -37,7 +37,7 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
             action_space=venv.action_space,
             use_done=False,
         )
-        custom_logger.log(model)
+        _log_model_info(custom_logger, model)
 
         device = "cuda" if th.cuda.is_available() else "cpu"
 
@@ -80,6 +80,15 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
         # Save final artifacts.
         if checkpoint_epoch_interval >= 0:
             save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+
+
+def _log_model_info(custom_logger, model):
+    custom_logger.log(model)
+    if isinstance(model, CnnRewardNet):
+        # These do not exist in all reward nets. However, they exist in CnnRewardNet.
+        custom_logger.log(f"use_state: {model.use_state}")
+        custom_logger.log(f"use_action: {model.use_action}")
+        custom_logger.log(f"use_next_state: {model.use_next_state}")
 
 
 def main():
