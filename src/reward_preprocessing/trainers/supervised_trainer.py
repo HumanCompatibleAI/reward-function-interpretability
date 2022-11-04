@@ -128,7 +128,6 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             batch_size=self._batch_size,
             num_workers=self._num_loader_workers,
             collate_fn=transitions_collate_fn,
-            drop_last=True,
             generator=shuffle_generator,
         )
         self._test_loader = data.DataLoader(
@@ -137,7 +136,6 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             batch_size=self._batch_size,
             num_workers=self._num_loader_workers,
             collate_fn=transitions_collate_fn,
-            drop_last=True,
         )
 
     def train(
