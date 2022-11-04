@@ -207,7 +207,6 @@ def interpret(
             # We do not require the latent vectors to be transformed before optimizing.
             # However, we do regularize the L2 norm of latent vectors, to ensure the
             # resulting generated images are realistic.
-            # TODO(df): make that happen.
             opt_latent = nmf.vis_traditional(
                 transforms=[],
                 l2_coeff=l2_coeff,
@@ -221,8 +220,6 @@ def interpret(
             obs, acts, next_obs = tensor_to_transition(opt_transitions)
 
         # Set of images, one for each feature, add each to plot
-        # TODO (df): fix merging thing
-        # - add obs and next_obs
         for feature_i in range(next_obs.shape[0]):
             sub_img_obs = obs[feature_i]
             sub_img_next_obs = next_obs[feature_i]
