@@ -3,6 +3,7 @@ from typing import Optional
 
 from PIL import Image
 from imitation.scripts.common import common as common_config
+from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
 from lucent.optvis import transform
 import matplotlib
@@ -116,11 +117,17 @@ def interpret(
             rollouts_paths=rollout_path,
             num_acts=15,
             batch_size=limit_num_obs,
+            # This is an upper bound of the number of trajectories we need, since every
+            # trajectory has at least 1 transition.
+            n_trajectories=limit_num_obs,
         )
         # For dim reductions and gettings activations in LayerNMF we want one big batch
         # of limit_num_obs transitions. So, we simply use that as batch_size and sample
         # the first element from the dataloader.
-        inputs = next(iter(transition_tensor_dataloader))
+        inputs: th.Tensor = next(iter(transition_tensor_dataloader))
+        inputs = inputs.to(device)
+        # Ensure loaded data is FloatTensor and not DoubleTensor.
+        inputs = inputs.float()
     else:  # When using GAN.
         # Inputs should be some samples of input vectors? Not sure if this is the best
         # way to do this, there might be better options.
@@ -151,6 +158,8 @@ def interpret(
     rows, columns = 1, num_features
     if pyplot:
         fig = plt.figure(figsize=(columns * 2, rows * 2))  # width, height in inches
+    else:
+        fig = None
 
     # Visualize
     if vis_type == "traditional":
@@ -213,17 +222,29 @@ def interpret(
 
 
 def plot_img(
-    columns, custom_logger, feature_i, fig, img, pyplot, rows, vis_scale, wandb_logging
+    columns: int,
+    custom_logger: HierarchicalLogger,
+    feature_i: int,
+    fig: Optional[matplotlib.figure.Figure],
+    img: np.ndarray,
+    pyplot: bool,
+    rows: int,
+    vis_scale: int,
+    wandb_logging: bool,
 ):
     """Plot the passed image to pyplot and wandb as appropriate."""
     _wandb_log(custom_logger, feature_i, img, vis_scale, wandb_logging)
-    if pyplot:
+    if fig is not None and pyplot:
         fig.add_subplot(rows, columns, feature_i + 1)
         plt.imshow(img)
 
 
 def _wandb_log(
-    custom_logger, feature_i: int, img: np.ndarray, vis_scale: int, wandb_logging: bool
+    custom_logger: HierarchicalLogger,
+    feature_i: int,
+    img: np.ndarray,
+    vis_scale: int,
+    wandb_logging: bool,
 ):
     """Plot to wandb if wandb logging is enabled."""
     if wandb_logging:

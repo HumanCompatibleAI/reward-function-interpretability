@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple
+from typing import List, Optional, Tuple, Union
 
 import PIL
 from imitation.data import rollout, types
@@ -26,14 +26,14 @@ def make_transition_to_tensor(num_acts):
     def transition_to_tensor(transition):
         obs = transition["obs"]
         if np.issubdtype(obs.dtype, np.integer):
-            obs = obs.float() / 255.0
+            obs = obs / 255.0
             # For floats we don't divide by 255.0. In that case we assume the
             # observation is already in the range [0, 1].
         act = int(transition["acts"])
         next_obs = transition["next_obs"]
 
         if np.issubdtype(next_obs.dtype, np.integer):
-            next_obs = next_obs.float() / 255.0
+            next_obs = next_obs / 255.0
 
         transp_obs = np.transpose(obs, (2, 0, 1))
         obs_height = transp_obs.shape[1]
@@ -70,20 +70,26 @@ class TransformedDataset(torch_data.Dataset):
         return self.base_dataset.__len__()
 
 
-def rollouts_to_dataloader(rollouts_paths, num_acts, batch_size):
+def rollouts_to_dataloader(
+    rollouts_paths: Union[str, List[str]],
+    num_acts: int,
+    batch_size: int,
+    n_trajectories: Optional[int] = None,
+):
     """Take saved rollouts of a policy, and produce a dataloader of transitions.
 
     Assumes that observations are (h,w,c)-formatted images and that actions are
     discrete.
 
     Args:
-        rollouts_path: Path to rollouts saved via imitation script, or list of
+        rollouts_paths: Path to rollouts saved via imitation script, or list of
             such paths.
         num_acts: Number of actions available to the agent (necessary because
             actions are saved as a number, not as a one-hot vector).
         batch_size: Int, size of batches that the dataloader serves. Note that
             a batch size of 2 will make the GAN algorithm think each batch is
             a (data, label) pair, which will mess up training.
+        n_trajectories: If not None, limit number of trajectories to use.
     """
     if isinstance(rollouts_paths, list):
         rollouts = []
@@ -91,6 +97,17 @@ def rollouts_to_dataloader(rollouts_paths, num_acts, batch_size):
             rollouts += types.load_with_rewards(path)
     else:
         rollouts = types.load_with_rewards(rollouts_paths)
+
+    # Optionally limit the number of trajectories to use, similar to n_expert_demos in
+    # imitation.scripts.common.demonstrations.
+    if n_trajectories is not None:
+        if len(rollouts) < n_trajectories:
+            raise ValueError(
+                f"Want to use n_trajectories={n_trajectories} trajectories, but only "
+                f"{len(rollouts)} are available via {rollouts_paths}.",
+            )
+        rollouts = rollouts[:n_trajectories]
+
     flat_rollouts = rollout.flatten_trajectories_with_rew(rollouts)
     tensor_rollouts = TransformedDataset(
         flat_rollouts, make_transition_to_tensor(num_acts)
