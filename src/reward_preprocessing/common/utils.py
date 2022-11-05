@@ -237,7 +237,8 @@ def log_np_img_wandb(
     """
     if wandb_logging:
         p_img = Image.fromarray(np.uint8(img * 255), mode="RGB").resize(
-            size=(img.shape[0] * vis_scale, img.shape[1] * vis_scale),
+            # This tuple is (width, height), index 1 is first, 0 second.
+            size=(img.shape[1] * vis_scale, img.shape[0] * vis_scale),
             resample=Image.NEAREST,
         )
         wb_img = wandb.Image(p_img, caption=caption)
