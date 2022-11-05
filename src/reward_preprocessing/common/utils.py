@@ -233,7 +233,7 @@ def log_np_img_wandb(
         vis_scale: Scale image by this integer factor.
         step:
             Step for logging. If not provided, the logger dumping will be skipped.
-            Logs will be dumped with the next dump().
+            In that case logs will be dumped with the next dump().
     """
     if wandb_logging:
         p_img = Image.fromarray(np.uint8(img * 255), mode="RGB").resize(
@@ -242,4 +242,5 @@ def log_np_img_wandb(
         )
         wb_img = wandb.Image(p_img, caption=caption)
         logger.record(wandb_key, wb_img)
-        logger.dump(step=step)
+        if step is not None:
+            logger.dump(step=step)
