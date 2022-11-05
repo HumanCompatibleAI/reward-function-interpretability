@@ -7,6 +7,7 @@ from imitation.data.rollout import flatten_trajectories_with_rew
 from imitation.data.types import transitions_collate_fn
 from imitation.rewards.reward_nets import RewardNet
 from imitation.util import logger as imit_logger
+import numpy as np
 import torch as th
 from torch.utils import data
 from tqdm import tqdm
@@ -332,6 +333,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.record(f"{name}/done_mean_{name}", dones_count / sample_count)
 
     def log_samples(self):
+        count = 0
         for data_dict in self._train_loader:
             (
                 obs,
@@ -343,23 +345,19 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             next_obs: th.Tensor
             for i in range(len(obs)):
                 # Sanity check
-                assert (obs != next_obs).any(), "Observation and next observation is the same."
+                assert (
+                    obs != next_obs
+                ).any(), "Observation and next observation is the same."
                 reward = target[i].item()
+                # Concatenate obs and next_obs to make a single image of the transition.
+                img = np.concatenate([obs[i].numpy(), next_obs[i].numpy()], axis=1)
                 log_np_img_wandb(
-                    img=obs[i].numpy(),
+                    img=img,
                     logger=self.logger,
-                    caption=f"obs for reward {reward}",
-                    wandb_key="obs_samples",
+                    caption=f"Reward {reward}",
+                    wandb_key=f"transition_{count:03}",
                     wandb_logging=True,
                     vis_scale=4,
                     step=None,  # Dump all images together with the first step.
                 )
-                log_np_img_wandb(
-                    img=next_obs[i].numpy(),
-                    logger=self.logger,
-                    caption=f"next_obs for reward {reward}",
-                    wandb_key="next_obs_samples",
-                    wandb_logging=True,
-                    vis_scale=4,
-                    step=None,  # Dump all images together with the first step.
-                )
+                count += 1
