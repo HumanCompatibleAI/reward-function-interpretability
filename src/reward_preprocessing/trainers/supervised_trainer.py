@@ -109,16 +109,30 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         num_test = int(len(dataset) * self._test_frac)
         assert num_test > 0, "Test fraction too small, would result in empty test set"
         num_train = len(dataset) - num_test
-        if seed is None:
-            train, test = data.random_split(dataset, [num_train, num_test])
-            shuffle_generator = None
+
+        # Usually we always shuffle. This concerns both the dataset split and the
+        # shuffling when loading data from the Dataloader.
+        # If this debug setting is set we disable both shuffling during split and during
+        # data loading. Test loader will always be deterministic.
+        shuffle = not self.debug_settings.get("disable_dataset_shuffling", False)
+
+        if shuffle:
+            if seed is None:
+                train, test = data.random_split(dataset, [num_train, num_test])
+                shuffle_generator = None
+            else:
+                train, test = data.random_split(
+                    dataset,
+                    [num_train, num_test],
+                    generator=th.Generator().manual_seed(seed),
+                )
+                shuffle_generator = th.Generator().manual_seed(seed)
         else:
-            train, test = data.random_split(
-                dataset,
-                [num_train, num_test],
-                generator=th.Generator().manual_seed(seed),
-            )
-            shuffle_generator = th.Generator().manual_seed(seed)
+            # Debug setting with disabled shuffling: Non-random split.
+            train = th.utils.data.Subset(dataset, range(num_train))
+            test = th.utils.data.Subset(dataset, range(num_train, num_train + num_test))
+            # Not needed, since shuffling is disabled anyway.
+            shuffle_generator = None
 
         assert len(train) > 0, "Train set is empty"
         assert len(test) > 0, "Test set is empty"
@@ -128,8 +142,6 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         assert (
             len(test) == num_test
         ), f"Test set has wrong length. Is {len(test)}, should be {num_test}"
-
-        shuffle = not self.debug_settings.get("disable_dataset_shuffling", False)
 
         self._train_loader = data.DataLoader(
             train,
