@@ -340,6 +340,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 done,
             ), target = self._data_dict_to_model_args_and_target(data_dict, "cpu")
             for i in range(len(obs)):
+                # Sanity check
+                assert obs != next_obs, "Observation and next observation is the same."
                 reward = target[i].item()
                 log_np_img_wandb(
                     img=obs[i].numpy(),
