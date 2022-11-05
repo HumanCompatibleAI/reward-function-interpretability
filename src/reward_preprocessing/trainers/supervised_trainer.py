@@ -43,6 +43,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
+        debug_settings: Optional[Dict] = None,
     ):
         """Creates an algorithm that learns from demonstrations.
 
@@ -67,6 +68,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 condition, and can seriously confound evaluation. Read
                 https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
                 before overriding this.
+            debug_settings: Dictionary of various debug settings.
         """
         self._train_loader = None
         self._test_loader = None
@@ -82,6 +84,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self._loss_fn = loss_fn
 
         self.reward_net = reward_net
+
+        self.debug_settings = {} if debug_settings is None else debug_settings
 
         # Init optimizer
         self._opt = opt_cls(
@@ -125,9 +129,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             len(test) == num_test
         ), f"Test set has wrong length. Is {len(test)}, should be {num_test}"
 
+        shuffle = not self.debug_settings.get("disable_dataset_shuffling", False)
+
         self._train_loader = data.DataLoader(
             train,
-            shuffle=True,
+            shuffle=shuffle,
             batch_size=self._batch_size,
             num_workers=self._num_loader_workers,
             collate_fn=transitions_collate_fn,
@@ -332,7 +338,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.record(f"{name}/act_hist_{name}", act_hist)
         self.logger.record(f"{name}/done_mean_{name}", dones_count / sample_count)
 
-    def log_samples(self):
+    def log_samples(self, log_as_step: bool = False):
         count = 0
         for data_dict in self._train_loader:
             (
@@ -351,13 +357,20 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 reward = target[i].item()
                 # Concatenate obs and next_obs to make a single image of the transition.
                 img = np.concatenate([obs[i].numpy(), next_obs[i].numpy()], axis=1)
+                if log_as_step:
+                    wandb_key = f"transition"
+                    step = count
+                else:
+                    wandb_key = f"transition_{count}"
+                    step = None
+
                 log_np_img_wandb(
                     img=img,
                     logger=self.logger,
                     caption=f"Reward {reward}",
-                    wandb_key=f"transition_{count:03}",
+                    wandb_key=wandb_key,
                     wandb_logging=True,
                     vis_scale=4,
-                    step=None,  # Dump all images together with the first step.
+                    step=step,  # Dump all images together with the first step.
                 )
                 count += 1

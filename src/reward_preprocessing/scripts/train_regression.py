@@ -55,6 +55,7 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
             opt_kwargs=supervised["opt_kwargs"],
             custom_logger=custom_logger,
             allow_variable_horizon=True,
+            debug_settings=supervised["debugging"],
         )
 
         # Move model to correct device
@@ -64,7 +65,9 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
         # Log samples
         if supervised["debugging"]["show_samples"]:
-            trainer.log_samples()
+            trainer.log_samples(
+                log_as_step=supervised["debugging"]["show_samples_as_step"]
+            )
 
         def checkpoint_callback(epoch_num):
             if (

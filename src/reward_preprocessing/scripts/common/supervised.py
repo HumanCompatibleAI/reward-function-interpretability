@@ -28,8 +28,12 @@ def config():
     opt_kwargs = dict(lr=1e-3)
 
     debugging = dict(
+        disable_dataset_shuffling=False,
         # Log samples from the dataset in wandb. True to show all samples.
         show_samples=False,
+        # If show_samples is True, log separate transitions as separate steps in wandb
+        # if this is True, otherwise log them as separate entries in wandb.
+        show_samples_as_step=True,
     )
 
     locals()  # quieten flake8
