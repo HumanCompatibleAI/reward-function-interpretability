@@ -27,6 +27,11 @@ def config():
     # Keyword arguments for Adam optimizer
     opt_kwargs = dict(lr=1e-3)
 
+    debugging = dict(
+        # Log samples from the dataset in wandb. True to show all samples.
+        show_samples=False,
+    )
+
     locals()  # quieten flake8
 
 

@@ -223,7 +223,9 @@ def log_np_img_wandb(
     """Plot to wandb if wandb logging is enabled.
 
     Args:
-        img: Image to plot. Should be a numpy array with shape (H, W, C).
+        img:
+            Image to plot. Should be a numpy array with shape (H, W, C).
+            Values are expected to be in the range [0, 1].
         logger: Logger to use for logging to wandb.
         caption: Caption to give the image.
         wandb_key: Key to use for logging to wandb.

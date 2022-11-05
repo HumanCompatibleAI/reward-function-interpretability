@@ -62,6 +62,10 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
         trainer.log_data_stats()
 
+        # Log samples
+        if supervised["debugging"]["show_samples"]:
+            trainer.log_samples()
+
         def checkpoint_callback(epoch_num):
             if (
                 checkpoint_epoch_interval > 0

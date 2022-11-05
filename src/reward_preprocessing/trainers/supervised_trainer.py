@@ -12,6 +12,8 @@ from torch.utils import data
 from tqdm import tqdm
 import wandb
 
+from reward_preprocessing.common.utils import log_np_img_wandb
+
 
 def _normalize_obs(obs: th.Tensor) -> th.Tensor:
     """Normalize by dividing by 255, if obs is uint8, otherwise no change."""
@@ -328,3 +330,32 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.record(f"{name}/rew_hist_{name}", rew_hist)
         self.logger.record(f"{name}/act_hist_{name}", act_hist)
         self.logger.record(f"{name}/done_mean_{name}", dones_count / sample_count)
+
+    def log_samples(self):
+        for data_dict in self._train_loader:
+            (
+                obs,
+                act,
+                next_obs,
+                done,
+            ), target = self._data_dict_to_model_args_and_target(data_dict, "cpu")
+            for i in range(len(obs)):
+                reward = target[i].item()
+                log_np_img_wandb(
+                    img=obs[i].numpy(),
+                    logger=self.logger,
+                    caption=f"obs for reward {reward}",
+                    wandb_key="obs_samples",
+                    wandb_logging=True,
+                    vis_scale=4,
+                    step=None,  # Dump all images together with the first step.
+                )
+                log_np_img_wandb(
+                    img=next_obs[i].numpy(),
+                    logger=self.logger,
+                    caption=f"next_obs for reward {reward}",
+                    wandb_key="next_obs_samples",
+                    wandb_logging=True,
+                    vis_scale=4,
+                    step=None,  # Dump all images together with the first step.
+                )
