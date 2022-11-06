@@ -327,8 +327,15 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         obs_tensor = th.cat(obs_reduced, dim=0)
         rew_tensor = th.cat(rewards, dim=0)
         act_tensor = th.cat(actions, dim=0)
+
+        # Collect non-zero rewards.
+        non_zero_rew = rew_tensor[rew_tensor != 0]
+        num_non_zero_rew = non_zero_rew.shape[0]
+
         obs_std, obs_mean = th.std_mean(obs_tensor, dim=0)
         rew_std, rew_mean = th.std_mean(rew_tensor, dim=0)
+        non_zero_rew_std, non_zero_rew_mean = th.std_mean(non_zero_rew, dim=0)
+        non_zero_rew_median = th.median(non_zero_rew)
 
         rew_hist = wandb.Histogram(rew_tensor, num_bins=11)
         act_hist = wandb.Histogram(act_tensor.float(), num_bins=16)
@@ -349,6 +356,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.record(f"{name}/rew_hist_{name}", rew_hist)
         self.logger.record(f"{name}/act_hist_{name}", act_hist)
         self.logger.record(f"{name}/done_mean_{name}", dones_count / sample_count)
+        self.logger.record(f"{name}/done_count_{name}", dones_count)
+        self.logger.record(f"{name}/non_zero_rew_mean_{name}", non_zero_rew_mean)
+        self.logger.record(f"{name}/non_zero_rew_std_{name}", non_zero_rew_std)
+        self.logger.record(f"{name}/non_zero_rew_median_{name}", non_zero_rew_median)
+        self.logger.record(f"{name}/non_zero_rew_count_{name}", num_non_zero_rew)
 
     def log_samples(self, log_as_step: bool = False):
         count = 0
