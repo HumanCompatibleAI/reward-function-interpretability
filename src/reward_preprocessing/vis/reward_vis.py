@@ -19,7 +19,7 @@ def argmax_nd(
     x: np.ndarray,
     axes: List[int],
     *,
-    max_rep=np.inf,
+    max_rep: Union[int, float] = np.inf,
     max_rep_strict: Optional[bool] = None,
 ):
     """Return the indices of the maximum value along the given axes.
@@ -412,7 +412,7 @@ class LayerNMF:
         *,
         num_mult: int = 1,
         expand_mult: int = 1,
-        max_rep=None,
+        max_rep: Optional[Union[int, float]] = None,
     ):
         """Visualize a dataset of patches that maximize a given feature.
 
