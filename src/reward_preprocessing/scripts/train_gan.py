@@ -101,7 +101,7 @@ def train_gan(
     # save samples, return losses, save plot of losses
     samples, losses = gan.get_training_results()
     utils.save_loss_plots(losses, gan.folder)
-    utils.visualize_samples(samples, num_acts, gan.folder)
+    utils.visualize_samples(samples, gan.folder)
     return losses
 
 
