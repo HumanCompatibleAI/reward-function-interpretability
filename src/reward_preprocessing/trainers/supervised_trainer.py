@@ -405,7 +405,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         # Vid expects channels first.
         obs_tensor = obs_tensor.permute(0, 3, 1, 2)
         frames = np.uint8(obs_tensor.numpy() * 255)
-        self.logger.record("traj_vid", wandb.Video(frames, fps=4))
+        self.logger.record("traj_vid", wandb.Video(frames, fps=12))
 
         if log_as_step:
             step = count
