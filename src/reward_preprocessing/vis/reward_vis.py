@@ -1,7 +1,7 @@
 """Port of lucid.scratch.rl_util to PyTorch. APL2.0 licensed."""
 from functools import reduce
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import lucent.optvis.param as param
 import lucent.optvis.render as render
@@ -237,7 +237,7 @@ class LayerNMF:
         self,
         feature_list=None,
         *,
-        transforms=[transform.jitter(2)],
+        transforms: List[Callable[[th.Tensor], th.Tensor]] = [transform.jitter(2)],
         l2_coeff: float = 0.0,
         l2_layer_name: Optional[str] = None,
     ):
