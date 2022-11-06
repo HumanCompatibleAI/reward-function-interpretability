@@ -292,11 +292,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         """Logs data statistics to logger."""
 
         self.logger.log("Calculating stats for train data...")
-        self._record_dataset_stats("train_data", self._train_loader)
+        self._record_stats_for_data("train_data", self._train_loader)
         self.logger.log("Calculating stats for test data...")
-        self._record_dataset_stats("test_data", self._test_loader)
+        self._record_stats_for_data("test_data", self._test_loader)
 
-    def _record_dataset_stats(self, name: str, dataloader: data.DataLoader) -> None:
+    def _record_stats_for_data(self, name: str, dataloader: data.DataLoader) -> None:
         """Calculate useful statistics about a dataset.
         Calculates
         - size of the dataset.
