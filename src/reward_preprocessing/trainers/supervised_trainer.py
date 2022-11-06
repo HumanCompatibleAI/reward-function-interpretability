@@ -402,6 +402,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 count += 1
         # Turn transitions into video.
         obs_tensor = th.cat(obs_list)
+        # Vid expects channels first.
+        obs_tensor = obs_tensor.permute(0, 3, 1, 2)
         self.logger.record("traj_vid", wandb.Video(obs_tensor, fps=4))
 
         if log_as_step:
