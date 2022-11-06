@@ -363,6 +363,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.record(f"{name}/non_zero_rew_count_{name}", num_non_zero_rew)
 
     def log_samples(self, log_as_step: bool = False):
+        obs_list = []  # To collect all observations to turn into video.
         count = 0
         for data_dict in self._train_loader:
             (
@@ -373,6 +374,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             ), target = self._data_dict_to_model_args_and_target(data_dict, "cpu")
             obs: th.Tensor
             next_obs: th.Tensor
+            obs_list.append(obs)
             for i in range(len(obs)):
                 # Sanity check
                 assert (
@@ -398,3 +400,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                     step=step,  # Dump all images together with the first step.
                 )
                 count += 1
+        # Turn transitions into video.
+        obs_tensor = th.cat(obs_list)
+        self.logger.record(wandb.Video(obs_tensor, fps=4))
+
