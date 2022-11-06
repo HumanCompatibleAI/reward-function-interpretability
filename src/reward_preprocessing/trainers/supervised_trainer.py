@@ -404,3 +404,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         obs_tensor = th.cat(obs_list)
         self.logger.record("traj_vid", wandb.Video(obs_tensor, fps=4))
 
+        if log_as_step:
+            step = count
+        else:
+            step = 0
+        self.logger.dump(step=step)
+
