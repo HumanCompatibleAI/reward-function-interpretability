@@ -216,31 +216,37 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 self.logger.record("epoch", epoch)
                 per_sample_loss = loss.item() / self._batch_size
                 self.logger.record("train_loss", per_sample_loss)
-                test_loss = self._test(device, self._loss_fn)
+                test_loss = self._eval_on_dataset(device, self._loss_fn, self._test_loader)
                 self.logger.record("test_loss", test_loss)
                 self.logger.dump(self._global_batch_step)
 
         # At the end of the epoch.
         per_sample_ep_loss = sum_batch_losses / sample_count
         self.logger.record("epoch_train_loss", per_sample_ep_loss)
-        test_loss = self._test(device, self._loss_fn)
+        test_loss = self._eval_on_dataset(device, self._loss_fn, self._test_loader)
         self.logger.record("epoch_test_loss", test_loss)
         self._global_batch_step += 1  # dump() must be called with unique step.
         self.logger.dump(self._global_batch_step)
 
-    def _test(self, device, loss_fn) -> float:
+    def _eval_on_dataset(
+        self, device: str, loss_fn, dataloader: th.utils.data.DataLoader
+    ) -> float:
         """Test model on data in test_loader. Returns average batch loss."""
         self.reward_net.eval()
         test_loss = 0.0
+        # Determine number of items in the dataloader manually, since not every
+        # dataloader has a .dataset which supports len() (AFAICT).
+        num_items = 0
         with th.no_grad():
-            for data_dict in self._test_loader:
+            for data_dict in dataloader:
                 model_args, target = self._data_dict_to_model_args_and_target(
                     data_dict, device
                 )
                 output = self.reward_net(*model_args)
-                test_loss += loss_fn(output, target).item()  # sum up batch loss
+                test_loss += loss_fn(output, target).item()  # Sum up batch loss
+                num_items += len(data_dict["obs"])  # Count total number of samples
 
-        test_loss /= len(self._test_loader.dataset)  # Make it per-sample loss
+        test_loss /= num_items  # Make it per-sample loss
         self.reward_net.train()
 
         return test_loss
@@ -418,4 +424,3 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         else:
             step = 0
         self.logger.dump(step=step)
-
