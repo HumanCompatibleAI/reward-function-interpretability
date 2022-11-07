@@ -182,6 +182,15 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self._logger.log(f"Using optimizer {self._opt}")
         self._logger.log(f"Using loss function {self._loss_fn}")
         self._logger.log("Starting training")
+
+        # Determine test and train loss once before training starts.
+        train_loss = self._eval_on_dataset(device, self._loss_fn, self._train_loader)
+        self.logger.record("epoch_train_loss", train_loss)
+        test_loss = self._eval_on_dataset(device, self._loss_fn, self._test_loader)
+        self.logger.record("epoch_test_loss", test_loss)
+        # Both will be logged as the 0th batch.
+        self.logger.dump(self._global_batch_step)
+
         for epoch in tqdm(range(1, num_epochs + 1), desc="Epoch"):
             self._train_batch(
                 device,
@@ -236,6 +245,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         test_loss = 0.0
         # Determine number of items in the dataloader manually, since not every
         # dataloader has a .dataset which supports len() (AFAICT).
+        # Also: If dataloader truncates, there are fewer items being evaluated upont
+        # than there are in the full (un-truncated) dataset.
         num_items = 0
         with th.no_grad():
             for data_dict in dataloader:
