@@ -120,9 +120,10 @@ def rollouts_to_dataloader(
 
 
 def visualize_samples(samples: np.ndarray, save_dir):
-    """Visualize samples from a GAN. Saves obs and next obs as png files, and takes
-    mean over height and width dimensions to turn act into a numpy array, before
-    saving it.
+    """Visualize samples from a GAN.
+
+    Saves obs and next obs as png files, and takes mean over height and width dimensions
+    to turn act into a numpy array, before saving it.
     """
     for i, transition in enumerate(samples):
         num_acts = transition.shape[0] - 6
