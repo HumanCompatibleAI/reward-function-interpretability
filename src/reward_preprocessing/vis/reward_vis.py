@@ -1,7 +1,7 @@
 """Port of lucid.scratch.rl_util to PyTorch. APL2.0 licensed."""
 from functools import reduce
 import logging
-from typing import List, Optional
+from typing import Callable, Dict, List, Optional, Union
 
 from lucent.optvis.objectives import handle_batch, wrap_objective
 import lucent.optvis.param as param
@@ -16,7 +16,13 @@ from reward_preprocessing.vis.attribution import get_activations, get_attr
 import reward_preprocessing.vis.objectives as objectives_rfi
 
 
-def argmax_nd(x: np.ndarray, axes: List[int], *, max_rep=np.inf, max_rep_strict=None):
+def argmax_nd(
+    x: np.ndarray,
+    axes: List[int],
+    *,
+    max_rep: Union[int, float] = np.inf,
+    max_rep_strict: Optional[bool] = None,
+):
     """Return the indices of the maximum value along the given axes.
 
     Args:
@@ -38,7 +44,7 @@ def argmax_nd(x: np.ndarray, axes: List[int], *, max_rep=np.inf, max_rep_strict=
     if max_rep <= 0:
         raise ValueError("max_rep must be greater than 0.")
     if max_rep_strict is None and not np.isinf(max_rep):
-        raise ValueError("if max_rep_strict is not set if max_rep must be infinite.")
+        raise ValueError("if max_rep_strict is not set, then max_rep must be infinite.")
     # Make it so the axes we want to find the maximum along are the first ones...
     perm = list(range(len(x.shape)))
     for axis in reversed(axes):
@@ -106,14 +112,14 @@ class LayerNMF:
 
     def __init__(
         self,
-        model,
-        layer_name,
-        model_inputs_preprocess,
-        model_inputs_full=None,
+        model: th.nn.Module,
+        layer_name: str,
+        model_inputs_preprocess: th.Tensor,
+        model_inputs_full: Optional[th.Tensor] = None,
         features: Optional[int] = 10,
         *,
         attr_layer_name: Optional[str] = None,
-        attr_opts={"integrate_steps": 10},
+        attr_opts: Dict[str, int] = {"integrate_steps": 10},
         activation_fn: Optional[str] = None,
     ):
         """Use Non-negative matrix factorization dimensionality reduction to then do
@@ -244,9 +250,9 @@ class LayerNMF:
         self,
         feature_list=None,
         *,
-        transforms=[transform.jitter(2)],
-        l2_coeff=0.0,
-        l2_layer_name=None,
+        transforms: List[Callable[[th.Tensor], th.Tensor]] = [transform.jitter(2)],
+        l2_coeff: float = 0.0,
+        l2_layer_name: Optional[str] = None,
     ) -> np.ndarray:
         if feature_list is None:
             # Feature dim is at index 1
@@ -341,7 +347,14 @@ class LayerNMF:
         slice_w = slice(int(round(left_w)), int(round(right_w)))
         return self.padded_obses[obs_index, :, slice_h, slice_w]
 
-    def vis_dataset(self, feature, *, subdiv_mult=1, expand_mult=1, top_frac=0.1):
+    def vis_dataset(
+        self,
+        feature: Union[int, List[int]],
+        *,
+        subdiv_mult=1,
+        expand_mult=1,
+        top_frac: float = 0.1,
+    ):
         """Visualize a dataset of patches that maximize a given feature.
 
         Args:
@@ -406,7 +419,12 @@ class LayerNMF:
         )
 
     def vis_dataset_thumbnail(
-        self, feature, *, num_mult=1, expand_mult=1, max_rep=None
+        self,
+        feature: Union[int, List[int]],
+        *,
+        num_mult: int = 1,
+        expand_mult: int = 1,
+        max_rep: Optional[Union[int, float]] = None,
     ):
         """Visualize a dataset of patches that maximize a given feature.
 
