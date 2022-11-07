@@ -10,8 +10,8 @@ import numpy as np
 import torch as th
 from torch import nn as nn
 from torch.utils import data as torch_data
-import wandb
 import vegans.utils
+import wandb
 
 
 def make_transition_to_tensor(num_acts):

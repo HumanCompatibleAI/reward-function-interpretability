@@ -225,7 +225,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 self.logger.record("epoch", epoch)
                 per_sample_loss = loss.item() / self._batch_size
                 self.logger.record("train_loss", per_sample_loss)
-                test_loss = self._eval_on_dataset(device, self._loss_fn, self._test_loader)
+                test_loss = self._eval_on_dataset(
+                    device, self._loss_fn, self._test_loader
+                )
                 self.logger.record("test_loss", test_loss)
                 self.logger.dump(self._global_batch_step)
 
