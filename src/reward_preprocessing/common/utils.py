@@ -11,6 +11,7 @@ import torch as th
 from torch import nn as nn
 from torch.utils import data as torch_data
 import wandb
+import vegans.utils
 
 
 def make_transition_to_tensor(num_acts):
@@ -245,3 +246,9 @@ def log_np_img_wandb(
         logger.record(wandb_key, wb_img)
         if step is not None:
             logger.dump(step=step)
+
+
+def save_loss_plots(losses, save_dir):
+    """Save plots of generator/adversary losses over training."""
+    fig, _ = vegans.utils.plot_losses(losses, show=False)
+    fig.savefig(Path(save_dir) / "loss_fig.png")
