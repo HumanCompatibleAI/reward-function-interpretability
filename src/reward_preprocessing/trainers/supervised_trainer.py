@@ -48,7 +48,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         """Creates an algorithm that learns from demonstrations.
 
         Args:
-            demonstrations: Demonstrations from an expert as trajectories with reward.
+            demonstrations:
+                Demonstrations from an expert as trajectories with reward.
                 Trajectories will be used as the dataset for supervised learning.
             reward_net:
                 Reward network to train. This code assumes the net expects
@@ -57,11 +58,16 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             test_frac: Fraction of dataset to use for testing.
             test_freq: Number of batches to train on before testing and logging.
             num_loader_workers: Number of workers to use for dataloader.
-            loss_fn: Loss function to use for training.
+            loss_fn:
+                Loss function to use for training. Function should not be averaged over
+                the batch, but accumulated over the batch. This class will normalize the
+                loss per sample for logging, in order for loss to be comparable across
+                train, test, different batch sizes.
             opt_cls: Optimizer class to use for training.
             opt_kwargs: Keyword arguments to pass to optimizer.
             custom_logger: Where to log to; if None (default), creates a new logger.
-            allow_variable_horizon: If False (default), algorithm will raise an
+            allow_variable_horizon:
+                If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
                 training. If True, overrides this safety check. WARNING: variable
                 horizon episodes leak information about the reward via termination
