@@ -31,7 +31,8 @@ def config():
         disable_dataset_shuffling=False,
         # Log samples from the dataset in wandb. True to show all samples. Also turns
         # the samples into a video. Set disable_dataset_shuffling to True to ensure
-        # transitions in video are sequential.
+        # transitions in video are sequential. This will require installing further
+        # packages for creating the video.
         show_samples=False,
         # If show_samples is True, log separate transitions as separate steps in wandb
         # if this is True, otherwise log them as separate entries in wandb.
