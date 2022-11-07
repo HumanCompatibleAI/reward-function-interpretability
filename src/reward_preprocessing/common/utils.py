@@ -8,6 +8,7 @@ import numpy as np
 import torch as th
 from torch import nn as nn
 from torch.utils import data as torch_data
+import vegans.utils
 
 
 def make_transition_to_tensor(num_acts):
@@ -206,3 +207,9 @@ class TensorTransitionWrapper(nn.Module):
 
         dones = th.zeros_like(obs[:, 0])
         return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)
+
+
+def save_loss_plots(losses, save_dir):
+    """Save plots of generator/adversary losses over training."""
+    fig, _ = vegans.utils.plot_losses(losses, show=False)
+    fig.savefig(Path(save_dir) / "loss_fig.png")
