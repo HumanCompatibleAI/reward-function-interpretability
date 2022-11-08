@@ -233,39 +233,39 @@ class RewardGeneratorCombo(nn.Module):
 
 
 def log_np_img_wandb(
-    img: np.ndarray,
-    logger: HierarchicalLogger,
+    arr: np.ndarray,
     caption: str,
     wandb_key: str,
-    wandb_logging: bool,
-    vis_scale: int = 1,
+    logger: HierarchicalLogger,
+    scale: int = 1,
     step: Optional[int] = None,
-):
-    """Plot to wandb if wandb logging is enabled.
+) -> None:
+    """Log visualized np.ndarray to wandb using given logger.
 
     Args:
-        img:
-            Image to plot. Should be a numpy array with shape (H, W, C).
-            Values are expected to be in the range [0, 1].
-        logger: Logger to use for logging to wandb.
-        caption: Caption to give the image.
-        wandb_key: Key to use for logging to wandb.
-        wandb_logging: Whether to log to wandb.
-        vis_scale: Scale image by this integer factor.
-        step:
-            Step for logging. If not provided, the logger dumping will be skipped.
+        - arr: Array to turn into image, save.
+        - caption: Caption to give the image.
+        - wandb_key: Key to use for logging to wandb.
+        - logger: Logger to use.
+        - scale: Ratio by which to scale up the image in spatial dimensions.
+        - step: Step for logging. If not provided, the logger dumping will be skipped.
             In that case logs will be dumped with the next dump().
     """
-    if wandb_logging:
-        p_img = Image.fromarray(np.uint8(img * 255), mode="RGB").resize(
-            # This tuple is (width, height), index 1 is first, 0 second.
-            size=(img.shape[1] * vis_scale, img.shape[0] * vis_scale),
-            resample=Image.NEAREST,
-        )
-        wb_img = wandb.Image(p_img, caption=caption)
-        logger.record(wandb_key, wb_img)
-        if step is not None:
-            logger.dump(step=step)
+
+    pil_img = array_to_image(arr, scale)
+    wb_img = wandb.Image(pil_img, caption=caption)
+    logger.record(wandb_key, wb_img)
+    if step is not None:
+        logger.dump(step=step)
+
+
+def array_to_image(arr: np.ndarray, scale: int) -> PIL.Image.Image:
+    """Take numpy array on [0,1] scale, return PIL image."""
+    return Image.fromarray(np.uint8(arr * 255), mode="RGB").resize(
+        # PIL expects tuple of (width, height), numpy's index 1 is width, 0 height.
+        size=(arr.shape[1] * scale, arr.shape[0] * scale),
+        resample=Image.NEAREST,
+    )
 
 
 def save_loss_plots(losses, save_dir):

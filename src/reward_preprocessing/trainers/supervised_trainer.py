@@ -419,19 +419,18 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 # Concatenate obs and next_obs to make a single image of the transition.
                 img = np.concatenate([obs[i].numpy(), next_obs[i].numpy()], axis=1)
                 if log_as_step:
-                    wandb_key = f"transition"
+                    wandb_key = "transition"
                     step = count
                 else:
                     wandb_key = f"transition_{count}"
                     step = None
 
                 log_np_img_wandb(
-                    img=img,
+                    arr=img,
                     logger=self.logger,
                     caption=f"Reward {reward}",
                     wandb_key=wandb_key,
-                    wandb_logging=True,
-                    vis_scale=4,
+                    scale=4,
                     step=step,  # Dump all images together with the first step.
                 )
                 count += 1
