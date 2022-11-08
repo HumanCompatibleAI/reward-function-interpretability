@@ -15,6 +15,9 @@ def config():
     test_freq = 64  # Frequency of running tests (in batches)
     batch_size = 32  # Batch size for training a supervised model
     num_loader_workers = 0  # Number of workers for data loading
+    # Limit the total number of samples (train and test) to this number. Default of -1
+    # to not limit the number of samples.
+    limit_samples = -1
 
     # Apparently in sacred I need default values for parameters that I want to be able
     # to override. At least that's how I interpret this information:

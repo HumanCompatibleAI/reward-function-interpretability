@@ -38,6 +38,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         test_freq: int,
         num_loader_workers: int,
         loss_fn,
+        limit_samples: int = -1,
         opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         opt_kwargs: Optional[Mapping] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
@@ -63,6 +64,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 the batch, but accumulated over the batch. This class will normalize the
                 loss per sample for logging, in order for loss to be comparable across
                 train, test, different batch sizes.
+            limit_samples: If positive, only use this many samples from the dataset.
             opt_cls: Optimizer class to use for training.
             opt_kwargs: Keyword arguments to pass to optimizer.
             custom_logger: Where to log to; if None (default), creates a new logger.
@@ -99,6 +101,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             **opt_kwargs,
         )
 
+        self.limit_samples = limit_samples
+
         if demonstrations is not None:
             self.set_demonstrations(demonstrations, seed)
 
@@ -111,6 +115,10 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         reward data."""
         # Trajectories -> Transitions (both with reward)
         dataset = flatten_trajectories_with_rew(demonstrations)
+        if self.limit_samples == 0:
+            raise ValueError("Can't train on 0 samples")
+        elif self.limit_samples > 0:
+            dataset = dataset[: self.limit_samples]
         # Calculate the dataset split.
         num_test = int(len(dataset) * self._test_frac)
         assert num_test > 0, "Test fraction too small, would result in empty test set"
