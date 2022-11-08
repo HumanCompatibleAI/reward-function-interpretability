@@ -46,6 +46,7 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
         trainer = SupervisedTrainer(
             demonstrations=expert_trajs,
+            limit_samples=supervised["limit_samples"],
             reward_net=model,
             batch_size=supervised["batch_size"],
             test_frac=supervised["test_frac"],
