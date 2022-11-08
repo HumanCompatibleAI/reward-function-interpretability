@@ -120,7 +120,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         elif self.limit_samples > 0:
             # Instead of taking the first `limit_samples` samples, we take the last,
             # to increase that samples include rewards from the end of the trajectory.
-            dataset = dataset[-self.limit_samples:]
+            dataset = dataset[-self.limit_samples :]
         # Calculate the dataset split.
         num_test = int(len(dataset) * self._test_frac)
         assert num_test > 0, "Test fraction too small, would result in empty test set"

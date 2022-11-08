@@ -8,6 +8,7 @@ from imitation.scripts.common import common, demonstrations
 from sacred.observers import FileStorageObserver
 import torch as th
 
+import reward_preprocessing.scripts.common.supervised as supervised_config
 from reward_preprocessing.scripts.config.train_regression import train_regression_ex
 from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
 
@@ -41,26 +42,12 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
         device = "cuda" if th.cuda.is_available() else "cpu"
 
-        # Use "sum" so batch loss is not divided by batch size.
-        loss_fn = th.nn.MSELoss(reduction="sum")
-
-        trainer = SupervisedTrainer(
-            demonstrations=expert_trajs,
-            limit_samples=supervised["limit_samples"],
-            reward_net=model,
-            batch_size=supervised["batch_size"],
-            test_frac=supervised["test_frac"],
-            test_freq=supervised["test_freq"],
-            num_loader_workers=supervised["num_loader_workers"],
-            loss_fn=loss_fn,
-            opt_kwargs=supervised["opt_kwargs"],
-            custom_logger=custom_logger,
-            allow_variable_horizon=True,
-            debug_settings=supervised["debugging"],
-        )
-
         # Move model to correct device
         model.to(device)
+
+        trainer = supervised_config.make_trainer(
+            expert_trajectories=expert_trajs, model=model, custom_logger=custom_logger
+        )
 
         trainer.log_data_stats()
 

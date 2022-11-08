@@ -1,8 +1,15 @@
 """Common configuration elements for training supervised models."""
 
 import logging
+from typing import Mapping, Optional, Sequence
 
+from imitation.data import types
+from imitation.rewards.reward_nets import RewardNet
+from imitation.util import logger as imit_logger
 import sacred
+import torch as th
+
+from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
 
 supervised_ingredient = sacred.Ingredient("supervised")
 logger = logging.getLogger(__name__)
@@ -62,3 +69,35 @@ def config_hook(config, command_name, logger) -> dict:
         )
 
     return res
+
+
+@supervised_ingredient.capture
+def make_trainer(
+    expert_trajectories: Sequence[types.TrajectoryWithRew],
+    model: RewardNet,
+    custom_logger: Optional[imit_logger.HierarchicalLogger],
+    test_frac: float,
+    test_freq: int,
+    batch_size: int,
+    num_loader_workers: int,
+    limit_samples: int,
+    opt_kwargs: Optional[Mapping],
+    debugging: dict,
+) -> SupervisedTrainer:
+    loss_fn = th.nn.MSELoss(reduction="sum")
+
+    trainer = SupervisedTrainer(
+        demonstrations=expert_trajectories,
+        limit_samples=limit_samples,
+        reward_net=model,
+        batch_size=batch_size,
+        test_frac=test_frac,
+        test_freq=test_freq,
+        num_loader_workers=num_loader_workers,
+        loss_fn=loss_fn,
+        opt_kwargs=opt_kwargs,
+        custom_logger=custom_logger,
+        allow_variable_horizon=True,
+        debug_settings=debugging,
+    )
+    return trainer
