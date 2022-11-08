@@ -3,6 +3,7 @@ from functools import reduce
 import logging
 from typing import Callable, Dict, List, Optional, Union
 
+from lucent.optvis.objectives import handle_batch, wrap_objective
 import lucent.optvis.param as param
 import lucent.optvis.render as render
 import lucent.optvis.transform as transform
@@ -93,6 +94,17 @@ def argmax_nd(
     result = result.reshape(shape[len(axes) :])
     # Returns a tuple of the indexes of maximal values.
     return np.unravel_index(result, shape[: len(axes)])
+
+
+@wrap_objective()
+def l2_objective(layer_name, coefficient, batch=None):
+    """L2 norm of specified layer, multiplied by the given coeff."""
+
+    @handle_batch(batch)
+    def inner(model):
+        return coefficient * th.sqrt(th.sum(model(layer_name) ** 2))
+
+    return inner
 
 
 class LayerNMF:
@@ -220,8 +232,9 @@ class LayerNMF:
                 # is a torch tensor.
                 self.reducer.fit(th.tensor(attrs_signed))
                 self.acts_reduced = self.reducer.transform(activations)
+
             self.channel_dirs = self.reducer._reducer.components_
-            self.transform = lambda acts: self.reducer.transform(acts)
+            self.transform = lambda acts: self.reducer.transform(acts.cpu())
             self.inverse_transform = lambda acts_r: ChannelReducer._apply_flat(
                 self.reducer._reducer.inverse_transform,
                 acts_r,
@@ -240,7 +253,7 @@ class LayerNMF:
         transforms: List[Callable[[th.Tensor], th.Tensor]] = [transform.jitter(2)],
         l2_coeff: float = 0.0,
         l2_layer_name: Optional[str] = None,
-    ):
+    ) -> np.ndarray:
         if feature_list is None:
             # Feature dim is at index 1
             feature_list = list(range(self.acts_reduced.shape[1]))
@@ -258,12 +271,11 @@ class LayerNMF:
             ]
         )
         if l2_coeff != 0.0:
-            raise NotImplementedError("L2 regularization coming soon.")
-            # TODO: add this back in
-            # assert (
-            #     l2_layer_name is not None
-            # ), "l2_layer_name must be specified if l2_coeff is non-zero"
-            # obj -= objectives.L2(l2_layer_name) * l2_coeff
+            if l2_layer_name is None:
+                raise ValueError(
+                    "l2_layer_name must be specified if l2_coeff is non-zero"
+                )
+            obj -= l2_objective(l2_layer_name, l2_coeff)
         input_shape = tuple(self.model_inputs_preprocess.shape[1:])
 
         def param_f():

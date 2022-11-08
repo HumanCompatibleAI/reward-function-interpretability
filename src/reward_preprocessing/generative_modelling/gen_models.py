@@ -69,6 +69,8 @@ class DCGanFourTo64Generator(nn.Module):
 
     def __init__(self, latent_shape, data_shape):
         super(DCGanFourTo64Generator, self).__init__()
+        # Identity op so that lucent can regularize L2 norm of input.
+        self.latent_vec = nn.Identity()
         self.project = nn.Linear(latent_shape[0], 1024 * 4 * 4)
         self.conv_body = nn.Sequential(
             nn.BatchNorm2d(1024),
@@ -90,6 +92,7 @@ class DCGanFourTo64Generator(nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
+        x = self.latent_vec(x)
         x = self.project(x)
         x = th.reshape(x, (batch_size, 1024, 4, 4))
         x = nn.functional.leaky_relu(x, negative_slope=0.1)

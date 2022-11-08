@@ -120,9 +120,10 @@ def rollouts_to_dataloader(
 
 
 def visualize_samples(samples: np.ndarray, save_dir):
-    """Visualize samples from a GAN. Saves obs and next obs as png files, and takes
-    mean over height and width dimensions to turn act into a numpy array, before
-    saving it.
+    """Visualize samples from a GAN.
+
+    Saves obs and next obs as png files, and takes mean over height and width dimensions
+    to turn act into a numpy array, before saving it.
     """
     for i, transition in enumerate(samples):
         num_acts = transition.shape[0] - 6
@@ -207,6 +208,25 @@ class TensorTransitionWrapper(nn.Module):
 
         dones = th.zeros_like(obs[:, 0])
         return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)
+
+
+class RewardGeneratorCombo(nn.Module):
+    """Composition of a generative model and a RewardNet.
+
+    Assumes that the RewardNet normalizes observations to [0,1].
+    """
+
+    def __init__(self, reward_net: RewardNet, generator: nn.Module):
+        super().__init__()
+        self.reward_net = reward_net
+        self.generator = generator
+
+    def forward(self, latent_tens: th.Tensor):
+        latent_vec = th.mean(latent_tens, dim=[2, 3])
+        transition_tensor = self.generator(latent_vec)
+        obs, action_vec, next_obs = tensor_to_transition(transition_tensor)
+        done = th.zeros(action_vec.shape)
+        return self.reward_net.forward(obs, action_vec, next_obs, done)
 
 
 def save_loss_plots(losses, save_dir):
