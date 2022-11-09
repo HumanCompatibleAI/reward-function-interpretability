@@ -1,7 +1,7 @@
 """Common configuration elements for training supervised models."""
 
 import logging
-from typing import Mapping, Optional, Sequence, Any
+from typing import Any, Mapping, Optional, Sequence
 
 from imitation.data import types
 from imitation.rewards.reward_nets import RewardNet

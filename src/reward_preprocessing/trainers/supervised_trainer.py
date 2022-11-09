@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple, Type
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Type
 
 from gym import spaces
 from imitation.algorithms import base
@@ -37,14 +37,14 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         test_frac: float,
         test_freq: int,
         num_loader_workers: int,
-        loss_fn,
+        loss_fn: Callable[[th.Tensor, th.Tensor], th.Tensor],
         limit_samples: int = -1,
         opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
-        opt_kwargs: Optional[Mapping] = None,
+        opt_kwargs: Optional[Mapping[str, Any]] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
-        debug_settings: Optional[Mapping] = None,
+        debug_settings: Optional[Mapping[str, Any]] = None,
     ):
         """Creates an algorithm that learns from demonstrations.
 
@@ -61,9 +61,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             num_loader_workers: Number of workers to use for dataloader.
             loss_fn:
                 Loss function to use for training. Function should not be averaged over
-                the batch, but accumulated over the batch. This class will normalize the
-                loss per sample for logging, in order for loss to be comparable across
-                train, test, different batch sizes.
+                the batch, but accumulated over the batch. This is because batches
+                might have different sizes. SuperVisedTrainer will normalize the
+                loss per sample (i.e. per transition) for logging.
             limit_samples: If positive, only use this many samples from the dataset.
             opt_cls: Optimizer class to use for training.
             opt_kwargs: Keyword arguments to pass to optimizer.
@@ -119,11 +119,13 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             raise ValueError("Can't train on 0 samples")
         elif self.limit_samples > 0:
             # Instead of taking the first `limit_samples` samples, we take the last,
-            # to increase that samples include rewards from the end of the trajectory.
+            # to increase the change that samples include rewards from the end of the
+            # trajectory.
             dataset = dataset[-self.limit_samples :]
         # Calculate the dataset split.
         num_test = int(len(dataset) * self._test_frac)
-        assert num_test > 0, "Test fraction too small, would result in empty test set"
+        if num_test <= 0:
+            raise ValueError("Test fraction too small, would result in empty test set")
         num_train = len(dataset) - num_test
 
         # Usually we always shuffle. This concerns both the dataset split and the
@@ -137,12 +139,12 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 train, test = data.random_split(dataset, [num_train, num_test])
                 shuffle_generator = None
             else:
+                shuffle_generator = th.Generator().manual_seed(seed)
                 train, test = data.random_split(
                     dataset,
                     [num_train, num_test],
-                    generator=th.Generator().manual_seed(seed),
+                    generator=shuffle_generator,
                 )
-                shuffle_generator = th.Generator().manual_seed(seed)
         else:
             # Debug setting with disabled shuffling: Non-random split.
             train = th.utils.data.Subset(dataset, range(num_train))
@@ -250,9 +252,15 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.logger.dump(self._global_batch_step)
 
     def _eval_on_dataset(
-        self, device: str, loss_fn, dataloader: th.utils.data.DataLoader
+        self,
+        device: str,
+        loss_fn: Callable[[th.Tensor, th.Tensor], th.Tensor],
+        dataloader: th.utils.data.DataLoader,
     ) -> float:
-        """Test model on data in test_loader. Returns average batch loss."""
+        """Evaluate model on provided data loader. Returns loss, averaged over the
+        number of samples in the dataset. Model is set to eval mode before evaluation
+        and back to train mode afterwards.
+        """
         self.reward_net.eval()
         test_loss = 0.0
         # Determine number of items in the dataloader manually, since not every
@@ -402,19 +410,18 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         count = 0
         for data_dict in self._train_loader:
             (
-                obs,
-                act,
-                next_obs,
-                done,
-            ), target = self._data_dict_to_model_args_and_target(data_dict, "cpu")
+                (
+                    obs,
+                    act,
+                    next_obs,
+                    done,
+                ),
+                target,
+            ) = self._data_dict_to_model_args_and_target(data_dict, "cpu")
             obs: th.Tensor
             next_obs: th.Tensor
             obs_list.append(obs)
             for i in range(len(obs)):
-                # Sanity check
-                assert (
-                    obs != next_obs
-                ).any(), "Observation and next observation is the same."
                 reward = target[i].item()
                 # Concatenate obs and next_obs to make a single image of the transition.
                 img = np.concatenate([obs[i].numpy(), next_obs[i].numpy()], axis=1)

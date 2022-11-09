@@ -176,8 +176,9 @@ def preprocess(
 
                     idx1, idx2 = neighbors.nonzero()
                 else:
-                    idx1, idx2 = np.arange(len(transitions) - 1), np.arange(
-                        1, len(transitions)
+                    idx1, idx2 = (
+                        np.arange(len(transitions) - 1),
+                        np.arange(1, len(transitions)),
                     )
                 idx1 = torch.as_tensor(idx1, device=device, dtype=torch.long)
                 idx2 = torch.as_tensor(idx2, device=device, dtype=torch.long)
