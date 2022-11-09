@@ -31,7 +31,7 @@ def use_state():
 @train_regression_ex.named_config
 def use_state_action():
     supervised = dict(
-        net_kwargs=dict(use_state=True, use_action=True, use_next_state=True)
+        net_kwargs=dict(use_state=True, use_action=True, use_next_state=False)
     )
     locals()  # make flake8 happy
 
