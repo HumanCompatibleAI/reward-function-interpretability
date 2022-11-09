@@ -44,8 +44,12 @@ def config():
         # transitions in video are sequential. This will require installing further
         # packages for creating the video.
         show_samples=False,
-        # If show_samples is True, log separate transitions as separate steps in wandb
-        # if this is True, otherwise log them as separate entries in wandb.
+        # If show_samples is False, show_samples_as_step has no effect.
+        # If show_samples is True, setting show_samples_as_step to True will log all
+        # samples (transitions) as a single panel in wandb. This panel will have a
+        # slider to step through the samples.
+        # Setting show_samples_as_step to False, there will be a separate panel in wandb
+        # for every transition.
         show_samples_as_step=True,
     )
 
