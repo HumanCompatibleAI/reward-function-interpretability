@@ -44,7 +44,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
-        debug_settings: Optional[Dict] = None,
+        debug_settings: Optional[Mapping] = None,
     ):
         """Creates an algorithm that learns from demonstrations.
 

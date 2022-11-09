@@ -1,7 +1,7 @@
 """Common configuration elements for training supervised models."""
 
 import logging
-from typing import Mapping, Optional, Sequence
+from typing import Mapping, Optional, Sequence, Any
 
 from imitation.data import types
 from imitation.rewards.reward_nets import RewardNet
@@ -85,8 +85,8 @@ def make_trainer(
     batch_size: int,
     num_loader_workers: int,
     limit_samples: int,
-    opt_kwargs: Optional[Mapping],
-    debugging: dict,
+    opt_kwargs: Optional[Mapping[str, Any]],
+    debugging: Mapping,
 ) -> SupervisedTrainer:
     loss_fn = th.nn.MSELoss(reduction="sum")
 
