@@ -62,7 +62,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             loss_fn:
                 Loss function to use for training. Function should not be averaged over
                 the batch, but accumulated over the batch. This is because batches
-                might have different sizes. SuperVisedTrainer will normalize the
+                might have different sizes. SupervisedTrainer will normalize the
                 loss per sample (i.e. per transition) for logging.
             limit_samples: If positive, only use this many samples from the dataset.
             opt_cls: Optimizer class to use for training.
