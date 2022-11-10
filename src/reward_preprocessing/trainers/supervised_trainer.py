@@ -265,7 +265,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         test_loss = 0.0
         # Determine number of items in the dataloader manually, since not every
         # dataloader has a .dataset which supports len() (AFAICT).
-        # Also: If dataloader truncates, there are fewer items being evaluated upont
+        # Also: If dataloader truncates, there are fewer items being used for evaluation
         # than there are in the full (un-truncated) dataset.
         num_items = 0
         with th.no_grad():
