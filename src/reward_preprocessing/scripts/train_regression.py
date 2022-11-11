@@ -38,43 +38,43 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
             action_space=venv.action_space,
             use_done=False,
         )
-        _log_model_info(custom_logger, model)
+    _log_model_info(custom_logger, model)
 
-        device = "cuda" if th.cuda.is_available() else "cpu"
+    device = "cuda" if th.cuda.is_available() else "cpu"
 
-        # Move model to correct device
-        model.to(device)
+    # Move model to correct device
+    model.to(device)
 
-        trainer = supervised_config.make_trainer(
-            expert_trajectories=expert_trajs, model=model, custom_logger=custom_logger
+    trainer = supervised_config.make_trainer(
+        expert_trajectories=expert_trajs, model=model, custom_logger=custom_logger
+    )
+
+    trainer.log_data_stats()
+
+    # Log samples
+    if supervised["debugging"]["show_samples"]:
+        trainer.log_samples(
+            log_as_step=supervised["debugging"]["show_samples_as_step"]
         )
 
-        trainer.log_data_stats()
+    def checkpoint_callback(epoch_num):
+        if (
+            checkpoint_epoch_interval > 0
+            and epoch_num % checkpoint_epoch_interval == 0
+        ):
+            save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
 
-        # Log samples
-        if supervised["debugging"]["show_samples"]:
-            trainer.log_samples(
-                log_as_step=supervised["debugging"]["show_samples_as_step"]
-            )
+    custom_logger.log("Start training regression model.")
+    # Start training
+    trainer.train(
+        num_epochs=supervised["epochs"],
+        device=device,
+        callback=checkpoint_callback,
+    )
 
-        def checkpoint_callback(epoch_num):
-            if (
-                checkpoint_epoch_interval > 0
-                and epoch_num % checkpoint_epoch_interval == 0
-            ):
-                save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
-
-        custom_logger.log("Start training regression model.")
-        # Start training
-        trainer.train(
-            num_epochs=supervised["epochs"],
-            device=device,
-            callback=checkpoint_callback,
-        )
-
-        # Save final artifacts.
-        if checkpoint_epoch_interval >= 0:
-            save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+    # Save final artifacts.
+    if checkpoint_epoch_interval >= 0:
+        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
 
 
 def _log_model_info(custom_logger, model):
