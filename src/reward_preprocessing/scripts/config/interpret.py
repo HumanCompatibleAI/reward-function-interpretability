@@ -23,5 +23,10 @@ def defaults():
     num_features = None
     # Path to the GAN model. If None simply visualize reward net without the use of GAN.
     gan_path = None
+    # Regularization of L2 norm of GAN latent vector. None if not using GAN. If using
+    # GAN, best practice is to set this to ~1e-4
+    l2_coeff = None
+    # Directory to save images to. If specified, should end in a /.
+    img_save_path = None
 
     locals()  # quieten flake8
