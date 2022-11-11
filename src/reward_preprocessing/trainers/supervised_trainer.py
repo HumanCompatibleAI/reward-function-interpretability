@@ -218,7 +218,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
     ):
         """Trains the model on a single batch of data."""
         self.reward_net.train()
-        sum_batch_losses = 0
+        weighted_batch_losses = 0
         sample_count = 0
         for batch_idx, data_dict in enumerate(self._train_loader):
             self._global_batch_step += 1
@@ -231,12 +231,15 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             loss = self._loss_fn(output, target)
             loss.backward()
             self._opt.step()
-            sum_batch_losses += loss.item()
-            sample_count += len(data_dict["obs"])
+            # Weigh each loss by the number of samples in the batch. This way we can
+            # divide by the number of samples to get the average per-sample loss.
+            weighted_batch_losses += loss.item() * len(target)
+            sample_count += len(target)
             if batch_idx % self._test_freq == 0:  # Test and log every test_freq batches
                 self.logger.record("epoch", epoch)
-                per_sample_loss = loss.item() / self._batch_size
-                self.logger.record("train_loss", per_sample_loss)
+                # Log the mean loss over the batch.
+                self.logger.record("train_loss", loss.item())
+                # Determine the mean loss over the entire test dataset.
                 test_loss = self._eval_on_dataset(
                     device, self._loss_fn, self._test_loader
                 )
@@ -244,7 +247,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 self.logger.dump(self._global_batch_step)
 
         # At the end of the epoch.
-        per_sample_ep_loss = sum_batch_losses / sample_count
+        per_sample_ep_loss = weighted_batch_losses / sample_count
         self.logger.record("epoch_train_loss", per_sample_ep_loss)
         test_loss = self._eval_on_dataset(device, self._loss_fn, self._test_loader)
         self.logger.record("epoch_test_loss", test_loss)
@@ -262,7 +265,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         and back to train mode afterwards.
         """
         self.reward_net.eval()
-        test_loss = 0.0
+        weighted_test_loss = 0.0
         # Determine number of items in the dataloader manually, since not every
         # dataloader has a .dataset which supports len() (AFAICT).
         # Also: If dataloader truncates, there are fewer items being used for evaluation
@@ -274,13 +277,14 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                     data_dict, device
                 )
                 output = self.reward_net(*model_args)
-                test_loss += loss_fn(output, target).item()  # Sum up batch loss
-                num_items += len(data_dict["obs"])  # Count total number of samples
+                # Sum up batch loss
+                weighted_test_loss += loss_fn(output, target).item() * len(target)
+                num_items += len(target)  # Count total number of samples
 
-        test_loss /= num_items  # Make it per-sample loss
+        sample_test_loss = weighted_test_loss / num_items  # Make it per-sample loss
         self.reward_net.train()
 
-        return test_loss
+        return sample_test_loss
 
     def _data_dict_to_model_args_and_target(
         self, data_dict: Dict[str, th.Tensor], device: str

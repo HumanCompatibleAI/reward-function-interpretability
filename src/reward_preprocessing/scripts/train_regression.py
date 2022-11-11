@@ -53,15 +53,10 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
     # Log samples
     if supervised["debugging"]["show_samples"]:
-        trainer.log_samples(
-            log_as_step=supervised["debugging"]["show_samples_as_step"]
-        )
+        trainer.log_samples(log_as_step=supervised["debugging"]["show_samples_as_step"])
 
     def checkpoint_callback(epoch_num):
-        if (
-            checkpoint_epoch_interval > 0
-            and epoch_num % checkpoint_epoch_interval == 0
-        ):
+        if checkpoint_epoch_interval > 0 and epoch_num % checkpoint_epoch_interval == 0:
             save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
 
     custom_logger.log("Start training regression model.")

@@ -88,7 +88,10 @@ def make_trainer(
     opt_kwargs: Optional[Mapping[str, Any]],
     debugging: Mapping,
 ) -> SupervisedTrainer:
-    loss_fn = th.nn.MSELoss(reduction="sum")
+    # MSE loss with mean reduction (the default)
+    # Mean reduction means every batch affects model updates the same, regardless of
+    # batch_size.
+    loss_fn = th.nn.MSELoss()
 
     trainer = SupervisedTrainer(
         demonstrations=expert_trajectories,
