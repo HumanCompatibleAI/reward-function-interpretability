@@ -1,7 +1,6 @@
 import os.path as osp
 from typing import Optional, Tuple, Union
 
-from PIL import Image
 from imitation.scripts.common import common as common_config
 from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
@@ -11,11 +10,12 @@ from matplotlib import pyplot as plt
 import numpy as np
 from sacred.observers import FileStorageObserver
 import torch as th
-import wandb
 
 from reward_preprocessing.common.utils import (
     RewardGeneratorCombo,
     TensorTransitionWrapper,
+    array_to_image,
+    log_np_img_wandb,
     rollouts_to_dataloader,
     tensor_to_transition,
 )
@@ -268,14 +268,6 @@ def interpret(
     custom_logger.log("Done with dataset visualization.")
 
 
-def array_to_image(arr: np.ndarray, scale: int) -> Image:
-    """Take numpy array on [0,1] scale, return PIL image."""
-    return Image.fromarray(np.uint8(arr * 255), mode="RGB").resize(
-        size=(arr.shape[0] * scale, arr.shape[1] * scale),
-        resample=Image.NEAREST,
-    )
-
-
 def plot_img(
     columns: int,
     custom_logger: HierarchicalLogger,
@@ -288,8 +280,8 @@ def plot_img(
     wandb_logging: bool,
 ):
     """Plot the passed image(s) to pyplot and wandb as appropriate."""
-    _wandb_log(custom_logger, feature_i, img, vis_scale, wandb_logging)
-    if pyplot:
+    _log_vis_wandb(custom_logger, feature_i, img, vis_scale, wandb_logging)
+    if fig is not None and pyplot:
         if isinstance(img, tuple):
             img_obs = img[0]
             img_next_obs = img[1]
@@ -302,51 +294,44 @@ def plot_img(
             plt.imshow(img)
 
 
-def _wandb_log(
+def _log_vis_wandb(
     custom_logger: HierarchicalLogger,
     feature_i: int,
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
     vis_scale: int,
     wandb_logging: bool,
 ):
-    """Plot to wandb if wandb logging is enabled."""
+    """Plot visualizations to wandb if wandb logging is enabled."""
     if wandb_logging:
         if isinstance(img, tuple):
             img_obs = img[0]
             img_next_obs = img[1]
-            # TODO(df): check if I have to dump between these
-            _wandb_log_(img_obs, vis_scale, feature_i, "obs", custom_logger)
-            _wandb_log_(img_next_obs, vis_scale, feature_i, "next_obs", custom_logger)
+
+            log_np_img_wandb(
+                arr=img_obs,
+                caption=f"Feature {feature_i}, obs",
+                wandb_key=f"feature_{feature_i}_obs",
+                scale=vis_scale,
+                logger=custom_logger,
+            )
+            log_np_img_wandb(
+                arr=img_next_obs,
+                caption=f"Feature {feature_i}, next_obs",
+                wandb_key=f"feature_{feature_i}_next_obs",
+                scale=vis_scale,
+                logger=custom_logger,
+            )
         else:
-            _wandb_log_(img, vis_scale, feature_i, "dataset_vis", custom_logger)
+            log_np_img_wandb(
+                arr=img,
+                caption=f"Feature {feature_i}",
+                wandb_key=f"dataset_vis_{feature_i}",
+                scale=vis_scale,
+                logger=custom_logger,
+            )
 
         # Can't re-use steps unfortunately, so each feature img gets its own step.
         custom_logger.dump(step=feature_i)
-
-
-def _wandb_log_(
-    arr: np.ndarray,
-    scale: int,
-    feature: int,
-    img_type: str,
-    logger: HierarchicalLogger,
-) -> None:
-    """Log visualized np.ndarray to wandb using given logger.
-
-    Args:
-        - arr: array to turn into image, save.
-        - scale: ratio by which to scale up the image.
-        - feature: which number feature is being visualized.
-        - img_type: "obs" or "next_obs"
-        - logger: logger to use.
-    """
-    if img_type not in ["obs", "next_obs"]:
-        err_str = f"img_type should be 'obs' or 'next_obs', but instead is {img_type}"
-        raise ValueError(err_str)
-
-    pil_img = array_to_image(arr, scale)
-    wb_img = wandb.Image(pil_img, caption=f"Feature {feature}, {img_type}")
-    logger.record(f"feature_{feature}_{img_type}", wb_img)
 
 
 def main():

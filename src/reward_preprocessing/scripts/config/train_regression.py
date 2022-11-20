@@ -21,9 +21,33 @@ def defaults():
 
 
 @train_regression_ex.named_config
+def use_state():
+    supervised = dict(
+        net_kwargs=dict(use_state=True, use_action=False, use_next_state=False)
+    )
+    locals()  # make flake8 happy
+
+
+@train_regression_ex.named_config
+def use_state_action():
+    supervised = dict(
+        net_kwargs=dict(use_state=True, use_action=True, use_next_state=False)
+    )
+    locals()  # make flake8 happy
+
+
+@train_regression_ex.named_config
 def use_next_state():
     supervised = dict(
         net_kwargs=dict(use_state=False, use_action=False, use_next_state=True)
+    )
+    locals()  # make flake8 happy
+
+
+@train_regression_ex.named_config
+def use_state_next_state():
+    supervised = dict(
+        net_kwargs=dict(use_state=True, use_action=False, use_next_state=True)
     )
     locals()  # make flake8 happy
 

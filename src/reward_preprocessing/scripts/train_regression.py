@@ -8,6 +8,7 @@ from imitation.scripts.common import common, demonstrations
 from sacred.observers import FileStorageObserver
 import torch as th
 
+import reward_preprocessing.scripts.common.supervised as supervised_config
 from reward_preprocessing.scripts.config.train_regression import train_regression_ex
 from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
 
@@ -37,47 +38,47 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
             action_space=venv.action_space,
             use_done=False,
         )
-        custom_logger.log(model)
+    _log_model_info(custom_logger, model)
 
-        device = "cuda" if th.cuda.is_available() else "cpu"
-        loss_fn = th.nn.MSELoss()
+    device = "cuda" if th.cuda.is_available() else "cpu"
 
-        trainer = SupervisedTrainer(
-            demonstrations=expert_trajs,
-            reward_net=model,
-            batch_size=supervised["batch_size"],
-            test_frac=supervised["test_frac"],
-            test_freq=supervised["test_freq"],
-            num_loader_workers=supervised["num_loader_workers"],
-            loss_fn=loss_fn,
-            opt_kwargs={"lr": 1e-3},
-            custom_logger=custom_logger,
-            allow_variable_horizon=True,
-        )
+    # Move model to correct device
+    model.to(device)
 
-        # Move model to correct device
-        model.to(device)
+    trainer = supervised_config.make_trainer(
+        expert_trajectories=expert_trajs, model=model, custom_logger=custom_logger
+    )
 
-        trainer.log_data_stats()
+    trainer.log_data_stats()
 
-        def checkpoint_callback(epoch_num):
-            if (
-                checkpoint_epoch_interval > 0
-                and epoch_num % checkpoint_epoch_interval == 0
-            ):
-                save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
+    # Log samples
+    if supervised["debugging"]["show_samples"]:
+        trainer.log_samples(log_as_step=supervised["debugging"]["show_samples_as_step"])
 
-        custom_logger.log("Start training regression model.")
-        # Start training
-        trainer.train(
-            num_epochs=supervised["epochs"],
-            device=device,
-            callback=checkpoint_callback,
-        )
+    def checkpoint_callback(epoch_num):
+        if checkpoint_epoch_interval > 0 and epoch_num % checkpoint_epoch_interval == 0:
+            save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
 
-        # Save final artifacts.
-        if checkpoint_epoch_interval >= 0:
-            save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+    custom_logger.log("Start training regression model.")
+    # Start training
+    trainer.train(
+        num_epochs=supervised["epochs"],
+        device=device,
+        callback=checkpoint_callback,
+    )
+
+    # Save final artifacts.
+    if checkpoint_epoch_interval >= 0:
+        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+
+
+def _log_model_info(custom_logger, model):
+    custom_logger.log(model)
+    if isinstance(model, CnnRewardNet):
+        # These do not exist in all reward nets. However, they exist in CnnRewardNet.
+        custom_logger.log(f"use_state: {model.use_state}")
+        custom_logger.log(f"use_action: {model.use_action}")
+        custom_logger.log(f"use_next_state: {model.use_next_state}")
 
 
 def main():

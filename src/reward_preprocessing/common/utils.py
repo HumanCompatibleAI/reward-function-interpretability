@@ -2,13 +2,16 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 import PIL
+from PIL import Image
 from imitation.data import rollout, types
 from imitation.rewards.reward_nets import RewardNet
+from imitation.util.logger import HierarchicalLogger
 import numpy as np
 import torch as th
 from torch import nn as nn
 from torch.utils import data as torch_data
 import vegans.utils
+import wandb
 
 
 def make_transition_to_tensor(num_acts):
@@ -227,6 +230,42 @@ class RewardGeneratorCombo(nn.Module):
         obs, action_vec, next_obs = tensor_to_transition(transition_tensor)
         done = th.zeros(action_vec.shape)
         return self.reward_net.forward(obs, action_vec, next_obs, done)
+
+
+def log_np_img_wandb(
+    arr: np.ndarray,
+    caption: str,
+    wandb_key: str,
+    logger: HierarchicalLogger,
+    scale: int = 1,
+    step: Optional[int] = None,
+) -> None:
+    """Log visualized np.ndarray to wandb using given logger.
+
+    Args:
+        - arr: Array to turn into image, save.
+        - caption: Caption to give the image.
+        - wandb_key: Key to use for logging to wandb.
+        - logger: Logger to use.
+        - scale: Ratio by which to scale up the image in spatial dimensions.
+        - step: Step for logging. If not provided, the logger dumping will be skipped.
+            In that case logs will be dumped with the next dump().
+    """
+
+    pil_img = array_to_image(arr, scale)
+    wb_img = wandb.Image(pil_img, caption=caption)
+    logger.record(wandb_key, wb_img)
+    if step is not None:
+        logger.dump(step=step)
+
+
+def array_to_image(arr: np.ndarray, scale: int) -> PIL.Image.Image:
+    """Take numpy array on [0,1] scale, return PIL image."""
+    return Image.fromarray(np.uint8(arr * 255), mode="RGB").resize(
+        # PIL expects tuple of (width, height), numpy's index 1 is width, 0 height.
+        size=(arr.shape[1] * scale, arr.shape[0] * scale),
+        resample=Image.NEAREST,
+    )
 
 
 def save_loss_plots(losses, save_dir):
