@@ -445,12 +445,22 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                     step=step,  # Dump all images together with the first step.
                 )
                 count += 1
-        # Turn transitions into video.
-        obs_tensor = th.cat(obs_list)
-        # Vid expects channels first.
-        obs_tensor = obs_tensor.permute(0, 3, 1, 2)
-        frames = np.uint8(obs_tensor.numpy() * 255)
-        self.logger.record("traj_vid", wandb.Video(frames, fps=12))
+
+        try:
+            import moviepy
+            import imageio
+            # Turn transitions into video.
+            obs_tensor = th.cat(obs_list)
+            # Vid expects channels first.
+            obs_tensor = obs_tensor.permute(0, 3, 1, 2)
+            frames = np.uint8(obs_tensor.numpy() * 255)
+            self.logger.record("traj_vid", wandb.Video(frames, fps=12))
+        except ImportError:
+            self.logger.warn(
+                "moviepy and imageio not installed. Not logging transitions as video "
+                "animation for debugging purposes. If you want to, run "
+                "'pip install moviepy imageio'."
+            )
 
         if log_as_step:
             step = count
