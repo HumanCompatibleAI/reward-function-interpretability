@@ -20,7 +20,7 @@ def _normalize_obs(obs: th.Tensor) -> th.Tensor:
     """Normalize by dividing by 255, if obs is uint8, otherwise no change."""
     if obs.dtype == th.uint8:  # Observations saved as int => Normalize to [0, 1]
         obs = obs.float() / 255.0
-    return obs
+    return obs.float()  # This ensures we have float tensors and not double tensors.
 
 
 class SupervisedTrainer(base.BaseImitationAlgorithm):
