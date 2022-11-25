@@ -41,3 +41,23 @@ def procgen():
     num_acts = 15
     device = "cuda"
     locals()
+
+
+@train_gan_ex.named_config
+def procgen_no_gp():
+    generator_class = gen_models.DCGanFourTo64Generator
+    discriminator_class = gen_models.DCGanWassersteinCritic
+    gan_algorithm = vegans.GAN.WassersteinGAN
+    optim_kwargs = {
+        "Generator": {"lr": 1e-4, "betas": (0.0, 0.9)},
+        "Adversary": {"lr": 1e-4, "betas": (0.0, 0.9), "weight_decay": 1e-3},
+    }
+    num_training_epochs = 10
+    batch_size = 128
+    latent_shape = [100]
+    print_every = "0.1e"
+    save_losses_every = "0.1e"
+    save_model_every = "1e"
+    num_acts = 15
+    device = "cuda"
+    locals()
