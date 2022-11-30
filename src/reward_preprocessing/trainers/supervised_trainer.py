@@ -447,8 +447,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 count += 1
 
         try:
-            import moviepy
-            import imageio
+            import moviepy  # noqa: F401
+            import imageio  # noqa: F401, I001
+
             # Turn transitions into video.
             obs_tensor = th.cat(obs_list)
             # Vid expects channels first.
