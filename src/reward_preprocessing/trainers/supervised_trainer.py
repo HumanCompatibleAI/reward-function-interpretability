@@ -447,9 +447,12 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 count += 1
 
         try:
-            import imageio  # noqa: F401, I001
+
+            # pytype: disable=import-error
+            import imageio  # noqa: F401
             import moviepy  # noqa: F401
 
+            # pytype: enable=import-error
             # Turn transitions into video.
             obs_tensor = th.cat(obs_list)
             # Vid expects channels first.
@@ -458,7 +461,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             self.logger.record("traj_vid", wandb.Video(frames, fps=12))
         except ImportError:
             self.logger.warn(
-                "moviepy and imageio not installed. Not logging transitions as video "
+                "moviepy or imageio not installed. Not logging transitions as video "
                 "animation for debugging purposes. If you want to, run "
                 "'pip install moviepy imageio'."
             )
