@@ -15,7 +15,12 @@ git+https://github.com/ejnnr/mazelab.git@3042551
 git+https://github.com/HumanCompatibleAI/imitation.git@91c66b7377
 # This version includes some fixes that are not in the newest pip version
 git+https://github.com/openai/gym3.git@4c38246
-procgen @ git+https://github.com/JacobPfau/procgenAISC.git@7821f2c00b
+# This commit on the branch final-obs of my (PavelCz) fork of procgen includes
+# changes that add the final observation of an episode to the info dict. This
+# final episode is useful when training reward functions and is not available by
+# default in gym3, since gym3 immediately resets the environment after the
+# episode ends.
+procgen @ git+https://github.com/PavelCz/procgenAISC.git@54de6b7553c55f12f53c346730681c4e4c9abd40
 # Revert to this older version because some library won't work otherwise
 protobuf==3.19
 git+https://github.com/dfilan/vegans.git@76a3c45

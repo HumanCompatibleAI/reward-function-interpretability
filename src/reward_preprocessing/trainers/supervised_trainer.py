@@ -20,7 +20,7 @@ def _normalize_obs(obs: th.Tensor) -> th.Tensor:
     """Normalize by dividing by 255, if obs is uint8, otherwise no change."""
     if obs.dtype == th.uint8:  # Observations saved as int => Normalize to [0, 1]
         obs = obs.float() / 255.0
-    return obs
+    return obs.float()  # This ensures we have float tensors and not double tensors.
 
 
 class SupervisedTrainer(base.BaseImitationAlgorithm):
@@ -445,12 +445,28 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                     step=step,  # Dump all images together with the first step.
                 )
                 count += 1
-        # Turn transitions into video.
-        obs_tensor = th.cat(obs_list)
-        # Vid expects channels first.
-        obs_tensor = obs_tensor.permute(0, 3, 1, 2)
-        frames = np.uint8(obs_tensor.numpy() * 255)
-        self.logger.record("traj_vid", wandb.Video(frames, fps=12))
+
+        try:
+            # We only import these here to check whether these packages are installed.
+            # wandb.Video requires them.
+            # However, we don't want them as a hard requirement.
+            # pytype: disable=import-error
+            import imageio  # noqa: F401
+            import moviepy  # noqa: F401
+
+            # pytype: enable=import-error
+            # Turn transitions into video.
+            obs_tensor = th.cat(obs_list)
+            # Vid expects channels first.
+            obs_tensor = obs_tensor.permute(0, 3, 1, 2)
+            frames = np.uint8(obs_tensor.numpy() * 255)
+            self.logger.record("traj_vid", wandb.Video(frames, fps=12))
+        except ImportError:
+            self.logger.warn(
+                "moviepy or imageio not installed. Not logging transitions as video "
+                "animation for debugging purposes. If you want to, run "
+                "'pip install moviepy imageio'."
+            )
 
         if log_as_step:
             step = count
