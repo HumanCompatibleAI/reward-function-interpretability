@@ -447,7 +447,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 count += 1
 
         try:
-
+            # We only import these here to check whether these packages are installed.
+            # wandb.Video requires them.
+            # However, we don't want them as a hard requirement.
             # pytype: disable=import-error
             import imageio  # noqa: F401
             import moviepy  # noqa: F401
