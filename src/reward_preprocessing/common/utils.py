@@ -135,13 +135,15 @@ def visualize_samples(samples: np.ndarray, save_dir):
         act = transition[3 : 3 + num_acts, :, :]
         s_ = transition[3 + num_acts : transition.shape[0], :, :]
         s_ = process_image_array(s_)
-        act_slim = np.mean(act, axis=(1, 2))
+        act_slim_mean = np.mean(act, axis=(1, 2))
+        act_slim_max = np.max(np.abs(act), axis=(1, 2))
         s_img = PIL.Image.fromarray(s)
         s__img = PIL.Image.fromarray(s_)
         (Path(save_dir) / str(i)).mkdir()
         s_img.save(Path(save_dir) / str(i) / "first_obs.png")
         s__img.save(Path(save_dir) / str(i) / "second_obs.png")
-        np.save(Path(save_dir) / str(i) / "act_vec.npy", act_slim)
+        np.save(Path(save_dir) / str(i) / "act_vec_mean.npy", act_slim_mean)
+        np.save(Path(save_dir) / str(i) / "act_vec_max.npy", act_slim_max)
 
 
 def process_image_array(img: np.ndarray) -> np.ndarray:
