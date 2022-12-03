@@ -265,7 +265,7 @@ def interpret(
 
     if pyplot:
         plt.show()
-    custom_logger.log("Done with dataset visualization.")
+    custom_logger.log("Done with visualization.")
 
 
 def plot_img(
