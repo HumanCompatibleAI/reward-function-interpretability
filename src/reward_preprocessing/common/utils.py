@@ -234,15 +234,16 @@ class RewardGeneratorCombo(nn.Module):
         return self.reward_net.forward(obs, action_vec, next_obs, done)
 
 
-def log_np_img_wandb(
-    arr: np.ndarray,
+def log_img_wandb(
+    img: np.ndarray,
     caption: str,
     wandb_key: str,
     logger: HierarchicalLogger,
     scale: int = 1,
     step: Optional[int] = None,
 ) -> None:
-    """Log visualized np.ndarray to wandb using given logger.
+    """Log np.ndarray as image or PIL image. Logs to wandb using given logger.
+    If scale is provided, image will be scaled in both cases.
 
     Args:
         - arr: Array to turn into image, save.
@@ -253,8 +254,18 @@ def log_np_img_wandb(
         - step: Step for logging. If not provided, the logger dumping will be skipped.
             In that case logs will be dumped with the next dump().
     """
-
-    pil_img = array_to_image(arr, scale)
+    if isinstance(img, np.ndarray):
+        pil_img = array_to_image(img, scale)
+    elif isinstance(img, PIL.Image.Image):
+        pil_img = img.resize(
+            # PIL expects tuple of (width, height), numpy's index 1 is width, 0 height.
+            size=(img.width * scale, img.height * scale),
+            resample=Image.NEAREST,
+        )
+    else:
+        raise ValueError(
+            f"img must be np.ndarray or PIL.Image.Image, type(img)={type(img)}"
+        )
     wb_img = wandb.Image(pil_img, caption=caption)
     logger.record(wandb_key, wb_img)
     if step is not None:

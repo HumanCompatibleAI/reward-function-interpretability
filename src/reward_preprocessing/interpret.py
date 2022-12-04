@@ -1,6 +1,8 @@
+import io
 import os.path as osp
 from typing import Optional, Tuple, Union
 
+import PIL.Image
 from imitation.scripts.common import common as common_config
 from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
@@ -15,7 +17,7 @@ from reward_preprocessing.common.utils import (
     RewardGeneratorCombo,
     TensorTransitionWrapper,
     array_to_image,
-    log_np_img_wandb,
+    log_img_wandb,
     rollouts_to_dataloader,
     tensor_to_transition,
 )
@@ -129,7 +131,7 @@ def interpret(
     wandb_logging = "wandb" in common["log_format_strs"]
 
     if pyplot:
-        matplotlib.use("TkAgg")
+        matplotlib.use("Agg")
 
     device = "cuda" if th.cuda.is_available() else "cpu"
 
@@ -198,9 +200,9 @@ def interpret(
     # If these are equal, then of course there is no actual reduction.
 
     num_features = nmf.channel_dirs.shape[0]
-    rows, columns = 1, num_features
+    rows, columns = 2, num_features
     if pyplot:
-        col_mult = 4 if vis_type == "traditional" else 2
+        col_mult = 2 if vis_type == "traditional" else 1
         # figsize is width, height in inches
         fig = plt.figure(figsize=(columns * col_mult, rows * 2))
     else:
@@ -215,6 +217,8 @@ def interpret(
                 transform.jitter(16),
             ]
 
+            # This does the actual interpretability, i.e. it calculates the
+            # visualizations.
             opt_transitions = nmf.vis_traditional(transforms=transforms)
             # This gives as an array that optimizes the objectives, in the shape of the
             # input which is a transition tensor. However, lucent helpfully transposes
@@ -243,20 +247,28 @@ def interpret(
             opt_transitions = gan.generator(opt_latent_th)
             obs, acts, next_obs = tensor_to_transition(opt_transitions)
 
+        # Use numpy from here.
+        obs = obs.detach().cpu().numpy()
+        next_obs = next_obs.detach().cpu().numpy()
+
         # Set of images, one for each feature, add each to plot
         for feature_i in range(next_obs.shape[0]):
-            sub_img_obs = obs[feature_i].detach().cpu().numpy()
-            sub_img_next_obs = next_obs[feature_i].detach().cpu().numpy()
-            plot_img(
-                columns,
+            sub_img_obs = obs[feature_i]
+            sub_img_next_obs = next_obs[feature_i]
+            _log_single_transition_wandb(
                 custom_logger,
+                feature_i,
+                (sub_img_obs, sub_img_next_obs),
+                vis_scale,
+                wandb_logging,
+            )
+            _plot_img(
+                columns,
                 feature_i,
                 fig,
                 (sub_img_obs, sub_img_next_obs),
                 pyplot,
                 rows,
-                vis_scale,
-                wandb_logging,
             )
             if img_save_path is not None:
                 obs_PIL = array_to_image(sub_img_obs, vis_scale)
@@ -266,6 +278,17 @@ def interpret(
                 custom_logger.log(
                     f"Saved feature {feature_i} viz in dir {img_save_path}."
                 )
+        img_buf = io.BytesIO()
+        plt.savefig(img_buf, format="png")
+        full_plot_img = PIL.Image.open(img_buf)
+        log_img_wandb(
+            img=full_plot_img,
+            caption=f"Feature Overview",
+            wandb_key=f"feature_overview",
+            scale=vis_scale,
+            logger=custom_logger,
+        )
+        custom_logger.dump(step=num_features)
 
     elif vis_type == "dataset":
         for feature_i in range(num_features):
@@ -275,16 +298,16 @@ def interpret(
                 feature=feature_i, num_mult=4, expand_mult=1
             )
 
-            plot_img(
+            _log_single_transition_wandb(
+                custom_logger, feature_i, img, vis_scale, wandb_logging
+            )
+            _plot_img(
                 columns,
-                custom_logger,
                 feature_i,
                 fig,
                 img,
                 pyplot,
                 rows,
-                vis_scale,
-                wandb_logging,
             )
 
     if pyplot:
@@ -292,19 +315,15 @@ def interpret(
     custom_logger.log("Done with visualization.")
 
 
-def plot_img(
+def _plot_img(
     columns: int,
-    custom_logger: HierarchicalLogger,
     feature_i: int,
     fig: Optional[matplotlib.figure.Figure],
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
     pyplot: bool,
     rows: int,
-    vis_scale: int,
-    wandb_logging: bool,
 ):
-    """Plot the passed image(s) to pyplot and wandb as appropriate."""
-    _log_vis_wandb(custom_logger, feature_i, img, vis_scale, wandb_logging)
+    """Plot the passed image(s) with pyplot, if pyplot is enabled."""
     if fig is not None and pyplot:
         if isinstance(img, tuple):
             img_obs = img[0]
@@ -318,36 +337,37 @@ def plot_img(
             plt.imshow(img)
 
 
-def _log_vis_wandb(
+def _log_single_transition_wandb(
     custom_logger: HierarchicalLogger,
     feature_i: int,
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
     vis_scale: int,
     wandb_logging: bool,
 ):
-    """Plot visualizations to wandb if wandb logging is enabled."""
+    """Plot visualizations to wandb if wandb logging is enabled. Images will be logged
+    as separate media in wandb, one for each feature."""
     if wandb_logging:
         if isinstance(img, tuple):
             img_obs = img[0]
             img_next_obs = img[1]
 
-            log_np_img_wandb(
-                arr=img_obs,
+            log_img_wandb(
+                img=img_obs,
                 caption=f"Feature {feature_i}, obs",
                 wandb_key=f"feature_{feature_i}_obs",
                 scale=vis_scale,
                 logger=custom_logger,
             )
-            log_np_img_wandb(
-                arr=img_next_obs,
+            log_img_wandb(
+                img=img_next_obs,
                 caption=f"Feature {feature_i}, next_obs",
                 wandb_key=f"feature_{feature_i}_next_obs",
                 scale=vis_scale,
                 logger=custom_logger,
             )
         else:
-            log_np_img_wandb(
-                arr=img,
+            log_img_wandb(
+                img=img,
                 caption=f"Feature {feature_i}",
                 wandb_key=f"dataset_vis_{feature_i}",
                 scale=vis_scale,

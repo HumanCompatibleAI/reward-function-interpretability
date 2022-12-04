@@ -13,7 +13,7 @@ from torch.utils import data
 from tqdm import tqdm
 import wandb
 
-from reward_preprocessing.common.utils import log_np_img_wandb
+from reward_preprocessing.common.utils import log_img_wandb
 
 
 def _normalize_obs(obs: th.Tensor) -> th.Tensor:
@@ -436,8 +436,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                     wandb_key = f"transition_{count}"
                     step = None
 
-                log_np_img_wandb(
-                    arr=img,
+                log_img_wandb(
+                    img=img,
                     logger=self.logger,
                     caption=f"Reward {reward}",
                     wandb_key=wandb_key,
