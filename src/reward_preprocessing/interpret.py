@@ -265,6 +265,7 @@ def interpret(
             _plot_img(
                 columns,
                 feature_i,
+                num_features,
                 fig,
                 (sub_img_obs, sub_img_next_obs),
                 pyplot,
@@ -280,7 +281,7 @@ def interpret(
                 )
         # This greatly improves the spacing of subplots for the feature overview plot.
         plt.tight_layout()
-        # Take the motplotlib plot containing all visualizations and log it as a single
+        # Take the matplotlib plot containing all visualizations and log it as a single
         # image in wandb.
         # We do this, so we have both the individual feature visualizations (logged
         # above) in case we need them and the overview plot, which is a bit more useful.
@@ -310,6 +311,7 @@ def interpret(
             _plot_img(
                 columns,
                 feature_i,
+                num_features,
                 fig,
                 img,
                 pyplot,
@@ -324,6 +326,7 @@ def interpret(
 def _plot_img(
     columns: int,
     feature_i: int,
+    num_features: int,
     fig: Optional[matplotlib.figure.Figure],
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
     pyplot: bool,
@@ -334,9 +337,18 @@ def _plot_img(
         if isinstance(img, tuple):
             img_obs = img[0]
             img_next_obs = img[1]
-            fig.add_subplot(rows, columns, 2 * feature_i + 1)
+            obs_i = feature_i + 1
+            f = fig.add_subplot(rows, columns, obs_i)
+            # This title will be at every column
+            f.set_title(f"Feature {feature_i}")
+            if obs_i == 1:  # First image
+                f.set_ylabel("obs")
             plt.imshow(img_obs)
-            fig.add_subplot(rows, columns, 2 * feature_i + 2)
+            # In 2-column layout, next_obs should be logged below the obs.
+            next_obs_i = obs_i + num_features
+            f = fig.add_subplot(rows, columns, next_obs_i)
+            if obs_i == 1:  # f is first image of the second row
+                f.set_ylabel("next_obs")
             plt.imshow(img_next_obs)
         else:
             fig.add_subplot(rows, columns, feature_i + 1)
