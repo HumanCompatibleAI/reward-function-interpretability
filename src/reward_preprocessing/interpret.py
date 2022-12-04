@@ -188,7 +188,7 @@ def interpret(
         if gan_path is None:
             # List of transforms
             transforms = [
-                transform.jitter(2),  # Jitters input by 2 pixel
+                transform.jitter(16),
             ]
 
             opt_transitions = nmf.vis_traditional(transforms=transforms)
