@@ -23,6 +23,30 @@ from reward_preprocessing.scripts.config.interpret import interpret_ex
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
 
+def get_action_meaning(action_id: int):
+    """Get a human-understandable name for an action. Currently only supports coinrun."""
+    # Taken from get_combos() in coinrun.env.BaseProcgenEnv
+    mapping = [
+        ("LEFT", "DOWN"),
+        ("LEFT",),
+        ("LEFT", "UP"),
+        ("DOWN",),
+        ("NOOP",),
+        ("UP",),
+        ("RIGHT", "DOWN"),
+        ("RIGHT",),
+        ("RIGHT", "UP"),
+        ("D",),
+        ("A",),
+        ("W",),
+        ("S",),
+        ("Q",),
+        ("E",),
+    ]
+    action = mapping[action_id]
+    return ", ".join(action)
+
+
 @interpret_ex.main
 def interpret(
     common: dict,
