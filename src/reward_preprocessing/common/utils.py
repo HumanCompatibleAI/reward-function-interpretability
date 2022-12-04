@@ -235,7 +235,7 @@ class RewardGeneratorCombo(nn.Module):
 
 
 def log_img_wandb(
-    img: np.ndarray,
+    img: Union[np.ndarray, PIL.Image.Image],
     caption: str,
     wandb_key: str,
     logger: HierarchicalLogger,

@@ -204,7 +204,7 @@ def interpret(
     if pyplot:
         col_mult = 2 if vis_type == "traditional" else 1
         # figsize is width, height in inches
-        fig = plt.figure(figsize=(columns * col_mult, rows * 2))
+        fig = plt.figure(figsize=(int(columns * col_mult), int(rows * 2)))
     else:
         fig = None
 
@@ -278,13 +278,19 @@ def interpret(
                 custom_logger.log(
                     f"Saved feature {feature_i} viz in dir {img_save_path}."
                 )
+        # This greatly improves the spacing of subplots for the feature overview plot.
+        plt.tight_layout()
+        # Take the motplotlib plot containing all visualizations and log it as a single
+        # image in wandb.
+        # We do this, so we have both the individual feature visualizations (logged
+        # above) in case we need them and the overview plot, which is a bit more useful.
         img_buf = io.BytesIO()
         plt.savefig(img_buf, format="png")
         full_plot_img = PIL.Image.open(img_buf)
         log_img_wandb(
             img=full_plot_img,
-            caption=f"Feature Overview",
-            wandb_key=f"feature_overview",
+            caption="Feature Overview",
+            wandb_key="feature_overview",
             scale=vis_scale,
             logger=custom_logger,
         )
