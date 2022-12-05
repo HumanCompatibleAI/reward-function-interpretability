@@ -225,12 +225,9 @@ def interpret(
 
     num_features = nmf.channel_dirs.shape[0]
     rows, columns = 2, num_features
-    if pyplot:
-        col_mult = 2 if vis_type == "traditional" else 1
-        # figsize is width, height in inches
-        fig = plt.figure(figsize=(int(columns * col_mult), int(rows * 2)))
-    else:
-        fig = None
+    col_mult = 2 if vis_type == "traditional" else 1
+    # figsize is width, height in inches
+    fig = plt.figure(figsize=(int(columns * col_mult), int(rows * 2)))
 
     # Visualize
     if vis_type == "traditional":
@@ -292,7 +289,6 @@ def interpret(
                 num_features,
                 fig,
                 (sub_img_obs, sub_img_next_obs),
-                pyplot,
                 rows,
                 features_are_actions,
             )
@@ -306,21 +302,23 @@ def interpret(
                 )
         # This greatly improves the spacing of subplots for the feature overview plot.
         plt.tight_layout()
-        # Take the matplotlib plot containing all visualizations and log it as a single
-        # image in wandb.
-        # We do this, so we have both the individual feature visualizations (logged
-        # above) in case we need them and the overview plot, which is a bit more useful.
-        img_buf = io.BytesIO()
-        plt.savefig(img_buf, format="png")
-        full_plot_img = PIL.Image.open(img_buf)
-        log_img_wandb(
-            img=full_plot_img,
-            caption="Feature Overview",
-            wandb_key="feature_overview",
-            scale=vis_scale,
-            logger=custom_logger,
-        )
-        custom_logger.dump(step=num_features)
+
+        if wandb_logging:
+            # Take the matplotlib plot containing all visualizations and log it as a single
+            # image in wandb.
+            # We do this, so we have both the individual feature visualizations (logged
+            # above) in case we need them and the overview plot, which is a bit more useful.
+            img_buf = io.BytesIO()
+            plt.savefig(img_buf, format="png")
+            full_plot_img = PIL.Image.open(img_buf)
+            log_img_wandb(
+                img=full_plot_img,
+                caption="Feature Overview",
+                wandb_key="feature_overview",
+                scale=vis_scale,
+                logger=custom_logger,
+            )
+            custom_logger.dump(step=num_features)
 
     elif vis_type == "dataset":
         for feature_i in range(num_features):
@@ -339,7 +337,6 @@ def interpret(
                 num_features,
                 fig,
                 img,
-                pyplot,
                 rows,
             )
 
@@ -362,34 +359,32 @@ def _plot_img(
     num_features: int,
     fig: Optional[matplotlib.figure.Figure],
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
-    pyplot: bool,
     rows: int,
     features_are_actions: bool = False,
 ):
     """Plot the passed image(s) with pyplot, if pyplot is enabled."""
-    if fig is not None and pyplot:
-        if isinstance(img, tuple):
-            img_obs = img[0]
-            img_next_obs = img[1]
-            obs_i = feature_i + 1
-            f = fig.add_subplot(rows, columns, obs_i)
-            title = f"Feature {feature_i}"
-            if features_are_actions:
-                title += f"\n({_get_action_meaning(feature_i)})"
-            # This title will be at every column
-            f.set_title(title)
-            if obs_i == 1:  # First image
-                f.set_ylabel("obs")
-            plt.imshow(img_obs)
-            # In 2-column layout, next_obs should be logged below the obs.
-            next_obs_i = obs_i + num_features
-            f = fig.add_subplot(rows, columns, next_obs_i)
-            if obs_i == 1:  # f is first image of the second row
-                f.set_ylabel("next_obs")
-            plt.imshow(img_next_obs)
-        else:
-            fig.add_subplot(rows, columns, feature_i + 1)
-            plt.imshow(img)
+    if isinstance(img, tuple):
+        img_obs = img[0]
+        img_next_obs = img[1]
+        obs_i = feature_i + 1
+        f = fig.add_subplot(rows, columns, obs_i)
+        title = f"Feature {feature_i}"
+        if features_are_actions:
+            title += f"\n({_get_action_meaning(feature_i)})"
+        # This title will be at every column
+        f.set_title(title)
+        if obs_i == 1:  # First image
+            f.set_ylabel("obs")
+        plt.imshow(img_obs)
+        # In 2-column layout, next_obs should be logged below the obs.
+        next_obs_i = obs_i + num_features
+        f = fig.add_subplot(rows, columns, next_obs_i)
+        if obs_i == 1:  # f is first image of the second row
+            f.set_ylabel("next_obs")
+        plt.imshow(img_next_obs)
+    else:
+        fig.add_subplot(rows, columns, feature_i + 1)
+        plt.imshow(img)
 
 
 def _log_single_transition_wandb(
