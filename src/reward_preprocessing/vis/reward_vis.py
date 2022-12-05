@@ -3,6 +3,7 @@ from functools import reduce
 import logging
 from typing import Callable, Dict, List, Optional, Union
 
+from lucent.optvis import objectives
 from lucent.optvis.objectives import handle_batch, wrap_objective
 import lucent.optvis.param as param
 import lucent.optvis.render as render
@@ -263,10 +264,16 @@ class LayerNMF:
             feature_list = [feature_list]
 
         obj = sum(
+            # Original with cosine similarity:
+            # [
+            #     objectives_rfi.direction_neuron_dim_agnostic(
+            #         self.layer_name, self.channel_dirs[feature], batch=feature
+            #     )
+            #     for feature in feature_list
+            # ]
+            # New:
             [
-                objectives_rfi.direction_neuron_dim_agnostic(
-                    self.layer_name, self.channel_dirs[feature], batch=feature
-                )
+                objectives_rfi.max_index_1d(self.layer_name, feature, batch=feature)
                 for feature in feature_list
             ]
         )

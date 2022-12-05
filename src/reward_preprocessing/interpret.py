@@ -171,7 +171,9 @@ def interpret(
     else:  # Use GAN
         # Combine rew net with GAN.
         gan = th.load(gan_path, map_location=th.device(device))
-        model_to_analyse = RewardGeneratorCombo(reward_net=rew_net, generator=gan.generator)
+        model_to_analyse = RewardGeneratorCombo(
+            reward_net=rew_net, generator=gan.generator
+        )
 
     model_to_analyse.eval()  # Eval for visualization.
 
@@ -220,8 +222,8 @@ def interpret(
         activation_fn="sigmoid",
     )
 
-    custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
     # If these are equal, then of course there is no actual reduction.
+    custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
 
     num_features = nmf.channel_dirs.shape[0]
     rows, columns = 2, num_features
@@ -282,6 +284,7 @@ def interpret(
         actions = th.tensor(list(range(num_features))).to(device)
         assert len(actions) == len(obs)
         rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
+        custom_logger.log(f"Rewards: {rews}")
 
         # Use numpy from here.
         obs = obs.detach().cpu().numpy()
