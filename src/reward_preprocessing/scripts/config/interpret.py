@@ -28,5 +28,11 @@ def defaults():
     l2_coeff = None
     # Directory to save images to. If specified, should end in a /.
     img_save_path = None
+    # What regularization to use for generated images.
+    reg = {
+        "no_gan": {
+            "jitter": 8,
+        }
+    }
 
     locals()  # quieten flake8

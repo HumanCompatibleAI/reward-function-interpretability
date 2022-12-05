@@ -1,6 +1,6 @@
 import io
 import os.path as osp
-from typing import Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import PIL.Image
 from imitation.scripts.common import common as common_config
@@ -26,7 +26,9 @@ from reward_preprocessing.vis.reward_vis import LayerNMF
 
 
 def _get_action_meaning(action_id: int):
-    """Get a human-understandable name for an action. Currently only supports coinrun."""
+    """Get a human-understandable name for an action.
+    Currently, only supports coinrun.
+    """
     # Taken from get_combos() in coinrun.env.BaseProcgenEnv
     mapping = [
         ("LEFT", "DOWN"),
@@ -88,9 +90,10 @@ def interpret(
     vis_type: str,
     layer_name: str,
     num_features: Optional[int],
-    gan_path: Optional[str] = None,
-    l2_coeff: Optional[float] = None,
-    img_save_path: Optional[str] = None,
+    gan_path: Optional[str],
+    l2_coeff: Optional[float],
+    img_save_path: Optional[str],
+    reg: Dict[str, Dict[str, Any]],
 ):
     """Run visualization for interpretability.
 
@@ -233,9 +236,7 @@ def interpret(
     if vis_type == "traditional":
         if gan_path is None:
             # List of transforms
-            transforms = [
-                transform.jitter(16),
-            ]
+            transforms = _determine_transforms(reg)
 
             # This does the actual interpretability, i.e. it calculates the
             # visualizations.
@@ -345,6 +346,14 @@ def interpret(
     if pyplot:
         plt.show()
     custom_logger.log("Done with visualization.")
+
+
+def _determine_transforms(reg: Dict[str, Dict[str, Any]]) -> List[Callable]:
+    """Determine the transforms to use for traditional visualization. Currently, only
+    applicable to vis without GAN."""
+    return [
+        transform.jitter(reg["no_gan"]["jitter"]),
+    ]
 
 
 def _plot_img(
