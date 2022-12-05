@@ -13,7 +13,10 @@ def defaults():
     # Limit the number of observations to use for dim reduction.
     # The RL Vision paper uses "a few thousand" observations.
     limit_num_obs = 2048
-    pyplot = False  # Plot images as pyplot figures
+    # Whether to plot visualizations as pyplot figures. Set to False when running
+    # interpret in a non-GUI environment, such as the cluster. In that case, use
+    # wandb logging or save images to disk.
+    pyplot = False
     vis_scale = 4  # Scale the visualization img by this factor
     vis_type = "traditional"  # "traditional" (gradient-based) or "dataset"
     # Name of the layer to visualize. To figure this out run interpret and the
@@ -31,7 +34,7 @@ def defaults():
     # What regularization to use for generated images.
     reg = {
         "no_gan": {
-            "jitter": 8,
+            "jitter": 8,  # Jitter for generated images.
         }
     }
 
