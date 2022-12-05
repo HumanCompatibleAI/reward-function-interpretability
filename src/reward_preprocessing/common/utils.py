@@ -264,7 +264,7 @@ def log_img_wandb(
         )
     else:
         raise ValueError(
-            f"img must be np.ndarray or PIL.Image.Image, type(img)={type(img)}"
+            f"img must be np.ndarray or PIL.Image.Image, {type(img)=}"
         )
     wb_img = wandb.Image(pil_img, caption=caption)
     logger.record(wandb_key, wb_img)
