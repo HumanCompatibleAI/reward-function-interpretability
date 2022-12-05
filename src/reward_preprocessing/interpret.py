@@ -294,7 +294,10 @@ def interpret(
         # Set of images, one for each feature, add each to plot
         for feature_i in range(next_obs.shape[0]):
             # Log the rewards
-            custom_logger.record(f"reward_feature_{feature_i:02}", rews[feature_i])
+            rew_key = f"rew_feat_{feature_i:02}"
+            if features_are_actions:
+                rew_key += f"_{_get_action_meaning(action_id=feature_i)}"
+            custom_logger.record(rew_key, rews[feature_i])
             # Log the images
             sub_img_obs = obs[feature_i]
             sub_img_next_obs = next_obs[feature_i]
