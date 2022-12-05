@@ -305,10 +305,11 @@ def interpret(
         plt.tight_layout()
 
         if wandb_logging:
-            # Take the matplotlib plot containing all visualizations and log it as a single
-            # image in wandb.
+            # Take the matplotlib plot containing all visualizations and log it as a
+            # single image in wandb.
             # We do this, so we have both the individual feature visualizations (logged
-            # above) in case we need them and the overview plot, which is a bit more useful.
+            # above) in case we need them and the overview plot, which is a bit more
+            # useful.
             img_buf = io.BytesIO()
             plt.savefig(img_buf, format="png")
             full_plot_img = PIL.Image.open(img_buf)
