@@ -155,7 +155,8 @@ def interpret(
     wandb_logging = "wandb" in common["log_format_strs"]
 
     if pyplot:
-        matplotlib.use("Agg")
+        # "TkAgg" is a GUI backend, doesn't work on the cluster.
+        matplotlib.use("TkAgg")
 
     device = "cuda" if th.cuda.is_available() else "cpu"
 
