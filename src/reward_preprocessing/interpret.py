@@ -25,7 +25,7 @@ from reward_preprocessing.scripts.config.interpret import interpret_ex
 from reward_preprocessing.vis.reward_vis import LayerNMF
 
 
-def get_action_meaning(action_id: int):
+def _get_action_meaning(action_id: int):
     """Get a human-understandable name for an action. Currently only supports coinrun."""
     # Taken from get_combos() in coinrun.env.BaseProcgenEnv
     mapping = [
@@ -47,6 +47,27 @@ def get_action_meaning(action_id: int):
     ]
     action = mapping[action_id]
     return ", ".join(action)
+
+
+def _determine_features_are_actions(nmf: LayerNMF, layer_name: str) -> bool:
+    """This function decides whether the features that we are visualizing correspond to
+    the different actions.
+    In interpret we either (1) visualize features directly, (2) perform dimensionality
+    reduction on the features and visualize these reduced features. In the case that we
+    are visualizing a reward net which outputs a separate reward for each action in the
+    last layer, (1) corresponds to having one visualization per action. This function
+    can be used to decided whether we are in this special case in order to e.g. log the
+    human-understandable action name instead of the feature index."""
+    # This is the heuristic for determining whether features are actions:
+    # - If there is no dim reduction
+    # - If it is one of the layers from the list
+    # - If the number of features is 15 since that is the number of actions in all
+    #   procgen games
+    return (
+        nmf.channel_dirs.shape[0] == nmf.channel_dirs.shape[1]
+        and layer_name in ["rew_net_cnn_dense_final"]
+        and nmf.channel_dirs.shape[0] == 15
+    )
 
 
 @interpret_ex.main
@@ -210,7 +231,6 @@ def interpret(
 
     # Visualize
     if vis_type == "traditional":
-
         if gan_path is None:
             # List of transforms
             transforms = [
@@ -230,7 +250,6 @@ def interpret(
             obs, acts, next_obs = tensor_to_transition(th.tensor(opt_transitions))
             # obs and next_obs output have channel dim last.
             # acts is output as one-hot vector.
-
         else:
             # We do not require the latent vectors to be transformed before optimizing.
             # However, we do regularize the L2 norm of latent vectors, to ensure the
@@ -251,6 +270,9 @@ def interpret(
         obs = obs.detach().cpu().numpy()
         next_obs = next_obs.detach().cpu().numpy()
 
+        # We want to plot the name of the action, if applicable.
+        features_are_actions = _determine_features_are_actions(nmf, layer_name)
+
         # Set of images, one for each feature, add each to plot
         for feature_i in range(next_obs.shape[0]):
             sub_img_obs = obs[feature_i]
@@ -261,6 +283,7 @@ def interpret(
                 (sub_img_obs, sub_img_next_obs),
                 vis_scale,
                 wandb_logging,
+                features_are_actions,
             )
             _plot_img(
                 columns,
@@ -270,6 +293,7 @@ def interpret(
                 (sub_img_obs, sub_img_next_obs),
                 pyplot,
                 rows,
+                features_are_actions,
             )
             if img_save_path is not None:
                 obs_PIL = array_to_image(sub_img_obs, vis_scale)
@@ -331,6 +355,7 @@ def _plot_img(
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
     pyplot: bool,
     rows: int,
+    features_are_actions: bool = False,
 ):
     """Plot the passed image(s) with pyplot, if pyplot is enabled."""
     if fig is not None and pyplot:
@@ -339,8 +364,11 @@ def _plot_img(
             img_next_obs = img[1]
             obs_i = feature_i + 1
             f = fig.add_subplot(rows, columns, obs_i)
+            title = f"Feature {feature_i}"
+            if features_are_actions:
+                title += f"\n({_get_action_meaning(feature_i)})"
             # This title will be at every column
-            f.set_title(f"Feature {feature_i}")
+            f.set_title(title)
             if obs_i == 1:  # First image
                 f.set_ylabel("obs")
             plt.imshow(img_obs)
@@ -361,6 +389,7 @@ def _log_single_transition_wandb(
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
     vis_scale: int,
     wandb_logging: bool,
+    features_are_actions: bool = False,
 ):
     """Plot visualizations to wandb if wandb logging is enabled. Images will be logged
     as separate media in wandb, one for each feature."""
@@ -368,17 +397,19 @@ def _log_single_transition_wandb(
         if isinstance(img, tuple):
             img_obs = img[0]
             img_next_obs = img[1]
-
+            caption = f"Feature {feature_i}"
+            if features_are_actions:
+                caption += f"\n({_get_action_meaning(feature_i)})"
             log_img_wandb(
                 img=img_obs,
-                caption=f"Feature {feature_i}, obs",
+                caption=f"{caption}\nobs",
                 wandb_key=f"feature_{feature_i}_obs",
                 scale=vis_scale,
                 logger=custom_logger,
             )
             log_img_wandb(
                 img=img_next_obs,
-                caption=f"Feature {feature_i}, next_obs",
+                caption=f"{caption}\nnext_obs",
                 wandb_key=f"feature_{feature_i}_next_obs",
                 scale=vis_scale,
                 logger=custom_logger,
