@@ -358,7 +358,7 @@ def _plot_img(
     columns: int,
     feature_i: int,
     num_features: int,
-    fig: Optional[matplotlib.figure.Figure],
+    fig: matplotlib.figure.Figure,
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
     rows: int,
     features_are_actions: bool = False,
