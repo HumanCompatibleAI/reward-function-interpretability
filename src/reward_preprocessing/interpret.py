@@ -110,7 +110,10 @@ def interpret(
             Limit how many of the transitions from `rollout_path` are used for
             dimensionality reduction. The RL Vision paper uses "a few thousand"
             sampled infrequently from rollouts.
-        pyplot: Whether to plot images as pyplot figures.
+        pyplot:
+            Whether to plot visualizations as pyplot figures. Set to False when running
+            interpret in a non-GUI environment, such as the cluster. In that case, use
+            wandb logging or save images to disk.
         vis_scale: Scale the plotted images by this factor.
         vis_type:
             Type of visualization to use. Either "traditional" for gradient-based
@@ -133,6 +136,9 @@ def interpret(
             this must also not be None.
         img_save_path:
             Directory to save images in. Must end in a /. If None, do not save images.
+        reg:
+            Regularization settings. See reward_preprocessing.scripts.config.interpret
+            for defaults.
     """
     if limit_num_obs <= 0:
         raise ValueError(
