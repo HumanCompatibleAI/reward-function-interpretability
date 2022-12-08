@@ -258,7 +258,8 @@ def log_img_wandb(
         pil_img = array_to_image(img, scale)
     elif isinstance(img, PIL.Image.Image):
         pil_img = img.resize(
-            # PIL expects tuple of (width, height), numpy's index 1 is width, 0 height.
+            # PIL expects tuple of (width, height), as opposed to numpy's
+            # (height, width).
             size=(img.width * scale, img.height * scale),
             resample=Image.NEAREST,
         )
@@ -275,7 +276,8 @@ def log_img_wandb(
 def array_to_image(arr: np.ndarray, scale: int) -> PIL.Image.Image:
     """Take numpy array on [0,1] scale, return PIL image."""
     return Image.fromarray(np.uint8(arr * 255), mode="RGB").resize(
-        # PIL expects tuple of (width, height), numpy's index 1 is width, 0 height.
+        # PIL expects tuple of (width, height), numpy's dimension 1 is width, and
+        # dimension 0 height.
         size=(arr.shape[1] * scale, arr.shape[0] * scale),
         resample=Image.NEAREST,
     )
