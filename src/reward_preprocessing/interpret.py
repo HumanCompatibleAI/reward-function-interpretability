@@ -62,7 +62,7 @@ def _determine_features_are_actions(nmf: LayerNMF, layer_name: str) -> bool:
     human-understandable action name instead of the feature index."""
     # This is the heuristic for determining whether features are actions:
     # - If there is no dim reduction
-    # - If the name of the layer suggest that we are analysing the final layer of a
+    # - If the name of the layer suggests that we are analysing the final layer of a
     #   reward net
     # - If the number of features is 15 since that is the number of actions in all
     #   procgen games
