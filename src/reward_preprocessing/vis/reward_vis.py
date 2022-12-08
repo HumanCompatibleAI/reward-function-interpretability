@@ -3,7 +3,6 @@ from functools import reduce
 import logging
 from typing import Callable, Dict, List, Optional, Union
 
-from lucent.optvis import objectives
 from lucent.optvis.objectives import handle_batch, wrap_objective
 import lucent.optvis.param as param
 import lucent.optvis.render as render
