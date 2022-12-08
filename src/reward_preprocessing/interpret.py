@@ -1,6 +1,8 @@
+import io
 import os.path as osp
-from typing import Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+import PIL.Image
 from imitation.scripts.common import common as common_config
 from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
@@ -15,12 +17,60 @@ from reward_preprocessing.common.utils import (
     RewardGeneratorCombo,
     TensorTransitionWrapper,
     array_to_image,
-    log_np_img_wandb,
+    log_img_wandb,
     rollouts_to_dataloader,
     tensor_to_transition,
 )
 from reward_preprocessing.scripts.config.interpret import interpret_ex
 from reward_preprocessing.vis.reward_vis import LayerNMF
+
+
+def _get_action_meaning(action_id: int):
+    """Get a human-understandable name for an action.
+    Currently, only supports coinrun.
+    """
+    # Taken from get_combos() in coinrun.env.BaseProcgenEnv
+    mapping = [
+        ("LEFT", "DOWN"),
+        ("LEFT",),
+        ("LEFT", "UP"),
+        ("DOWN",),
+        ("NOOP",),
+        ("UP",),
+        ("RIGHT", "DOWN"),
+        ("RIGHT",),
+        ("RIGHT", "UP"),
+        ("D",),
+        ("A",),
+        ("W",),
+        ("S",),
+        ("Q",),
+        ("E",),
+    ]
+    action = mapping[action_id]
+    return ", ".join(action)
+
+
+def _determine_features_are_actions(nmf: LayerNMF, layer_name: str) -> bool:
+    """This function decides whether the features that we are visualizing correspond to
+    the different actions.
+    In interpret we either (1) visualize features directly, (2) perform dimensionality
+    reduction on the features and visualize these reduced features. In the case that we
+    are visualizing a reward net which outputs a separate reward for each action in the
+    last layer, (1) corresponds to having one visualization per action. This function
+    can be used to decided whether we are in this special case in order to e.g. log the
+    human-understandable action name instead of the feature index."""
+    # This is the heuristic for determining whether features are actions:
+    # - If there is no dim reduction
+    # - If the name of the layer suggests that we are analysing the final layer of a
+    #   reward net
+    # - If the number of features is 15 since that is the number of actions in all
+    #   procgen games
+    return (
+        nmf.channel_dirs.shape[0] == nmf.channel_dirs.shape[1]
+        and layer_name.endswith("dense_final")
+        and nmf.channel_dirs.shape[0] == 15
+    )
 
 
 @interpret_ex.main
@@ -41,9 +91,10 @@ def interpret(
     vis_type: str,
     layer_name: str,
     num_features: Optional[int],
-    gan_path: Optional[str] = None,
-    l2_coeff: Optional[float] = None,
-    img_save_path: Optional[str] = None,
+    gan_path: Optional[str],
+    l2_coeff: Optional[float],
+    img_save_path: Optional[str],
+    reg: Dict[str, Dict[str, Any]],
 ):
     """Run visualization for interpretability.
 
@@ -60,7 +111,10 @@ def interpret(
             Limit how many of the transitions from `rollout_path` are used for
             dimensionality reduction. The RL Vision paper uses "a few thousand"
             sampled infrequently from rollouts.
-        pyplot: Whether to plot images as pyplot figures.
+        pyplot:
+            Whether to plot visualizations as pyplot figures. Set to False when running
+            interpret in a non-GUI environment, such as the cluster. In that case, use
+            wandb logging or save images to disk.
         vis_scale: Scale the plotted images by this factor.
         vis_type:
             Type of visualization to use. Either "traditional" for gradient-based
@@ -83,6 +137,9 @@ def interpret(
             this must also not be None.
         img_save_path:
             Directory to save images in. Must end in a /. If None, do not save images.
+        reg:
+            Regularization settings. See reward_preprocessing.scripts.config.interpret
+            for defaults.
     """
     if limit_num_obs <= 0:
         raise ValueError(
@@ -105,6 +162,7 @@ def interpret(
     wandb_logging = "wandb" in common["log_format_strs"]
 
     if pyplot:
+        # "TkAgg" is a GUI backend, doesn't work on the cluster.
         matplotlib.use("TkAgg")
 
     device = "cuda" if th.cuda.is_available() else "cpu"
@@ -174,23 +232,19 @@ def interpret(
     # If these are equal, then of course there is no actual reduction.
 
     num_features = nmf.channel_dirs.shape[0]
-    rows, columns = 1, num_features
-    if pyplot:
-        col_mult = 4 if vis_type == "traditional" else 2
-        # figsize is width, height in inches
-        fig = plt.figure(figsize=(columns * col_mult, rows * 2))
-    else:
-        fig = None
+    rows, columns = 2, num_features
+    col_mult = 2 if vis_type == "traditional" else 1
+    # figsize is width, height in inches
+    fig = plt.figure(figsize=(int(columns * col_mult), int(rows * 2)))
 
     # Visualize
     if vis_type == "traditional":
-
         if gan_path is None:
             # List of transforms
-            transforms = [
-                transform.jitter(2),  # Jitters input by 2 pixel
-            ]
+            transforms = _determine_transforms(reg)
 
+            # This does the actual interpretability, i.e. it calculates the
+            # visualizations.
             opt_transitions = nmf.vis_traditional(transforms=transforms)
             # This gives as an array that optimizes the objectives, in the shape of the
             # input which is a transition tensor. However, lucent helpfully transposes
@@ -202,7 +256,6 @@ def interpret(
             obs, acts, next_obs = tensor_to_transition(th.tensor(opt_transitions))
             # obs and next_obs output have channel dim last.
             # acts is output as one-hot vector.
-
         else:
             # We do not require the latent vectors to be transformed before optimizing.
             # However, we do regularize the L2 norm of latent vectors, to ensure the
@@ -219,20 +272,33 @@ def interpret(
             opt_transitions = gan.generator(opt_latent_th)
             obs, acts, next_obs = tensor_to_transition(opt_transitions)
 
+        # Use numpy from here.
+        obs = obs.detach().cpu().numpy()
+        next_obs = next_obs.detach().cpu().numpy()
+
+        # We want to plot the name of the action, if applicable.
+        features_are_actions = _determine_features_are_actions(nmf, layer_name)
+
         # Set of images, one for each feature, add each to plot
         for feature_i in range(next_obs.shape[0]):
-            sub_img_obs = obs[feature_i].detach().cpu().numpy()
-            sub_img_next_obs = next_obs[feature_i].detach().cpu().numpy()
-            plot_img(
-                columns,
+            sub_img_obs = obs[feature_i]
+            sub_img_next_obs = next_obs[feature_i]
+            _log_single_transition_wandb(
                 custom_logger,
                 feature_i,
-                fig,
                 (sub_img_obs, sub_img_next_obs),
-                pyplot,
-                rows,
                 vis_scale,
                 wandb_logging,
+                features_are_actions,
+            )
+            _plot_img(
+                columns,
+                feature_i,
+                num_features,
+                fig,
+                (sub_img_obs, sub_img_next_obs),
+                rows,
+                features_are_actions,
             )
             if img_save_path is not None:
                 obs_PIL = array_to_image(sub_img_obs, vis_scale)
@@ -242,6 +308,26 @@ def interpret(
                 custom_logger.log(
                     f"Saved feature {feature_i} viz in dir {img_save_path}."
                 )
+        # This greatly improves the spacing of subplots for the feature overview plot.
+        plt.tight_layout()
+
+        if wandb_logging:
+            # Take the matplotlib plot containing all visualizations and log it as a
+            # single image in wandb.
+            # We do this, so we have both the individual feature visualizations (logged
+            # above) in case we need them and the overview plot, which is a bit more
+            # useful.
+            img_buf = io.BytesIO()
+            plt.savefig(img_buf, format="png")
+            full_plot_img = PIL.Image.open(img_buf)
+            log_img_wandb(
+                img=full_plot_img,
+                caption="Feature Overview",
+                wandb_key="feature_overview",
+                scale=vis_scale,
+                logger=custom_logger,
+            )
+            custom_logger.dump(step=num_features)
 
     elif vis_type == "dataset":
         for feature_i in range(num_features):
@@ -251,79 +337,99 @@ def interpret(
                 feature=feature_i, num_mult=4, expand_mult=1
             )
 
-            plot_img(
+            _log_single_transition_wandb(
+                custom_logger, feature_i, img, vis_scale, wandb_logging
+            )
+            _plot_img(
                 columns,
-                custom_logger,
                 feature_i,
+                num_features,
                 fig,
                 img,
-                pyplot,
                 rows,
-                vis_scale,
-                wandb_logging,
             )
 
     if pyplot:
         plt.show()
-    custom_logger.log("Done with dataset visualization.")
+    custom_logger.log("Done with visualization.")
 
 
-def plot_img(
+def _determine_transforms(reg: Dict[str, Dict[str, Any]]) -> List[Callable]:
+    """Determine the transforms to use for traditional visualization. Currently, only
+    applicable to vis without GAN."""
+    return [
+        transform.jitter(reg["no_gan"]["jitter"]),
+    ]
+
+
+def _plot_img(
     columns: int,
-    custom_logger: HierarchicalLogger,
     feature_i: int,
-    fig: Optional[matplotlib.figure.Figure],
+    num_features: int,
+    fig: matplotlib.figure.Figure,
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
-    pyplot: bool,
     rows: int,
-    vis_scale: int,
-    wandb_logging: bool,
+    features_are_actions: bool = False,
 ):
-    """Plot the passed image(s) to pyplot and wandb as appropriate."""
-    _log_vis_wandb(custom_logger, feature_i, img, vis_scale, wandb_logging)
-    if fig is not None and pyplot:
-        if isinstance(img, tuple):
-            img_obs = img[0]
-            img_next_obs = img[1]
-            fig.add_subplot(rows, columns, 2 * feature_i + 1)
-            plt.imshow(img_obs)
-            fig.add_subplot(rows, columns, 2 * feature_i + 2)
-            plt.imshow(img_next_obs)
-        else:
-            fig.add_subplot(rows, columns, feature_i + 1)
-            plt.imshow(img)
+    """Plot the passed image(s) with pyplot, if pyplot is enabled."""
+    if isinstance(img, tuple):
+        img_obs = img[0]
+        img_next_obs = img[1]
+        obs_i = feature_i + 1
+        f = fig.add_subplot(rows, columns, obs_i)
+        title = f"Feature {feature_i}"
+        if features_are_actions:
+            title += f"\n({_get_action_meaning(feature_i)})"
+        # This title will be at every column
+        f.set_title(title)
+        if obs_i == 1:  # First image
+            f.set_ylabel("obs")
+        plt.imshow(img_obs)
+        # In 2-column layout, next_obs should be logged below the obs.
+        next_obs_i = obs_i + num_features
+        f = fig.add_subplot(rows, columns, next_obs_i)
+        if obs_i == 1:  # f is first image of the second row
+            f.set_ylabel("next_obs")
+        plt.imshow(img_next_obs)
+    else:
+        fig.add_subplot(rows, columns, feature_i + 1)
+        plt.imshow(img)
 
 
-def _log_vis_wandb(
+def _log_single_transition_wandb(
     custom_logger: HierarchicalLogger,
     feature_i: int,
     img: Union[Tuple[np.ndarray, np.ndarray], np.ndarray],
     vis_scale: int,
     wandb_logging: bool,
+    features_are_actions: bool = False,
 ):
-    """Plot visualizations to wandb if wandb logging is enabled."""
+    """Plot visualizations to wandb if wandb logging is enabled. Images will be logged
+    as separate media in wandb, one for each feature."""
     if wandb_logging:
         if isinstance(img, tuple):
             img_obs = img[0]
             img_next_obs = img[1]
-
-            log_np_img_wandb(
-                arr=img_obs,
-                caption=f"Feature {feature_i}, obs",
+            caption = f"Feature {feature_i}"
+            if features_are_actions:
+                caption += f"\n({_get_action_meaning(feature_i)})"
+            log_img_wandb(
+                img=img_obs,
+                caption=f"{caption}\nobs",
                 wandb_key=f"feature_{feature_i}_obs",
                 scale=vis_scale,
                 logger=custom_logger,
             )
-            log_np_img_wandb(
-                arr=img_next_obs,
-                caption=f"Feature {feature_i}, next_obs",
+            log_img_wandb(
+                img=img_next_obs,
+                caption=f"{caption}\nnext_obs",
                 wandb_key=f"feature_{feature_i}_next_obs",
                 scale=vis_scale,
                 logger=custom_logger,
             )
         else:
-            log_np_img_wandb(
-                arr=img,
+            log_img_wandb(
+                img=img,
                 caption=f"Feature {feature_i}",
                 wandb_key=f"dataset_vis_{feature_i}",
                 scale=vis_scale,

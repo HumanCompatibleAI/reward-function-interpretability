@@ -11,11 +11,20 @@ def get_activations(
     """Get the activations of a layer in a model for a batch of inputs to the model."""
     hook = render.hook_model(model, model_inputs)
 
-    # Perform forward pass through input to hook activations.
-    model(model_inputs)
+    # Perform forward pass through input to hook activations with a reasonable batch
+    # size. Generally the number of inputs would be in the thousands, so we don't want
+    # to run the entire batch through the model at once.
+    batch_size = 128
+    t_acts = []
+    for i in range(0, len(model_inputs), batch_size):
+        model(model_inputs[i : i + batch_size])
 
-    # Get activations at layer.
-    t_acts = hook(layer_name)
+        # Get activations at layer.
+        act_batch = hook(layer_name)
+        t_acts.append(act_batch)
+
+    t_acts = th.cat(t_acts, dim=0)
+    assert t_acts.shape[0] == len(model_inputs)
 
     # Reward activations might be 2 dimensional (scalar + batch dimension) e.g.
     # for linear layers. In this case we unsqueeze.

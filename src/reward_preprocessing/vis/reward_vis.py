@@ -286,6 +286,8 @@ class LayerNMF:
                 batch=len(feature_list),
             )
 
+        logging.info(f"Performing vis_traditional with transforms: {transforms}")
+
         return render.render_vis(
             self.model,
             obj,
