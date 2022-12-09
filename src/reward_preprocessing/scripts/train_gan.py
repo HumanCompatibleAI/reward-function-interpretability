@@ -87,6 +87,7 @@ def train_gan(
     )
     # print out summary
     gan.summary()
+    print("Folder:", gan.folder)
     # fit gan
     steps = {"Adversary": adv_steps}
     gan.fit(
