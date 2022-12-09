@@ -263,7 +263,8 @@ class LayerNMF:
             feature_list = [feature_list]
 
         obj = sum(
-            # Original with cosine similarity:
+            # Original with cosine similarity (for if we go back to interpreting neuron
+            # directions in intermediate layers_:
             # [
             #     objectives_rfi.direction_neuron_dim_agnostic(
             #         self.layer_name, self.channel_dirs[feature], batch=feature
@@ -271,6 +272,12 @@ class LayerNMF:
             #     for feature in feature_list
             # ]
             # New:
+            # Sum up all objectives such that we simultaneously optimize for all.
+            # Each objective maximizes the output for one of the activations (in this
+            # case equivalent to the reward for the respective actions, or overall
+            # reward if we don't differentiate between actions) and depends only on the
+            # input at that same index.
+            # In other words, each input maximizes its respective activation.
             [
                 objectives_rfi.max_index_1d(self.layer_name, feature, batch=feature)
                 for feature in feature_list
