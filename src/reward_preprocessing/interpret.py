@@ -174,16 +174,18 @@ def interpret(
         # Imitation reward nets have 4 input args, lucent expects models to only have 1.
         # This wrapper makes it so rew_net accepts a single input which is a
         # transition tensor.
-        rew_net = TensorTransitionWrapper(rew_net)
+        model_to_analyse = TensorTransitionWrapper(rew_net)
     else:  # Use GAN
         # Combine rew net with GAN.
         gan = th.load(gan_path, map_location=th.device(device))
-        rew_net = RewardGeneratorCombo(reward_net=rew_net, generator=gan.generator)
+        model_to_analyse = RewardGeneratorCombo(
+            reward_net=rew_net, generator=gan.generator
+        )
 
-    rew_net.eval()  # Eval for visualization.
+    model_to_analyse.eval()  # Eval for visualization.
 
     custom_logger.log("Available layers:")
-    custom_logger.log(get_model_layers(rew_net))
+    custom_logger.log(get_model_layers(model_to_analyse))
 
     # Load the inputs into the model that are used to do dimensionality reduction and
     # getting the shape of activations.
@@ -217,7 +219,6 @@ def interpret(
     # In our case this is one of the following:
     # - A reward net that has been wrapped, so it accepts transition tensors.
     # - A combo of GAN and reward net that accepts latent inputs vectors.
-    model_to_analyse = rew_net
     nmf = LayerNMF(
         model=model_to_analyse,
         features=num_features,
@@ -228,8 +229,8 @@ def interpret(
         activation_fn="sigmoid",
     )
 
-    custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
     # If these are equal, then of course there is no actual reduction.
+    custom_logger.log(f"Dimensionality reduction (to, from): {nmf.channel_dirs.shape}")
 
     num_features = nmf.channel_dirs.shape[0]
     rows, columns = 2, num_features
@@ -246,14 +247,16 @@ def interpret(
             # This does the actual interpretability, i.e. it calculates the
             # visualizations.
             opt_transitions = nmf.vis_traditional(transforms=transforms)
-            # This gives as an array that optimizes the objectives, in the shape of the
+            # This gives us an array that optimizes the objectives, in the shape of the
             # input which is a transition tensor. However, lucent helpfully transposes
             # the output such that the channel dimension is last. Our functions expect
             # channel dim before spatial dims, so we need to transpose it back.
             opt_transitions = opt_transitions.transpose(0, 3, 1, 2)
+            # In the following we need opt_transitions to be a pytorch tensor.
+            opt_transitions = th.tensor(opt_transitions)
             # Split the optimized transitions, one for each feature, into separate
             # observations and actions. This function only works with torch tensors.
-            obs, acts, next_obs = tensor_to_transition(th.tensor(opt_transitions))
+            obs, acts, next_obs = tensor_to_transition(opt_transitions)
             # obs and next_obs output have channel dim last.
             # acts is output as one-hot vector.
         else:
@@ -272,15 +275,40 @@ def interpret(
             opt_transitions = gan.generator(opt_latent_th)
             obs, acts, next_obs = tensor_to_transition(opt_transitions)
 
+        # What reward does the model output for these generated transitions?
+        # (done isn't used in the reward function)
+        # There are three possible options here:
+        # - The reward net does not use action -> it does not matter what we pass as
+        #   action.
+        # - The reward net does use action, and we are optimizing an intermediate layer
+        #   -> since action is only used on the final layer (to choose which of the 15
+        #   heads has the correct reward), it does not matter what we pass as action.
+        # - The reward net does use action, and we are optimizing the final layer
+        #  -> the action index of the action corresponds to the index of the feature.
+        # Note that since actions is only used to choose which head to use, there are no
+        # gradients from the reward to the action. Consequently, acts in opt_latent is
+        # meaningless.
+        actions = th.tensor(list(range(num_features))).to(device)
+        assert len(actions) == len(obs)
+        rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
+        custom_logger.log(f"Rewards: {rews}")
+
         # Use numpy from here.
         obs = obs.detach().cpu().numpy()
         next_obs = next_obs.detach().cpu().numpy()
+        rews = rews.detach().cpu().numpy()
 
         # We want to plot the name of the action, if applicable.
         features_are_actions = _determine_features_are_actions(nmf, layer_name)
 
         # Set of images, one for each feature, add each to plot
         for feature_i in range(next_obs.shape[0]):
+            # Log the rewards
+            rew_key = f"rew_feat_{feature_i:02}"
+            if features_are_actions:
+                rew_key += f"_{_get_action_meaning(action_id=feature_i)}"
+            custom_logger.record(rew_key, rews[feature_i])
+            # Log the images
             sub_img_obs = obs[feature_i]
             sub_img_next_obs = next_obs[feature_i]
             _log_single_transition_wandb(
