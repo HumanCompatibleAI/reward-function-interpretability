@@ -21,7 +21,8 @@ def get_activations(
 
         # Get activations at layer.
         act_batch = hook(layer_name)
-        t_acts.append(act_batch)
+        t_acts.append(act_batch.detach())
+        model.zero_grad()
 
     t_acts = th.cat(t_acts, dim=0)
     assert t_acts.shape[0] == len(model_inputs)
