@@ -18,6 +18,7 @@ from reward_preprocessing.common.utils import (
     TensorTransitionWrapper,
     array_to_image,
     log_img_wandb,
+    ndarray_to_transition,
     rollouts_to_dataloader,
     tensor_to_transition,
 )
@@ -179,7 +180,7 @@ def interpret(
         # Combine rew net with GAN.
         gan = th.load(gan_path, map_location=th.device(device))
         model_to_analyse = RewardGeneratorCombo(
-            reward_net=rew_net, generator=gan.generator
+            rew_net=rew_net, generator=gan.generator
         )
 
     model_to_analyse.eval()  # Eval for visualization.
@@ -361,19 +362,21 @@ def interpret(
         for feature_i in range(num_features):
             custom_logger.log(f"Feature {feature_i}")
 
-            img, indices = nmf.vis_dataset_thumbnail(
+            np_trans_tens, indices = nmf.vis_dataset_thumbnail(
                 feature=feature_i, num_mult=4, expand_mult=1
             )
 
+            obs, _, next_obs = ndarray_to_transition(np_trans_tens)
+
             _log_single_transition_wandb(
-                custom_logger, feature_i, img, vis_scale, wandb_logging
+                custom_logger, feature_i, (obs, next_obs), vis_scale, wandb_logging
             )
             _plot_img(
                 columns,
                 feature_i,
                 num_features,
                 fig,
-                img,
+                (obs, next_obs),
                 rows,
             )
 
