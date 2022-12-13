@@ -179,7 +179,7 @@ def interpret(
         # Combine rew net with GAN.
         gan = th.load(gan_path, map_location=th.device(device))
         model_to_analyse = RewardGeneratorCombo(
-            reward_net=rew_net, generator=gan.generator
+            rew_net=rew_net, generator=gan.generator
         )
 
     model_to_analyse.eval()  # Eval for visualization.
