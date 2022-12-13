@@ -221,9 +221,9 @@ class RewardGeneratorCombo(nn.Module):
     Assumes that the RewardNet normalizes observations to [0,1].
     """
 
-    def __init__(self, reward_net: RewardNet, generator: nn.Module):
+    def __init__(self, rew_net: RewardNet, generator: nn.Module):
         super().__init__()
-        self.reward_net = reward_net
+        self.rew_net = rew_net
         self.generator = generator
 
     def forward(self, latent_tens: th.Tensor):
@@ -231,7 +231,7 @@ class RewardGeneratorCombo(nn.Module):
         transition_tensor = self.generator(latent_vec)
         obs, action_vec, next_obs = tensor_to_transition(transition_tensor)
         done = th.zeros(action_vec.shape)
-        return self.reward_net.forward(obs, action_vec, next_obs, done)
+        return self.rew_net.forward(obs, action_vec, next_obs, done)
 
 
 def log_img_wandb(
