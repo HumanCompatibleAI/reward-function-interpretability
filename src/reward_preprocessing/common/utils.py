@@ -141,7 +141,10 @@ def visualize_samples(samples: np.ndarray, save_dir):
 
 
 def process_image_array(img: np.ndarray) -> np.ndarray:
-    """Process a numpy array for feeding into PIL.Image.fromarray."""
+    """Process a numpy array for feeding into PIL.Image.fromarray.
+
+    Should already be in (h,w,c) format.
+    """
     up_multiplied = img * 255
     clipped = np.clip(up_multiplied, 0, 255)
     cast = clipped.astype(np.uint8)
