@@ -362,9 +362,13 @@ def interpret(
         for feature_i in range(num_features):
             custom_logger.log(f"Feature {feature_i}")
 
-            np_trans_tens, indices = nmf.vis_dataset_thumbnail(
+            dataset_thumbnails, indices = nmf.vis_dataset_thumbnail(
                 feature=feature_i, num_mult=4, expand_mult=1
             )
+
+            # remove opacity channel from dataset thumbnails
+            num_channels_total = dataset_thumbnails.shape[0]
+            np_trans_tens = dataset_thumbnails[0 : num_channels_total - 1, :, :]
 
             obs, _, next_obs = ndarray_to_transition(np_trans_tens)
 
@@ -379,6 +383,15 @@ def interpret(
                 (obs, next_obs),
                 rows,
             )
+
+            if img_save_path is not None:
+                obs_PIL = array_to_image(obs, vis_scale)
+                obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
+                next_obs_PIL = array_to_image(next_obs, vis_scale)
+                next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
+                custom_logger.log(
+                    f"Saved feature {feature_i} viz in dir {img_save_path}."
+                )
 
     if pyplot:
         plt.show()
