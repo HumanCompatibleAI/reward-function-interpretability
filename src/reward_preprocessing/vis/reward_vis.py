@@ -1,7 +1,7 @@
 """Port of lucid.scratch.rl_util to PyTorch. APL2.0 licensed."""
 from functools import reduce
 import logging
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from lucent.optvis.objectives import handle_batch, wrap_objective
 import lucent.optvis.param as param
@@ -253,6 +253,9 @@ class LayerNMF:
         transforms: List[Callable[[th.Tensor], th.Tensor]] = [transform.jitter(2)],
         l2_coeff: float = 0.0,
         l2_layer_name: Optional[str] = None,
+        param_f: Optional[
+            Callable[[], Tuple[th.Tensor, Callable[[], th.Tensor]]]
+        ] = None,
     ) -> np.ndarray:
         if feature_list is None:
             # Feature dim is at index 1
@@ -291,13 +294,15 @@ class LayerNMF:
             obj -= l2_objective(l2_layer_name, l2_coeff)
         input_shape = tuple(self.model_inputs_preprocess.shape[1:])
 
-        def param_f():
-            return param.image(
-                channels=input_shape[0],
-                h=input_shape[1],
-                w=input_shape[2],
-                batch=len(feature_list),
-            )
+        if param_f is None:
+
+            def param_f():
+                return param.image(
+                    channels=input_shape[0],
+                    h=input_shape[1],
+                    w=input_shape[2],
+                    batch=len(feature_list),
+                )
 
         logging.info(f"Performing vis_traditional with transforms: {transforms}")
 
