@@ -367,8 +367,7 @@ def interpret(
             )
 
             # remove opacity channel from dataset thumbnails
-            num_channels_total = dataset_thumbnails.shape[0]
-            np_trans_tens = dataset_thumbnails[0 : num_channels_total - 1, :, :]
+            np_trans_tens = dataset_thumbnails[:-1, :, :]
 
             obs, _, next_obs = ndarray_to_transition(np_trans_tens)
 
