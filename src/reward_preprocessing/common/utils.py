@@ -129,30 +129,26 @@ def visualize_samples(samples: np.ndarray, save_dir):
     to turn act into a numpy array, before saving it.
     """
     for i, transition in enumerate(samples):
-        num_acts = transition.shape[0] - 6
-        s = transition[0:3, :, :]
+        s, act, s_ = ndarray_to_transition(transition)
         s = process_image_array(s)
-        act = transition[3 : 3 + num_acts, :, :]
-        s_ = transition[3 + num_acts : transition.shape[0], :, :]
         s_ = process_image_array(s_)
-        act_slim_mean = np.mean(act, axis=(1, 2))
-        act_slim_max = np.max(np.abs(act), axis=(1, 2))
         s_img = PIL.Image.fromarray(s)
         s__img = PIL.Image.fromarray(s_)
         (Path(save_dir) / str(i)).mkdir()
         s_img.save(Path(save_dir) / str(i) / "first_obs.png")
         s__img.save(Path(save_dir) / str(i) / "second_obs.png")
-        np.save(Path(save_dir) / str(i) / "act_vec_mean.npy", act_slim_mean)
-        np.save(Path(save_dir) / str(i) / "act_vec_max.npy", act_slim_max)
+        np.save(Path(save_dir) / str(i) / "act.npy", act)
 
 
 def process_image_array(img: np.ndarray) -> np.ndarray:
-    """Process a numpy array for feeding into PIL.Image.fromarray."""
+    """Process a numpy array for feeding into PIL.Image.fromarray.
+
+    Should already be in (h,w,c) format.
+    """
     up_multiplied = img * 255
     clipped = np.clip(up_multiplied, 0, 255)
     cast = clipped.astype(np.uint8)
-    transposed = np.transpose(cast, axes=(1, 2, 0))
-    return transposed
+    return cast
 
 
 def tensor_to_transition(
@@ -176,6 +172,22 @@ def tensor_to_transition(
     next_obs_raw = trans_tens[:, num_acts + 3 : num_acts + 6, :, :]
     next_obs_proc = process_image_tensor(next_obs_raw)
     return obs_proc, act_proc, next_obs_proc
+
+
+def ndarray_to_transition(
+    np_trans: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Turn a numpy transition tensor into three bona fide transitions."""
+    if len(np_trans.shape) != 3:
+        raise ValueError("ndarray_to_transition assumes input has shape of length 3")
+    boosted_np_trans = np_trans[None, :, :, :]
+    th_trans = th.from_numpy(boosted_np_trans)
+    th_obs, th_act, th_next_obs = tensor_to_transition(th_trans)
+    np_obs, np_act, np_next_obs = map(
+        lambda th_result: th_result[0].detach().cpu().numpy(),
+        (th_obs, th_act, th_next_obs),
+    )
+    return np_obs, np_act, np_next_obs
 
 
 def process_image_tensor(obs: th.Tensor) -> th.Tensor:

@@ -340,7 +340,9 @@ class LayerNMF:
                 % 2
             )  # Checkered pattern.
             self.padded_obses = self.padded_obses * 0.25 + 0.75  # Adjust color.
-            self.padded_obses = self.padded_obses.astype(self.model_inputs_full.dtype)
+            self.padded_obses = self.padded_obses.astype(
+                self.model_inputs_full.detach().cpu().numpy().dtype
+            )
             # Add dims for batch and channel.
             self.padded_obses = self.padded_obses[None, None, ...]
             # Repeat for correct number of images.
@@ -348,10 +350,11 @@ class LayerNMF:
                 self.model_inputs_full.shape[0], axis=0
             )
             # Repeat channel dimension.
-            self.padded_obses = self.padded_obses.repeat(3, axis=1)
+            num_channels = self.model_inputs_full.shape[1]
+            self.padded_obses = self.padded_obses.repeat(num_channels, axis=1)
             self.padded_obses[
                 :, :, self.pad_h : -self.pad_h, self.pad_w : -self.pad_w
-            ] = self.model_inputs_full
+            ] = (self.model_inputs_full.detach().cpu().numpy())
 
     def get_patch(self, obs_index, pos_h, pos_w, *, expand_mult=1):
         left_h = self.pad_h + (pos_h - 0.5 * expand_mult) * self.patch_h
@@ -468,7 +471,7 @@ class LayerNMF:
         acts_single = acts_feature[
             range(acts_feature.shape[0]), pos_indices[0], pos_indices[1]
         ]
-        # Sort the activations in descending order and take the num_mult**2 strongest.
+        # Sort the activations in descending order and take the num_mult**2 strongest
         # activations.
         obs_indices = np.argsort(-acts_single, axis=0)[: num_mult**2]
         # Coordinates of the strongest activation in each observation.
