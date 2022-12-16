@@ -7,6 +7,7 @@ from imitation.scripts.common import common as common_config
 from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
 from lucent.optvis import transform
+from lucent.optvis.param.spatial import pixel_image
 import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
@@ -264,14 +265,32 @@ def interpret(
             # We do not require the latent vectors to be transformed before optimizing.
             # However, we do regularize the L2 norm of latent vectors, to ensure the
             # resulting generated images are realistic.
+            z_dim_as_expected = (
+                isinstance(gan.z_dim, tuple)
+                and len(gan.z_dim) == 1
+                and isinstance(gan.z_dim[0], int)
+            )
+            if not z_dim_as_expected:
+                error_string = (
+                    "interpret.py expects the GAN's latent input shape to "
+                    + f"be a tuple of length 1, instead it is {gan.z_dim}."
+                )
+                raise TypeError(error_string)
+            # ensure visualization doesn't treat the latent vector as an image.
+            latent_shape = (num_features, gan.z_dim[0], 1, 1)
+
+            def param_f():
+                return pixel_image(shape=latent_shape)
+
             opt_latent = nmf.vis_traditional(
                 transforms=[],
                 l2_coeff=l2_coeff,
                 l2_layer_name="generator_network_latent_vec",
+                param_f=param_f,
             )
             # Now, we put the latent vector thru the generator to produce transition
             # tensors that we can get observations, actions, etc out of
-            opt_latent = np.mean(opt_latent, axis=(1, 2))
+            opt_latent = np.squeeze(opt_latent)
             opt_latent_th = th.from_numpy(opt_latent).to(th.device(device))
             opt_transitions = gan.generator(opt_latent_th)
             obs, acts, next_obs = tensor_to_transition(opt_transitions)
