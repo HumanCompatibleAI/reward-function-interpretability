@@ -290,6 +290,8 @@ def interpret(
             )
             # Now, we put the latent vector thru the generator to produce transition
             # tensors that we can get observations, actions, etc out of
+            assert opt_latent.shape[1] == 1
+            assert opt_latent.shape[2] == 1
             squeeze_shape = [opt_latent.shape[0], opt_latent.shape[3]]
             opt_latent = opt_latent.reshape(squeeze_shape)
             # ^ squeeze out extraneous "height" and "width" dimensions
