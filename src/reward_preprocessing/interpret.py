@@ -290,7 +290,9 @@ def interpret(
             )
             # Now, we put the latent vector thru the generator to produce transition
             # tensors that we can get observations, actions, etc out of
-            opt_latent = np.squeeze(opt_latent)
+            squeeze_shape = [opt_latent.shape[0], opt_latent.shape[3]]
+            opt_latent = opt_latent.reshape(squeeze_shape)
+            # ^ squeeze out extraneous "height" and "width" dimensions
             opt_latent_th = th.from_numpy(opt_latent).to(th.device(device))
             opt_transitions = gan.generator(opt_latent_th)
             obs, acts, next_obs = tensor_to_transition(opt_transitions)
