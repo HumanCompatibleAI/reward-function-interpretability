@@ -44,5 +44,15 @@ def coinrun():
     locals()  # make flake8 happy
 
 
+@train_preference_comparisons_ex.named_config
+def fast_procgen():  # Overrides some settings for fast setup for debugging purposes.
+    rl = dict(batch_size=32, rl_kwargs=dict(batch_size=16))
+    common = dict(num_vec=1)
+    total_comparisons = 100
+    fragment_length = 50
+    total_timesteps = 1_000
+    locals()  # make flake8 happy
+
+
 if __name__ == "__main__":  # pragma: no cover
     main_console()
