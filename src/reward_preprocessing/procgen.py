@@ -13,8 +13,8 @@ def supported_procgen_env(gym_spec: gym.envs.registration.EnvSpec) -> bool:
     return starts_with_procgen and three_parts
 
 
-def make_auto_reset_procgen(procgen_env_id: str) -> gym.Env:
-    env = AutoResetWrapper(gym.make(procgen_env_id))
+def make_auto_reset_procgen(procgen_env_id: str, **make_env_kwargs) -> gym.Env:
+    env = AutoResetWrapper(gym.make(procgen_env_id, **make_env_kwargs))
     return env
 
 
