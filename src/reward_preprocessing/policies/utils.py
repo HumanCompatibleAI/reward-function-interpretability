@@ -2,7 +2,7 @@ import random
 from typing import Callable, Optional, Union
 
 import gym
-from imitation.data.types import AnyPath, path_to_str
+from imitation.data.types import AnyPath
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -14,6 +14,13 @@ PolicyCallable = Callable[[np.ndarray], np.ndarray]
 # A Policy can be a PolicyCallable, but also a BaseAlgorithm/BasePolicy
 # or a gym action space (which means that random actions will be chosen)
 Policy = Union[gym.Space, PolicyCallable, BaseAlgorithm, BasePolicy]
+
+
+def path_to_str(path: AnyPath) -> str:
+    if isinstance(path, bytes):
+        return path.decode()
+    else:
+        return str(path)
 
 
 def policy_to_callable(
