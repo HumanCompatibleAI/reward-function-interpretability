@@ -1,4 +1,5 @@
 """Thin wrapper around imitation's train_preference_comparisons script."""
+import imitation.rewards.reward_nets
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
@@ -40,6 +41,14 @@ def coinrun():
             vf_coef=0.5,
             normalize_advantage=True,
         ),
+    )
+    reward = dict(
+        # Use default CNN reward net, since procgen envs are image-based.
+        # Also, hopefully, CNNs are more interpretable.
+        net_cls=imitation.rewards.reward_nets.CnnRewardNet,
+        # There is a default net_kwarg in imitation that does not exist for
+        # CnnRewardNet.
+        net_kwargs={},
     )
     locals()  # make flake8 happy
 
