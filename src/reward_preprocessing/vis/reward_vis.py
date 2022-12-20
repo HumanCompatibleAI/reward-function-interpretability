@@ -3,6 +3,7 @@ from functools import reduce
 import logging
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
+from imitation.util import logger as imit_logger
 from lucent.optvis.objectives import handle_batch, wrap_objective
 import lucent.optvis.param as param
 import lucent.optvis.render as render
@@ -448,6 +449,7 @@ class LayerNMF:
         num_mult: int = 1,
         expand_mult: int = 1,
         max_rep: Optional[Union[int, float]] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Visualize a dataset of patches that maximize a given feature.
 
@@ -472,13 +474,21 @@ class LayerNMF:
         pos_indices = argmax_nd(
             acts_feature, axes=[1, 2], max_rep=max_rep, max_rep_strict=True
         )
-        # The actual maximum values of the activations, accroding to max_rep setting.
+        # The actual maximum values of the activations, according to max_rep setting.
         acts_single = acts_feature[
             range(acts_feature.shape[0]), pos_indices[0], pos_indices[1]
         ]
         # Sort the activations in descending order and take the num_mult**2 strongest
         # activations.
         obs_indices = np.argsort(-acts_single, axis=0)[: num_mult**2]
+
+        # Log rewards
+        if custom_logger is not None:
+            rewards_array = acts_single[obs_indices]
+            custom_logger.log(
+                f"Rewards for dataset viz of feature {feature}: {rewards_array}"
+            )
+
         # Coordinates of the strongest activation in each observation.
         coords = np.array(list(zip(*pos_indices)), dtype=[("h", int), ("w", int)])[
             obs_indices

@@ -228,7 +228,6 @@ def interpret(
         # input samples are used for dim reduction (if features is not
         # None) and for determining the shape of the features.
         model_inputs_preprocess=inputs,
-        activation_fn="sigmoid",
     )
 
     # If these are equal, then of course there is no actual reduction.
@@ -386,7 +385,10 @@ def interpret(
             custom_logger.log(f"Feature {feature_i}")
 
             dataset_thumbnails, indices = nmf.vis_dataset_thumbnail(
-                feature=feature_i, num_mult=4, expand_mult=1
+                feature=feature_i,
+                num_mult=4,
+                expand_mult=1,
+                custom_logger=custom_logger,
             )
 
             # remove opacity channel from dataset thumbnails
