@@ -57,11 +57,11 @@ def coinrun():
 
 @train_preference_comparisons_ex.named_config
 def fast_procgen():  # Overrides some settings for fast setup for debugging purposes.
-    rl = dict(batch_size=32, rl_kwargs=dict(batch_size=16))
+    rl = dict(batch_size=2, rl_kwargs=dict(batch_size=2))
     common = dict(num_vec=1)
-    total_comparisons = 100
-    fragment_length = 50
-    total_timesteps = 1_000
+    total_comparisons = 32
+    fragment_length = 16
+    total_timesteps = 64
     locals()  # make flake8 happy
 
 
