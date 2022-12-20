@@ -7,6 +7,7 @@ from imitation.scripts.common import common as common_config
 from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
 from lucent.optvis import transform
+from lucent.optvis.param.spatial import pixel_image
 import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
@@ -18,6 +19,7 @@ from reward_preprocessing.common.utils import (
     TensorTransitionWrapper,
     array_to_image,
     log_img_wandb,
+    ndarray_to_transition,
     rollouts_to_dataloader,
     tensor_to_transition,
 )
@@ -179,7 +181,7 @@ def interpret(
         # Combine rew net with GAN.
         gan = th.load(gan_path, map_location=th.device(device))
         model_to_analyse = RewardGeneratorCombo(
-            reward_net=rew_net, generator=gan.generator
+            rew_net=rew_net, generator=gan.generator
         )
 
     model_to_analyse.eval()  # Eval for visualization.
@@ -263,14 +265,33 @@ def interpret(
             # We do not require the latent vectors to be transformed before optimizing.
             # However, we do regularize the L2 norm of latent vectors, to ensure the
             # resulting generated images are realistic.
+            z_dim_as_expected = (
+                isinstance(gan.z_dim, tuple)
+                and len(gan.z_dim) == 1
+                and isinstance(gan.z_dim[0], int)
+            )
+            if not z_dim_as_expected:
+                error_string = (
+                    "interpret.py expects the GAN's latent input shape to "
+                    + f"be a tuple of length 1, instead it is {gan.z_dim}."
+                )
+                raise TypeError(error_string)
+            # ensure visualization doesn't treat the latent vector as an image.
+            latent_shape = (num_features, gan.z_dim[0], 1, 1)
+
+            def param_f():
+                return pixel_image(shape=latent_shape)
+
             opt_latent = nmf.vis_traditional(
                 transforms=[],
                 l2_coeff=l2_coeff,
                 l2_layer_name="generator_network_latent_vec",
+                param_f=param_f,
             )
             # Now, we put the latent vector thru the generator to produce transition
             # tensors that we can get observations, actions, etc out of
-            opt_latent = np.mean(opt_latent, axis=(1, 2))
+            opt_latent = np.squeeze(opt_latent, axis=(1, 2))
+            # ^ squeeze out extraneous "height" and "width" dimensions
             opt_latent_th = th.from_numpy(opt_latent).to(th.device(device))
             opt_transitions = gan.generator(opt_latent_th)
             obs, acts, next_obs = tensor_to_transition(opt_transitions)
@@ -361,21 +382,35 @@ def interpret(
         for feature_i in range(num_features):
             custom_logger.log(f"Feature {feature_i}")
 
-            img, indices = nmf.vis_dataset_thumbnail(
+            dataset_thumbnails, indices = nmf.vis_dataset_thumbnail(
                 feature=feature_i, num_mult=4, expand_mult=1
             )
 
+            # remove opacity channel from dataset thumbnails
+            np_trans_tens = dataset_thumbnails[:-1, :, :]
+
+            obs, _, next_obs = ndarray_to_transition(np_trans_tens)
+
             _log_single_transition_wandb(
-                custom_logger, feature_i, img, vis_scale, wandb_logging
+                custom_logger, feature_i, (obs, next_obs), vis_scale, wandb_logging
             )
             _plot_img(
                 columns,
                 feature_i,
                 num_features,
                 fig,
-                img,
+                (obs, next_obs),
                 rows,
             )
+
+            if img_save_path is not None:
+                obs_PIL = array_to_image(obs, vis_scale)
+                obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
+                next_obs_PIL = array_to_image(next_obs, vis_scale)
+                next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
+                custom_logger.log(
+                    f"Saved feature {feature_i} viz in dir {img_save_path}."
+                )
 
     if pyplot:
         plt.show()
