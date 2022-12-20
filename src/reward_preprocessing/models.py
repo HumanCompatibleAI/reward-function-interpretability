@@ -2,13 +2,48 @@ import logging
 from typing import Tuple
 
 import gym
-from imitation.rewards.reward_nets import RewardNet
+from imitation.rewards.reward_nets import CnnRewardNet, RewardNet
 import numpy as np
 import torch as th
 
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
 logger = logging.getLogger(__name__)
+
+
+class FixedCnnRewardNet(CnnRewardNet):
+    """Identical to CnnRewardNet, except that it fixes imitation issue #644 by
+    removing normalize_input_layer from the kwargs.
+    Reconsider this once the underlying issue is fixed."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        use_state: bool = True,
+        use_action: bool = True,
+        use_next_state: bool = False,
+        use_done: bool = False,
+        hwc_format: bool = True,
+        **kwargs,
+    ):
+        normalize = kwargs.pop("normalize_input_layer", None)
+        if normalize is not None:
+            logger.warning(
+                f"normalize_input_layer={normalize} was provided, will be ignored. See "
+                "imitation issue #64.4"
+            )
+
+        super().__init__(
+            observation_space,
+            action_space,
+            use_state,
+            use_action,
+            use_next_state,
+            use_done,
+            hwc_format,
+            **kwargs,
+        )
 
 
 class MazeRewardNet(RewardNet):

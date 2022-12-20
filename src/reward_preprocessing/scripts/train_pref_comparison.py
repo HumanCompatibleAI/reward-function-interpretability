@@ -7,6 +7,7 @@ from imitation.scripts.train_preference_comparisons import main_console
 
 from reward_preprocessing.env.maze import use_config
 import reward_preprocessing.policies.base
+from reward_preprocessing.models import FixedCnnRewardNet
 
 use_config(train_preference_comparisons_ex)
 
@@ -45,10 +46,11 @@ def coinrun():
     reward = dict(
         # Use default CNN reward net, since procgen envs are image-based.
         # Also, hopefully, CNNs are more interpretable.
-        net_cls=imitation.rewards.reward_nets.CnnRewardNet,
+        # net_cls=imitation.rewards.reward_nets.CnnRewardNet,
+        net_cls=FixedCnnRewardNet,
         # There is a default net_kwarg in imitation that does not exist for
         # CnnRewardNet.
-        net_kwargs={},
+        # net_kwargs={},
     )
     locals()  # make flake8 happy
 
