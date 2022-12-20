@@ -11,10 +11,11 @@ from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 logger = logging.getLogger(__name__)
 
 
-class FixedCnnRewardNet(CnnRewardNet):
+class CnnRewardNetWorkaround(CnnRewardNet):
     """Identical to CnnRewardNet, except that it fixes imitation issue #644 by
     removing normalize_input_layer from the kwargs.
-    Reconsider this once the underlying issue is fixed."""
+    TODO: Reconsider this once the underlying issue is fixed.
+    """
 
     def __init__(
         self,
