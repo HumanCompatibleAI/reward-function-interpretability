@@ -6,8 +6,8 @@ from imitation.scripts.config.train_preference_comparisons import (
 from imitation.scripts.train_preference_comparisons import main_console
 
 from reward_preprocessing.env.maze import use_config
-import reward_preprocessing.policies.base
 from reward_preprocessing.models import FixedCnnRewardNet
+import reward_preprocessing.policies.base
 
 use_config(train_preference_comparisons_ex)
 
