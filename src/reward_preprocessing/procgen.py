@@ -25,7 +25,7 @@ def make_fin_obs_procgen(procgen_env_id: str, **make_env_kwargs) -> gym.Env:
     return env
 
 
-def local_name(gym_spec: gym.envs.registration.EnvSpec) -> str:
+def local_name_autoreset(gym_spec: gym.envs.registration.EnvSpec) -> str:
     split_str = gym_spec.id.split("-")
     version = split_str[-1]
     split_str[-1] = "autoreset"
