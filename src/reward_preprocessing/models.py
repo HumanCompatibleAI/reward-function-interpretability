@@ -32,7 +32,7 @@ class CnnRewardNetWorkaround(CnnRewardNet):
         if normalize is not None:
             logger.warning(
                 f"normalize_input_layer={normalize} was provided, will be ignored. See "
-                "imitation issue #64.4"
+                "imitation issue #644"
             )
 
         super().__init__(
