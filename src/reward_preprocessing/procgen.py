@@ -6,8 +6,6 @@ from typing import Iterable
 import gym
 from seals.util import AutoResetWrapper, get_gym_max_episode_steps
 
-from reward_preprocessing.common.utils import ProcgenFinalObsWrapper
-
 
 def supported_procgen_env(gym_spec: gym.envs.registration.EnvSpec) -> bool:
     starts_with_procgen = gym_spec.id.startswith("procgen-")
@@ -62,3 +60,24 @@ def register_procgen_envs(
             max_episode_steps=get_gym_max_episode_steps(gym_spec.id),
             kwargs=dict(procgen_env_id=gym_spec.id),
         )
+
+
+class ProcgenFinalObsWrapper(gym.Wrapper):
+    """Returns the final observation of gym3 procgen environment, correcting for the
+    implicit reset.
+    Only works correctly when the 'done' signal coincides with the end of an episode
+    (which is not the case when using e.g. the seals AutoResetWrapper).
+    Requires the use of the PavelCz/procgenAISC fork, which adds the 'final_obs' value.
+
+    Since procgen builds on gym3, it always resets the environment after a terminal
+    state. The 'obs' returned will then be the first observation of the next episode.
+    In our fork of procgen, we save the last observation of the terminated episode in
+    the info dict.
+    """
+
+    def step(self, action):
+        """When done=True, returns the final_obs from the dict."""
+        obs, rew, done, info = self.env.step(action)
+        if done:
+            obs = info["final_obs"]
+        return obs, rew, done, info

@@ -3,7 +3,6 @@ from typing import List, Optional, Tuple, Union
 
 import PIL
 from PIL import Image
-import gym
 from imitation.data import rollout, types
 from imitation.rewards.reward_nets import RewardNet
 from imitation.util.logger import HierarchicalLogger
@@ -298,24 +297,3 @@ def save_loss_plots(losses, save_dir):
     """Save plots of generator/adversary losses over training."""
     fig, _ = vegans.utils.plot_losses(losses, show=False)
     fig.savefig(Path(save_dir) / "loss_fig.png")
-
-
-class ProcgenFinalObsWrapper(gym.Wrapper):
-    """Returns the final observation of gym3 procgen environment, correcting for the
-    implicit reset.
-    Only works correctly when the 'done' signal coincides with the end of an episode
-    (which is not the case when using e.g. the seals AutoResetWrapper).
-    Requires the use of the PavelCz/procgenAISC fork, which adds the 'final_obs' value.
-
-    Since procgen builds on gym3, it always resets the environment after a terminal
-    state. The 'obs' returned will then be the first observation of the next episode.
-    In our fork of procgen, we save the last observation of the terminated episode in
-    the info dict.
-    """
-
-    def step(self, action):
-        """When done=True, returns the final_obs from the dict."""
-        obs, rew, done, info = self.env.step(action)
-        if done:
-            obs = info["final_obs"]
-        return obs, rew, done, info
