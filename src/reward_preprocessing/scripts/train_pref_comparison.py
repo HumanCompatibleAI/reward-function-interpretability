@@ -17,8 +17,6 @@ def coinrun():
     fragment_length = 200
     total_comparisons = 100_000
     total_timesteps = 200_000_000
-    # agent_path = "/home/daniel/reward-function-interpretability/
-    # procgen/coinrun/policies/final/model.zip"  # move this to nas?
     train = dict(
         policy_cls=reward_preprocessing.policies.base.ImpalaPolicy,
     )
@@ -45,11 +43,7 @@ def coinrun():
     reward = dict(
         # Use default CNN reward net, since procgen envs are image-based.
         # Also, hopefully, CNNs are more interpretable.
-        # net_cls=imitation.rewards.reward_nets.CnnRewardNet,
         net_cls=CnnRewardNetWorkaround,
-        # There is a default net_kwarg in imitation that does not exist for
-        # CnnRewardNet.
-        # net_kwargs={},
     )
     locals()  # make flake8 happy
 
