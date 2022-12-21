@@ -45,7 +45,7 @@ def register_procgen_envs(
 
     for gym_spec in gym_procgen_env_specs:
         gym.register(
-            id=local_name(gym_spec),
+            id=local_name_autoreset(gym_spec),
             entry_point="reward_preprocessing.procgen:make_auto_reset_procgen",
             max_episode_steps=get_gym_max_episode_steps(gym_spec.id),
             kwargs=dict(procgen_env_id=gym_spec.id),
