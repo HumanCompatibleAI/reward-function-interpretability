@@ -46,18 +46,18 @@ class CnnRewardNetWorkaround(CnnRewardNet):
             hwc_format,
             **kwargs,
         )
-        self.i=0
+        self.i = 0
 
     def forward(
-            self,
-            state: th.Tensor,
-            action: th.Tensor,
-            next_state: th.Tensor,
-            done: th.Tensor,
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
     ):
         save = False
         if save:
-            # if self.i < 500:
+            # if self.i < 200:
             obs_PIL = array_to_image(state[0].cpu().numpy(), 4)
             obs_PIL.save(f"{self.i:04d}obs.png")
             next_obs_PIL = array_to_image(next_state[0].cpu().numpy(), 4)
