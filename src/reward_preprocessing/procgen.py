@@ -14,11 +14,27 @@ def supported_procgen_env(gym_spec: gym.envs.registration.EnvSpec) -> bool:
 
 
 def make_auto_reset_procgen(procgen_env_id: str, **make_env_kwargs) -> gym.Env:
+    """Make procgen with auto reset. Final observation is not fixed.
+
+    That means the final observation will be a duplicate of the second to last."""
     env = AutoResetWrapper(gym.make(procgen_env_id, **make_env_kwargs))
     return env
 
 
+def make_fin_obs_auto_reset_procgen(procgen_env_id: str, **make_env_kwargs) -> gym.Env:
+    """Make procgen with auto reset and fixed final observation."""
+    # The order of the wrappers matters here. Final obs wrapper must be applied first,
+    # then auto reset wrapper. This is because the final obs wrapper depends on the
+    # done signal, on order to fix the final observation of an episode. The auto reset
+    # wrapper will reset the done signal to False for the original episode end.
+    env = AutoResetWrapper(
+        ProcgenFinalObsWrapper(gym.make(procgen_env_id, **make_env_kwargs))
+    )
+    return env
+
+
 def make_fin_obs_procgen(procgen_env_id: str, **make_env_kwargs) -> gym.Env:
+    """Make procgen with fixed final observation."""
     env = ProcgenFinalObsWrapper(gym.make(procgen_env_id, **make_env_kwargs))
     return env
 
@@ -37,29 +53,36 @@ def local_name_fin_obs(gym_spec: gym.envs.registration.EnvSpec) -> str:
     return "-".join(split_str + [version])
 
 
+def local_name_fin_obs_autoreset(gym_spec: gym.envs.registration.EnvSpec) -> str:
+    split_str = gym_spec.id.split("-")
+    version = split_str[-1]
+    split_str[-1] = "final-obs-autoreset"
+    return "-".join(split_str + [version])
+
+
 def register_procgen_envs(
     gym_procgen_env_specs: Iterable[gym.envs.registration.EnvSpec],
 ) -> None:
 
-    for gym_spec in gym_procgen_env_specs:
-        gym.register(
-            id=local_name_autoreset(gym_spec),
-            entry_point="reward_preprocessing.procgen:make_auto_reset_procgen",
-            max_episode_steps=get_gym_max_episode_steps(gym_spec.id),
-            kwargs=dict(procgen_env_id=gym_spec.id),
-        )
-
-    # There are no envs that have both autoreset and final obs wrappers.
-    # fin-obs would only affect the terminal_observation in the info dict, if it were
-    # to be wrapped by an AutoResetWrapper. Since, at the moment, we don't use the
-    # terminal_observation in the info dict, there is no point to combining them.
-    for gym_spec in gym_procgen_env_specs:
-        gym.register(
-            id=local_name_fin_obs(gym_spec),
-            entry_point="reward_preprocessing.procgen:make_fin_obs_procgen",
-            max_episode_steps=get_gym_max_episode_steps(gym_spec.id),
-            kwargs=dict(procgen_env_id=gym_spec.id),
-        )
+    to_register = [
+        # Auto reset with original final observation behavior.
+        (local_name_autoreset, "reward_preprocessing.procgen:make_auto_reset_procgen"),
+        # Variable-length procgen with fixed final observation.
+        (local_name_fin_obs, "reward_preprocessing.procgen:make_fin_obs_procgen"),
+        # Fixed-length procgen with fixed final observation.
+        (
+            local_name_fin_obs_autoreset,
+            "reward_preprocessing.procgen:make_fin_obs_auto_reset_procgen",
+        ),
+    ]
+    for (local_name_fn, entry_point) in to_register:
+        for gym_spec in gym_procgen_env_specs:
+            gym.envs.registration.register(
+                id=local_name_fn(gym_spec),
+                entry_point=entry_point,
+                max_episode_steps=get_gym_max_episode_steps(gym_spec.id),
+                kwargs=dict(procgen_env_id=gym_spec.id),
+            )
 
 
 class ProcgenFinalObsWrapper(gym.Wrapper):
