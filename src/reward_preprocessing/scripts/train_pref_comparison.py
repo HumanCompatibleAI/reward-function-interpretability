@@ -22,6 +22,9 @@ def coinrun():
     )
     common = dict(
         env_name="procgen:procgen-coinrun-autoreset-v0",
+        # Limit the length of episodes. When using autoreset this is necessary since
+        # episodes never end.
+        max_episode_steps=1000,
         num_vec=256,  # Goal Misg paper uses 64 envs for each of 4 workers.
         env_make_kwargs=dict(num_levels=100_000, distribution_mode="hard"),
     )
