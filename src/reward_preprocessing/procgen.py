@@ -87,15 +87,18 @@ def register_procgen_envs(
 
 class ProcgenFinalObsWrapper(gym.Wrapper):
     """Returns the final observation of gym3 procgen environment, correcting for the
-    implicit reset.
+    fact that Procgen gym environments return the second-to-last observation again
+    instead of the final observation.
+    
     Only works correctly when the 'done' signal coincides with the end of an episode
     (which is not the case when using e.g. the seals AutoResetWrapper).
     Requires the use of the PavelCz/procgenAISC fork, which adds the 'final_obs' value.
 
     Since procgen builds on gym3, it always resets the environment after a terminal
-    state. The 'obs' returned will then be the first observation of the next episode.
-    In our fork of procgen, we save the last observation of the terminated episode in
-    the info dict.
+    state. The final 'obs' returned when done==True will be the obs that was already
+    returned in the previous step. In our fork of procgen, we save the true last
+    observation of the terminated episode in the info dict. This wrapper extracts that
+    obs and returns it.
     """
 
     def step(self, action):
