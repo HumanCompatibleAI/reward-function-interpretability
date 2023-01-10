@@ -449,7 +449,6 @@ class LayerNMF:
         num_mult: int = 1,
         expand_mult: int = 1,
         max_rep: Optional[Union[int, float]] = None,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Visualize a dataset of patches that maximize a given feature.
 
@@ -481,13 +480,6 @@ class LayerNMF:
         # Sort the activations in descending order and take the num_mult**2 strongest
         # activations.
         obs_indices = np.argsort(-acts_single, axis=0)[: num_mult**2]
-
-        # Log rewards
-        if custom_logger is not None:
-            rewards_array = acts_single[obs_indices]
-            custom_logger.log(
-                f"Rewards for dataset viz of feature {feature}: {rewards_array}"
-            )
 
         # Coordinates of the strongest activation in each observation.
         coords = np.array(list(zip(*pos_indices)), dtype=[("h", int), ("w", int)])[

@@ -228,6 +228,7 @@ def interpret(
         # input samples are used for dim reduction (if features is not
         # None) and for determining the shape of the features.
         model_inputs_preprocess=inputs,
+        activation_fn="sigmoid",
     )
 
     # If these are equal, then of course there is no actual reduction.
@@ -385,8 +386,14 @@ def interpret(
                 feature=feature_i,
                 num_mult=4,
                 expand_mult=1,
-                custom_logger=custom_logger,
             )
+
+            if nmf.reducer is None:
+                flat_indices = []
+                for index_list in indices:
+                    flat_indices += index_list
+                rewards = model_to_analyse(inputs[flat_indices])
+                custom_logger.log(f"Rewards for feature {feature_i}: {rewards}")
 
             # remove opacity channel from dataset thumbnails
             np_trans_tens = dataset_thumbnails[:-1, :, :]
