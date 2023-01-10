@@ -213,16 +213,6 @@ class TensorTransitionWrapper(nn.Module):
         # tensor_to_transition expects.
         obs, act, next_obs = tensor_to_transition(transition_tensor)
 
-        # TODO: Remove this once this becomes superfluous.
-        if self.rew_net.normalize_images:
-            # Imitation reward nets have this flag which basically decides whether
-            # observations will be divided by 255 (before being passed to the conv
-            # layers). If this flag is set they expect images to be between 0 and 255.
-            # The interpret and lucent code provides images between 0 and 1, so we
-            # scale up.
-            obs = obs * 255
-            next_obs = next_obs * 255
-
         dones = th.zeros_like(obs[:, 0])
         return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)
 

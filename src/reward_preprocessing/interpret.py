@@ -389,6 +389,7 @@ def interpret(
             )
 
             if nmf.reducer is None:
+                # print out rewards
                 flat_indices = []
                 for index_list in indices:
                     flat_indices += index_list
