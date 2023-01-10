@@ -155,7 +155,7 @@ def tensor_to_transition(
     trans_tens: th.Tensor,
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
     """Turn a generated 'transition tensor' batch into a batch of bona fide
-    transitions. Output observations will have channel dim last, activations will be
+    transitions. Output observations will have channel dim last, actions will be
     output as one-hot vectors.
     Assumes input transition tensor has values between 0 and 1.
     """
