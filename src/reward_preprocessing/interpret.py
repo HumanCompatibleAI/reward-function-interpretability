@@ -228,7 +228,7 @@ def interpret(
         # input samples are used for dim reduction (if features is not
         # None) and for determining the shape of the features.
         model_inputs_preprocess=inputs,
-        activation_fn="sigmoid",
+        activation_fn="relu",
     )
 
     # If these are equal, then of course there is no actual reduction.

@@ -184,6 +184,9 @@ class LayerNMF:
         # Apply activation function if specified.
         if activation_fn == "sigmoid":
             activations = th.sigmoid(activations)
+        elif activation_fn == "relu":
+            relu_func = th.nn.ReLU()
+            activations = relu_func(activations)
         elif activation_fn is not None:
             raise ValueError(f"Unsupported activation_fn: {activation_fn}")
 
