@@ -392,7 +392,12 @@ def interpret(
                 flat_indices = []
                 for index_list in indices:
                     flat_indices += index_list
-                rewards = model_to_analyse(inputs[flat_indices])
+                obses, _, next_obses = tensor_to_transition(inputs[flat_indices])
+                feature_i_rep = th.Tensor([feature_i] * len(flat_indices)).long()
+                action_i_tens = th.nn.functional.one_hot(
+                    feature_i_rep, num_classes=num_features
+                ).to(device)
+                rewards = rew_net(obses, action_i_tens, next_obses, done=None)
                 custom_logger.log(f"Rewards for feature {feature_i}: {rewards}")
 
             # remove opacity channel from dataset thumbnails
