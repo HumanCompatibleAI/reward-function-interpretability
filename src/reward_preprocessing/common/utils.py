@@ -274,7 +274,7 @@ def log_img_wandb(
 
 
 def array_to_image(arr: np.ndarray, scale: int) -> PIL.Image.Image:
-    """Take numpy array on [0,1] scale, return PIL image."""
+    """Take numpy array on [0,1] scale with shape (h,w,c), return PIL image."""
     return Image.fromarray(np.uint8(arr * 255), mode="RGB").resize(
         # PIL expects tuple of (width, height), numpy's dimension 1 is width, and
         # dimension 0 height.

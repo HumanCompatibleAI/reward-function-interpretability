@@ -309,7 +309,8 @@ def interpret(
         # Note that since actions is only used to choose which head to use, there are no
         # gradients from the reward to the action. Consequently, acts in opt_latent is
         # meaningless.
-        actions = th.tensor(list(range(num_features))).to(device)
+        action_nums = th.tensor(list(range(num_features))).to(device)
+        actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
         assert len(actions) == len(obs)
         rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
         custom_logger.log(f"Rewards: {rews}")
