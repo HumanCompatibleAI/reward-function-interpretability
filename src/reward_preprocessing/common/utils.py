@@ -155,7 +155,7 @@ def tensor_to_transition(
     trans_tens: th.Tensor,
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
     """Turn a generated 'transition tensor' batch into a batch of bona fide
-    transitions. Output observations will have channel dim last, activations will be
+    transitions. Output observations will have channel dim last, actions will be
     output as one-hot vectors.
     Assumes input transition tensor has values between 0 and 1.
     """
@@ -212,16 +212,6 @@ class TensorTransitionWrapper(nn.Module):
         # Input data must be between 0 and 1 because that is what
         # tensor_to_transition expects.
         obs, act, next_obs = tensor_to_transition(transition_tensor)
-
-        # TODO: Remove this once this becomes superfluous.
-        if self.rew_net.normalize_images:
-            # Imitation reward nets have this flag which basically decides whether
-            # observations will be divided by 255 (before being passed to the conv
-            # layers). If this flag is set they expect images to be between 0 and 255.
-            # The interpret and lucent code provides images between 0 and 1, so we
-            # scale up.
-            obs = obs * 255
-            next_obs = next_obs * 255
 
         dones = th.zeros_like(obs[:, 0])
         return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)
