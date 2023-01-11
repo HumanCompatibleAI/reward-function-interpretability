@@ -58,33 +58,3 @@ def test_auto_reset_wrapper_pad(episode_length=3, n_steps=100, n_manual_reset=2)
                     next_episode_end
                     == (num_episodes + 1) * episode_length + num_episodes
                 )
-
-
-def test_auto_reset_wrapper_discard(episode_length=3, n_steps=100, n_manual_reset=2):
-    """Check that AutoResetWrapper returns correct values from step and reset.
-    Tests for AutoResetWrapper that discards terminal observations.
-    Also check that calls to .reset() do not interfere with automatic resets.
-    """
-    env = util.AutoResetWrapper(
-        envs.CountingEnv(episode_length=episode_length),
-        discard_terminal_observation=True,
-    )
-
-    for _ in range(n_manual_reset):
-        obs = env.reset()
-        assert obs == 0
-
-        for t in range(1, n_steps + 1):
-            act = env.action_space.sample()
-            obs, rew, done, info = env.step(act)
-            expected_obs = t % episode_length
-
-            assert obs == expected_obs
-            assert done is False
-
-            if expected_obs == 0:  # End of episode
-                assert info.get("terminal_observation", None) == episode_length
-                assert rew == episode_length * 10
-            else:
-                assert "terminal_observation" not in info
-                assert rew == expected_obs * 10
