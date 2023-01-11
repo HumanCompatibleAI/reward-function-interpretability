@@ -169,7 +169,7 @@ def interpret(
 
     device = "cuda" if th.cuda.is_available() else "cpu"
 
-    # Load reward not pytorch module
+    # Load reward net pytorch module
     rew_net = th.load(str(reward_path), map_location=th.device(device))
 
     if gan_path is None:
@@ -245,7 +245,6 @@ def interpret(
         if gan_path is None:
             # List of transforms
             transforms = _determine_transforms(reg)
-
             # This does the actual interpretability, i.e. it calculates the
             # visualizations.
             opt_transitions = nmf.vis_traditional(transforms=transforms)
