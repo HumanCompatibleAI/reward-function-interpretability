@@ -89,7 +89,7 @@ class ProcgenFinalObsWrapper(gym.Wrapper):
     """Returns the final observation of gym3 procgen environment, correcting for the
     fact that Procgen gym environments return the second-to-last observation again
     instead of the final observation.
-    
+
     Only works correctly when the 'done' signal coincides with the end of an episode
     (which is not the case when using e.g. the seals AutoResetWrapper).
     Requires the use of the PavelCz/procgenAISC fork, which adds the 'final_obs' value.

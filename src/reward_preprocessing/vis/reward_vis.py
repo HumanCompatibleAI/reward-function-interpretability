@@ -184,6 +184,9 @@ class LayerNMF:
         # Apply activation function if specified.
         if activation_fn == "sigmoid":
             activations = th.sigmoid(activations)
+        elif activation_fn == "relu":
+            relu_func = th.nn.ReLU()
+            activations = relu_func(activations)
         elif activation_fn is not None:
             raise ValueError(f"Unsupported activation_fn: {activation_fn}")
 
@@ -286,12 +289,14 @@ class LayerNMF:
                 for feature in feature_list
             ]
         )
+
         if l2_coeff != 0.0:
             if l2_layer_name is None:
                 raise ValueError(
                     "l2_layer_name must be specified if l2_coeff is non-zero"
                 )
             obj -= l2_objective(l2_layer_name, l2_coeff)
+
         input_shape = tuple(self.model_inputs_preprocess.shape[1:])
 
         if param_f is None:
@@ -302,6 +307,7 @@ class LayerNMF:
                     h=input_shape[1],
                     w=input_shape[2],
                     batch=len(feature_list),
+                    sd=1,
                 )
 
         logging.info(f"Performing vis_traditional with transforms: {transforms}")
@@ -472,13 +478,14 @@ class LayerNMF:
         pos_indices = argmax_nd(
             acts_feature, axes=[1, 2], max_rep=max_rep, max_rep_strict=True
         )
-        # The actual maximum values of the activations, accroding to max_rep setting.
+        # The actual maximum values of the activations, according to max_rep setting.
         acts_single = acts_feature[
             range(acts_feature.shape[0]), pos_indices[0], pos_indices[1]
         ]
         # Sort the activations in descending order and take the num_mult**2 strongest
         # activations.
         obs_indices = np.argsort(-acts_single, axis=0)[: num_mult**2]
+
         # Coordinates of the strongest activation in each observation.
         coords = np.array(list(zip(*pos_indices)), dtype=[("h", int), ("w", int)])[
             obs_indices

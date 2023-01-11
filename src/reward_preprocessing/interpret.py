@@ -169,7 +169,7 @@ def interpret(
 
     device = "cuda" if th.cuda.is_available() else "cpu"
 
-    # Load reward not pytorch module
+    # Load reward net pytorch module
     rew_net = th.load(str(reward_path), map_location=th.device(device))
 
     if gan_path is None:
@@ -228,7 +228,7 @@ def interpret(
         # input samples are used for dim reduction (if features is not
         # None) and for determining the shape of the features.
         model_inputs_preprocess=inputs,
-        activation_fn="sigmoid",
+        activation_fn="relu",
     )
 
     # If these are equal, then of course there is no actual reduction.
@@ -245,7 +245,6 @@ def interpret(
         if gan_path is None:
             # List of transforms
             transforms = _determine_transforms(reg)
-
             # This does the actual interpretability, i.e. it calculates the
             # visualizations.
             opt_transitions = nmf.vis_traditional(transforms=transforms)
@@ -384,8 +383,23 @@ def interpret(
             custom_logger.log(f"Feature {feature_i}")
 
             dataset_thumbnails, indices = nmf.vis_dataset_thumbnail(
-                feature=feature_i, num_mult=4, expand_mult=1
+                feature=feature_i,
+                num_mult=4,
+                expand_mult=1,
             )
+
+            if nmf.reducer is None:
+                # print out rewards
+                flat_indices = []
+                for index_list in indices:
+                    flat_indices += index_list
+                obses, _, next_obses = tensor_to_transition(inputs[flat_indices])
+                feature_i_rep = th.Tensor([feature_i] * len(flat_indices)).long()
+                action_i_tens = th.nn.functional.one_hot(
+                    feature_i_rep, num_classes=num_features
+                ).to(device)
+                rewards = rew_net(obses, action_i_tens, next_obses, done=None)
+                custom_logger.log(f"Rewards for feature {feature_i}: {rewards}")
 
             # remove opacity channel from dataset thumbnails
             np_trans_tens = dataset_thumbnails[:-1, :, :]
