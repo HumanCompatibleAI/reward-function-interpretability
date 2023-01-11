@@ -6,7 +6,6 @@ from imitation.rewards.reward_nets import CnnRewardNet, RewardNet
 import numpy as np
 import torch as th
 
-from reward_preprocessing.common.utils import array_to_image
 from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -46,25 +45,6 @@ class CnnRewardNetWorkaround(CnnRewardNet):
             hwc_format,
             **kwargs,
         )
-        self.i = 0
-
-    def forward(
-        self,
-        state: th.Tensor,
-        action: th.Tensor,
-        next_state: th.Tensor,
-        done: th.Tensor,
-    ):
-        save = False
-        if save:
-            # if self.i < 200:
-            obs_PIL = array_to_image(state[0].cpu().numpy(), 4)
-            obs_PIL.save(f"{self.i:04d}obs.png")
-            next_obs_PIL = array_to_image(next_state[0].cpu().numpy(), 4)
-            next_obs_PIL.save(f"{self.i:04d}next_obs.png")
-            self.i += 1
-
-        return super().forward(state, action, next_state, done)
 
 
 class MazeRewardNet(RewardNet):
