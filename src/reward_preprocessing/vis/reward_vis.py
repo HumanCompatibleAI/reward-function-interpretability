@@ -289,12 +289,14 @@ class LayerNMF:
                 for feature in feature_list
             ]
         )
+
         if l2_coeff != 0.0:
             if l2_layer_name is None:
                 raise ValueError(
                     "l2_layer_name must be specified if l2_coeff is non-zero"
                 )
             obj -= l2_objective(l2_layer_name, l2_coeff)
+
         input_shape = tuple(self.model_inputs_preprocess.shape[1:])
 
         if param_f is None:
@@ -305,6 +307,7 @@ class LayerNMF:
                     h=input_shape[1],
                     w=input_shape[2],
                     batch=len(feature_list),
+                    sd=3,
                 )
 
         logging.info(f"Performing vis_traditional with transforms: {transforms}")
