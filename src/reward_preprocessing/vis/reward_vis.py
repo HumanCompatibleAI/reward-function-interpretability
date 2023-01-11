@@ -307,7 +307,7 @@ class LayerNMF:
                     h=input_shape[1],
                     w=input_shape[2],
                     batch=len(feature_list),
-                    sd=3,
+                    sd=1,
                 )
 
         logging.info(f"Performing vis_traditional with transforms: {transforms}")
