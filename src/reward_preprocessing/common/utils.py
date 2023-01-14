@@ -217,6 +217,41 @@ class TensorTransitionWrapper(nn.Module):
         return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)
 
 
+class MonochromeTensorWrapper(nn.Module):
+    """Wraps an imitation-style reward net such that it only accepts monochrome images.
+
+    Inputs have height and width 1, and are boosted to have the appropriate spatial
+    dimension. Inputs are also a single tensor.
+    """
+
+    def __init__(self, rew_net: RewardNet):
+        """rew_net should be a reward net that takes in (obs, act, next_obs, done) as
+        arguments."""
+        super().__init__()
+        self.rew_net = rew_net
+        self.dim = (
+            rew_net.observation_space.shape[0],
+            rew_net.observation_space.shape[1],
+        )
+
+    def forward(self, transition_tensor: th.Tensor) -> th.Tensor:
+        if transition_tensor.size(2) != 1 or transition_tensor.size(3) != 1:
+            raise ValueError(
+                "MonochromeTensorWrapper assumes input has height "
+                "and width 1, but this has shape "
+                f"{transition_tensor.shape}."
+            )
+        # boost to have appropriate spatial dimension
+        boosted = self.boost_to_fit_rew_net(transition_tensor)
+        obs, act, next_obs = tensor_to_transition(boosted)
+        dones = th.zeros_like(obs[:, 0])
+        return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)
+
+    def boost_to_fit_rew_net(self, tensor: th.Tensor) -> th.Tensor:
+        """Boost a slim tensor to have the appropriate spatial dimensions."""
+        return tensor.expand(-1, -1, self.dim[0], self.dim[1])
+
+
 class RewardGeneratorCombo(nn.Module):
     """Composition of a generative model and a RewardNet.
 
