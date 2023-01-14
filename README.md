@@ -1,8 +1,6 @@
 [![CircleCI](https://circleci.com/gh/HumanCompatibleAI/reward-preprocessing/tree/main.svg?style=svg&circle-token=5689f087396d3f526afd49f3af9d4b098560f79c)](https://circleci.com/gh/HumanCompatibleAI/reward-preprocessing/tree/main)
 # Reward Function Interpretability
 
-test commit will revert
-
 ## Installation
 First clone this repository.
 Install inside your python virtual environment system of choice:
