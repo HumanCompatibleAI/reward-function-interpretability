@@ -15,7 +15,6 @@ from sacred.observers import FileStorageObserver
 import torch as th
 
 from reward_preprocessing.common.utils import (
-    MonochromeTensorWrapper,
     RewardGeneratorCombo,
     TensorTransitionWrapper,
     array_to_image,
@@ -26,6 +25,8 @@ from reward_preprocessing.common.utils import (
 )
 from reward_preprocessing.scripts.config.interpret import interpret_ex
 from reward_preprocessing.vis.reward_vis import LayerNMF
+
+# TODO(df, before merging): make magic sd constants actual params
 
 
 def _get_action_meaning(action_id: int):
@@ -152,7 +153,7 @@ def interpret(
             f"I don't think we actually ever want to use all so this is currently not "
             f"implemented."
         )
-    if vis_type not in ["dataset", "traditional", "monochrome"]:
+    if vis_type not in ["dataset", "traditional", "dataset_traditional"]:
         raise ValueError(f"Unknown vis_type: {vis_type}")
     if vis_type in ["dataset", "monochrome"] and gan_path is not None:
         raise ValueError(f"GANs cannot be used with {vis_type} visualization.")
@@ -178,12 +179,7 @@ def interpret(
         # Imitation reward nets have 4 input args, lucent expects models to only have 1.
         # These wrappers make it so rew_net accepts a single input which is a
         # transition tensor.
-        model_wrapper = (
-            MonochromeTensorWrapper
-            if vis_type == "monochrome"
-            else TensorTransitionWrapper
-        )
-        model_to_analyse = model_wrapper(rew_net)
+        model_to_analyse = TensorTransitionWrapper(rew_net)
     else:  # Use GAN
         # Combine rew net with GAN.
         gan = th.load(gan_path, map_location=th.device(device))
@@ -216,9 +212,6 @@ def interpret(
         inputs = inputs.to(device)
         # Ensure loaded data is FloatTensor and not DoubleTensor.
         inputs = inputs.float()
-        # If we use monochrome inputs, make inputs monochrome before feeding to net.
-        if vis_type == "monochrome":
-            inputs = th.mean(inputs, dim=(2, 3), keepdim=True)
     else:  # When using GAN.
         # Inputs are GAN samples
         samples = gan.sample(limit_num_obs)
@@ -251,40 +244,21 @@ def interpret(
     fig = plt.figure(figsize=(int(columns * col_mult), int(rows * 2)))
 
     # Visualize
-    if vis_type in ["traditional", "monochrome"]:
+    if vis_type == "traditional":
         if gan_path is None:
-            if vis_type == "traditional":
-                # List of transforms
-                transforms = _determine_transforms(reg)
-                # This does the actual interpretability, i.e. it calculates the
-                # visualizations.
-                opt_transitions = nmf.vis_traditional(transforms=transforms)
-                # This gives us an array that optimizes the objectives, in the shape of
-                # the input which is a transition tensor. However, lucent helpfully
-                # transposes the output such that the channel dimension is last. Our
-                # functions expect channel dim before spatial dims, so we need to
-                # transpose it back.
-                opt_transitions = opt_transitions.transpose(0, 3, 1, 2)
-                # In the following we need opt_transitions to be a pytorch tensor.
-                opt_transitions = th.tensor(opt_transitions)
-            else:  # vis_type == "monochrome"
-                # ensure visualization uses the right dimensions
-                slim_shape = (num_features, inputs.shape[1], 1, 1)
-
-                def param_f():
-                    return pixel_image(shape=slim_shape)
-
-                opt_slim = nmf.vis_traditional(
-                    transforms=[],
-                    param_f=param_f,
-                )
-                # Transpose to (c,h,w)
-                opt_slim = opt_slim.transpose(0, 3, 1, 2)
-                # make a pytorch tensor
-                opt_slim = th.tensor(opt_slim)
-                # Boost the h=1 w=1 opt_slim to have full spatial dimensions
-                opt_transitions = model_to_analyse.boost_to_fit_rew_net(opt_slim)
-
+            # List of transforms
+            transforms = _determine_transforms(reg)
+            # This does the actual interpretability, i.e. it calculates the
+            # visualizations.
+            opt_transitions = nmf.vis_traditional(transforms=transforms)
+            # This gives us an array that optimizes the objectives, in the shape of
+            # the input which is a transition tensor. However, lucent helpfully
+            # transposes the output such that the channel dimension is last. Our
+            # functions expect channel dim before spatial dims, so we need to
+            # transpose it back.
+            opt_transitions = opt_transitions.transpose(0, 3, 1, 2)
+            # In the following we need opt_transitions to be a pytorch tensor.
+            opt_transitions = th.tensor(opt_transitions)
             # Split the optimized transitions, one for each feature, into separate
             # observations and actions. This function only works with torch tensors.
             obs, acts, next_obs = tensor_to_transition(opt_transitions)
@@ -408,25 +382,6 @@ def interpret(
             )
             custom_logger.dump(step=num_features)
 
-    elif vis_type == "monochrome":
-        # ensure visualization uses the right dimensions
-        slim_shape = (num_features, inputs.shape[1], 1, 1)
-
-        def param_f():
-            return pixel_image(shape=slim_shape)
-
-        opt_slim = nmf.vis_traditional(
-            transforms=[],
-            param_f=param_f,
-        )
-        # make a pytorch tensor
-        opt_slim = th.tensor(opt_slim)
-        # Transpose to (c,h,w)
-        opt_slim = th.permute(opt_slim, (0, 3, 1, 2))
-        # Boost the h=1 w=1 opt_slim to have full spatial dimensions
-        opt_transitions = model_to_analyse.boost_to_fit_rew_net(opt_slim)
-        # split into observations and actions
-        obs, acts, next_obs = tensor_to_transition(opt_transitions)
     elif vis_type == "dataset":
         for feature_i in range(num_features):
             custom_logger.log(f"Feature {feature_i}")
