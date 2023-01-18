@@ -431,6 +431,62 @@ def interpret(
                     f"Saved feature {feature_i} viz in dir {img_save_path}."
                 )
 
+    elif vis_type == "dataset_traditional":
+        for feature_i in range(num_features):
+            custom_logger.log(f"Feature {feature_i}")
+            _, indices = nmf.vis_dataset_thumbnail(
+                feature=feature_i,
+                num_mult=2,
+                expand_mult=1,
+            )
+
+            assert nmf.reducer is None
+            best_transition = th.Tensor(inputs[indices[0][0]][None, :, :, :])
+            print(f"{best_transition.shape=}")
+
+            def pixel_image_start_best():
+                tensor = best_transition.to(device).requires_grad_(True)
+                return [tensor], lambda: tensor
+
+            def param_f():
+                return pixel_image_start_best()
+
+            transforms = _determine_transforms(reg)
+
+            opt_dataset = nmf.vis_traditional(
+                transforms=transforms,
+                param_f=param_f,
+            )
+
+            obs, _, next_obs = tensor_to_transition(opt_dataset)
+            feature_i_tens = th.Tensor([feature_i]).long()
+            action_i_tens = th.nn.functional.one_hot(
+                feature_i_tens, num_classes=num_features
+            ).to(device)
+            reward = rew_net(obs, action_i_tens, next_obs, done=None)
+            custom_logger.log(f"Reward for feature {feature_i}: {reward}")
+
+            _log_single_transition_wandb(
+                custom_logger, feature_i, (obs, next_obs), vis_scale, wandb_logging
+            )
+            _plot_img(
+                columns,
+                feature_i,
+                num_features,
+                fig,
+                (obs, next_obs),
+                rows,
+            )
+
+            if img_save_path is not None:
+                obs_PIL = array_to_image(obs, vis_scale)
+                obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
+                next_obs_PIL = array_to_image(next_obs, vis_scale)
+                next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
+                custom_logger.log(
+                    f"Saved feature {feature_i} viz in dir {img_save_path}."
+                )
+
     if pyplot:
         plt.show()
     custom_logger.log("Done with visualization.")
