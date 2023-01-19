@@ -461,6 +461,7 @@ def interpret(
         opt_dataset = nmf.vis_traditional(
             transforms=transforms,
             param_f=param_f_start_best,
+            num_steps=64,
         )
 
         opt_dataset = opt_dataset.transpose(0, 3, 1, 2)

@@ -259,6 +259,7 @@ class LayerNMF:
         param_f: Optional[
             Callable[[], Tuple[th.Tensor, Callable[[], th.Tensor]]]
         ] = None,
+        num_steps: int = 512,
     ) -> np.ndarray:
         if feature_list is None:
             # Feature dim is at index 1
@@ -317,6 +318,7 @@ class LayerNMF:
             obj,
             param_f=param_f,
             transforms=transforms,
+            thresholds=(num_steps,),
             # Don't use this preprocessing, this uses some default normalization for
             # ImageNet torchvision models, which of course assumes 3 channels and square
             # images as inputs
