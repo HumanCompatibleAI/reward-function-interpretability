@@ -19,7 +19,7 @@ def defaults():
     pyplot = False
     vis_scale = 4  # Scale the visualization img by this factor
     # Type of visualization to do. Options are "traditional" (gradient-based),
-    # "dataset", and "dataset-traditional" (first do dataset, then traditional).
+    # "dataset", and "dataset_traditional" (first do dataset, then traditional).
     vis_type = "traditional"
     # Name of the layer to visualize. To figure this out run interpret and the
     # available layers will be printed. For additional notes see interpret doc comment.
