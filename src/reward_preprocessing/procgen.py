@@ -17,7 +17,9 @@ def make_auto_reset_procgen(procgen_env_id: str, **make_env_kwargs) -> gym.Env:
     """Make procgen with auto reset. Final observation is not fixed.
 
     That means the final observation will be a duplicate of the second to last."""
-    env = AutoResetWrapper(gym.make(procgen_env_id, **make_env_kwargs))
+    env = AutoResetWrapper(
+        gym.make(procgen_env_id, **make_env_kwargs), discard_terminal_observation=False
+    )
     return env
 
 
@@ -28,7 +30,10 @@ def make_fin_obs_auto_reset_procgen(procgen_env_id: str, **make_env_kwargs) -> g
     # done signal, on order to fix the final observation of an episode. The auto reset
     # wrapper will reset the done signal to False for the original episode end.
     env = AutoResetWrapper(
-        ProcgenFinalObsWrapper(gym.make(procgen_env_id, **make_env_kwargs))
+        ProcgenFinalObsWrapper(
+            gym.make(procgen_env_id, **make_env_kwargs),
+        ),
+        discard_terminal_observation=False,
     )
     return env
 
