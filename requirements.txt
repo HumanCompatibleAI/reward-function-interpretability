@@ -9,8 +9,8 @@ gym==0.21
 tqdm==4.62.2
 wandb==0.12.1
 # seals==0.1.5
-# Temporarily use my WIP fork of seals for updates to AutoResetWrapper
-git+https://github.com/PavelCz/seals.git@3cad441cc07cb443b2a42ffed7c27d61350ec382
+# Temporarily use this commit in seals for updates to AutoResetWrapper. Switch back to official version once seals releases a new version.
+git+https://github.com/HumanCompatibleAI/seals.git@de298732cda150b18af699e6816fcf42f2fc674f
 torch-lucent==0.1.8
 jupyter==1.0.0
 git+https://github.com/ejnnr/mazelab.git@3042551
