@@ -453,15 +453,20 @@ def interpret(
         def param_f_start_best():
             return pixel_image_start_best()
 
-        # TODO(df): refactor all this shit
+        # TODO(df): refactor all this shit to use the same function as trad viz where
+        # it does the same stuff
         # TODO(df): also save dataset viz's?
+
+        # basically add our new params here
 
         transforms = _determine_transforms(reg)
 
         opt_dataset = nmf.vis_traditional(
             transforms=transforms,
             param_f=param_f_start_best,
-            num_steps=64,
+            # num_steps=2,
+            l2_diff_coeff=1e-1,
+            l2_diff_tensor=dataset_vis,
         )
 
         opt_dataset = opt_dataset.transpose(0, 3, 1, 2)
