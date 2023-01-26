@@ -6,7 +6,11 @@ from seals.testing import envs
 
 
 def test_auto_reset_wrapper_pad(episode_length=3, n_steps=100, n_manual_reset=2):
-    """Check that AutoResetWrapper returns correct values from step and reset.
+    """This test also exists in seals. The advantage of also having it here is that
+    if we decide to update our version of seals this test will show us whether there
+    were any changes in the parts of seals that we care about.
+
+    Check that AutoResetWrapper returns correct values from step and reset.
     AutoResetWrapper that pads trajectory with an extra transition containing the
     terminal observations.
     Also check that calls to .reset() do not interfere with automatic resets.
