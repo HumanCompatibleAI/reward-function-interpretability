@@ -312,75 +312,24 @@ def interpret(
         # Note that since actions is only used to choose which head to use, there are no
         # gradients from the reward to the action. Consequently, acts in opt_latent is
         # meaningless.
-        action_nums = th.tensor(list(range(num_features))).to(device)
-        actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
-        assert len(actions) == len(obs)
-        rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
-        custom_logger.log(f"Rewards: {rews}")
 
-        # Use numpy from here.
-        obs = obs.detach().cpu().numpy()
-        next_obs = next_obs.detach().cpu().numpy()
-        rews = rews.detach().cpu().numpy()
-
-        # We want to plot the name of the action, if applicable.
-        features_are_actions = _determine_features_are_actions(nmf, layer_name)
-
-        # Set of images, one for each feature, add each to plot
-        for feature_i in range(next_obs.shape[0]):
-            # Log the rewards
-            rew_key = f"rew_feat_{feature_i:02}"
-            if features_are_actions:
-                rew_key += f"_{_get_action_meaning(action_id=feature_i)}"
-            custom_logger.record(rew_key, rews[feature_i])
-            # Log the images
-            sub_img_obs = obs[feature_i]
-            sub_img_next_obs = next_obs[feature_i]
-            _log_single_transition_wandb(
-                custom_logger,
-                feature_i,
-                (sub_img_obs, sub_img_next_obs),
-                vis_scale,
-                wandb_logging,
-                features_are_actions,
-            )
-            _plot_img(
-                columns,
-                feature_i,
-                num_features,
-                fig,
-                (sub_img_obs, sub_img_next_obs),
-                rows,
-                features_are_actions,
-            )
-            if img_save_path is not None:
-                obs_PIL = array_to_image(sub_img_obs, vis_scale)
-                obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
-                next_obs_PIL = array_to_image(sub_img_next_obs, vis_scale)
-                next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
-                custom_logger.log(
-                    f"Saved feature {feature_i} viz in dir {img_save_path}."
-                )
-        # This greatly improves the spacing of subplots for the feature overview plot.
-        plt.tight_layout()
-
-        if wandb_logging:
-            # Take the matplotlib plot containing all visualizations and log it as a
-            # single image in wandb.
-            # We do this, so we have both the individual feature visualizations (logged
-            # above) in case we need them and the overview plot, which is a bit more
-            # useful.
-            img_buf = io.BytesIO()
-            plt.savefig(img_buf, format="png")
-            full_plot_img = PIL.Image.open(img_buf)
-            log_img_wandb(
-                img=full_plot_img,
-                caption="Feature Overview",
-                wandb_key="feature_overview",
-                scale=vis_scale,
-                logger=custom_logger,
-            )
-            custom_logger.dump(step=num_features)
+        plot_trad_vis(
+            obs,
+            acts,
+            next_obs,
+            device,
+            rew_net,
+            layer_name,
+            num_features,
+            nmf,
+            fig,
+            rows,
+            columns,
+            vis_scale,
+            img_save_path,
+            wandb_logging,
+            custom_logger,
+        )
 
     elif vis_type == "dataset":
         for feature_i in range(num_features):
@@ -445,13 +394,11 @@ def interpret(
             best_transitions.append(th.Tensor(inputs[indices[0][0]][None, :, :, :]))
 
         dataset_vis = th.cat(best_transitions)
+        dataset_vis_clone = th.clone(dataset_vis).detach()
 
         def pixel_image_start_best():
             tensor = dataset_vis.to(device).requires_grad_(True)
             return [tensor], lambda: tensor
-
-        def param_f_start_best():
-            return pixel_image_start_best()
 
         # TODO(df): refactor all this shit to use the same function as trad viz where
         # it does the same stuff
@@ -460,92 +407,126 @@ def interpret(
         # basically add our new params here
 
         transforms = _determine_transforms(reg)
-
         opt_dataset = nmf.vis_traditional(
             transforms=transforms,
-            param_f=param_f_start_best,
-            # num_steps=2,
-            l2_diff_coeff=1e-1,
-            l2_diff_tensor=dataset_vis,
+            param_f=pixel_image_start_best,
+            l2_diff_coeff=3e-1,
+            l2_diff_tensor=dataset_vis_clone,
         )
 
         opt_dataset = opt_dataset.transpose(0, 3, 1, 2)
         opt_dataset = th.tensor(opt_dataset).to(device)
         obs, acts, next_obs = tensor_to_transition(opt_dataset)
 
-        action_nums = th.tensor(list(range(num_features))).to(device)
-        actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
-        assert len(actions) == len(obs)
-        rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
-        custom_logger.log(f"Rewards: {rews}")
-
-        # Use numpy from here.
-        obs = obs.detach().cpu().numpy()
-        next_obs = next_obs.detach().cpu().numpy()
-        rews = rews.detach().cpu().numpy()
-
-        # We want to plot the name of the action, if applicable.
-        features_are_actions = _determine_features_are_actions(nmf, layer_name)
-
-        # Set of images, one for each feature, add each to plot
-        for feature_i in range(next_obs.shape[0]):
-            # Log the rewards
-            rew_key = f"rew_feat_{feature_i:02}"
-            if features_are_actions:
-                rew_key += f"_{_get_action_meaning(action_id=feature_i)}"
-            custom_logger.record(rew_key, rews[feature_i])
-            # Log the images
-            sub_img_obs = obs[feature_i]
-            sub_img_next_obs = next_obs[feature_i]
-            _log_single_transition_wandb(
-                custom_logger,
-                feature_i,
-                (sub_img_obs, sub_img_next_obs),
-                vis_scale,
-                wandb_logging,
-                features_are_actions,
-            )
-            _plot_img(
-                columns,
-                feature_i,
-                num_features,
-                fig,
-                (sub_img_obs, sub_img_next_obs),
-                rows,
-                features_are_actions,
-            )
-            if img_save_path is not None:
-                obs_PIL = array_to_image(sub_img_obs, vis_scale)
-                obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
-                next_obs_PIL = array_to_image(sub_img_next_obs, vis_scale)
-                next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
-                custom_logger.log(
-                    f"Saved feature {feature_i} viz in dir {img_save_path}."
-                )
-        # This greatly improves the spacing of subplots for the feature overview plot.
-        plt.tight_layout()
-
-        if wandb_logging:
-            # Take the matplotlib plot containing all visualizations and log it as a
-            # single image in wandb.
-            # We do this, so we have both the individual feature visualizations (logged
-            # above) in case we need them and the overview plot, which is a bit more
-            # useful.
-            img_buf = io.BytesIO()
-            plt.savefig(img_buf, format="png")
-            full_plot_img = PIL.Image.open(img_buf)
-            log_img_wandb(
-                img=full_plot_img,
-                caption="Feature Overview",
-                wandb_key="feature_overview",
-                scale=vis_scale,
-                logger=custom_logger,
-            )
-            custom_logger.dump(step=num_features)
+        plot_trad_vis(
+            obs,
+            acts,
+            next_obs,
+            device,
+            rew_net,
+            layer_name,
+            num_features,
+            nmf,
+            fig,
+            rows,
+            columns,
+            vis_scale,
+            img_save_path,
+            wandb_logging,
+            custom_logger,
+        )
 
     if pyplot:
         plt.show()
     custom_logger.log("Done with visualization.")
+
+
+def plot_trad_vis(
+    obs,
+    acts,
+    next_obs,
+    device,
+    rew_net,
+    layer_name,
+    num_features,
+    nmf,
+    fig,
+    rows,
+    columns,
+    vis_scale,
+    img_save_path,
+    wandb_logging,
+    custom_logger,
+):
+    """TODO: docstring. also maybe rename?"""
+    # also unfuck the arguments
+    action_nums = th.tensor(list(range(num_features))).to(device)
+    actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
+    assert len(actions) == len(obs)
+    rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
+    custom_logger.log(f"Rewards: {rews}")
+
+    # Use numpy from here.
+    obs = obs.detach().cpu().numpy()
+    next_obs = next_obs.detach().cpu().numpy()
+    rews = rews.detach().cpu().numpy()
+
+    # We want to plot the name of the action, if applicable.
+    features_are_actions = _determine_features_are_actions(nmf, layer_name)
+
+    # Set of images, one for each feature, add each to plot
+    for feature_i in range(next_obs.shape[0]):
+        # Log the rewards
+        rew_key = f"rew_feat_{feature_i:02}"
+        if features_are_actions:
+            rew_key += f"_{_get_action_meaning(action_id=feature_i)}"
+        custom_logger.record(rew_key, rews[feature_i])
+        # Log the images
+        sub_img_obs = obs[feature_i]
+        sub_img_next_obs = next_obs[feature_i]
+        _log_single_transition_wandb(
+            custom_logger,
+            feature_i,
+            (sub_img_obs, sub_img_next_obs),
+            vis_scale,
+            wandb_logging,
+            features_are_actions,
+        )
+        _plot_img(
+            columns,
+            feature_i,
+            num_features,
+            fig,
+            (sub_img_obs, sub_img_next_obs),
+            rows,
+            features_are_actions,
+        )
+        if img_save_path is not None:
+            obs_PIL = array_to_image(sub_img_obs, vis_scale)
+            obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
+            next_obs_PIL = array_to_image(sub_img_next_obs, vis_scale)
+            next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
+            custom_logger.log(f"Saved feature {feature_i} viz in dir {img_save_path}.")
+    # This greatly improves the spacing of subplots for the feature overview plot.
+    plt.tight_layout()
+
+    if wandb_logging:
+        # Take the matplotlib plot containing all visualizations and log it as a
+        # single image in wandb.
+        # We do this, so we have both the individual feature visualizations (logged
+        # above) in case we need them and the overview plot, which is a bit more
+        # useful.
+        img_buf = io.BytesIO()
+        plt.savefig(img_buf, format="png")
+        full_plot_img = PIL.Image.open(img_buf)
+        log_img_wandb(
+            img=full_plot_img,
+            caption="Feature Overview",
+            wandb_key="feature_overview",
+            scale=vis_scale,
+            logger=custom_logger,
+        )
+        custom_logger.dump(step=num_features)
 
 
 def _determine_transforms(reg: Dict[str, Dict[str, Any]]) -> List[Callable]:

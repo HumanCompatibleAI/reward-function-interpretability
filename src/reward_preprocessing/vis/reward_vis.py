@@ -98,11 +98,11 @@ def argmax_nd(
 
 @wrap_objective()
 def l2_objective(layer_name, coefficient, batch=None):
-    """L2 norm of specified layer, multiplied by the given coeff."""
+    """L2 norm of specified layer, multiplied by the given coefficient."""
 
     @handle_batch(batch)
     def inner(model):
-        return coefficient * th.sqrt(th.sum(model(layer_name) ** 2))
+        return coefficient * th.sum(model(layer_name) ** 2)
 
     return inner
 
@@ -110,11 +110,11 @@ def l2_objective(layer_name, coefficient, batch=None):
 @wrap_objective()
 def l2_diff_objective(tensor, coefficient, layer_name, batch=None):
     """L2 norm of difference between specified layer and given tensor, multiplied by the
-    given coeff."""
+    given coefficient."""
 
     @handle_batch(batch)
     def inner(model):
-        return coefficient * th.sqrt(th.sum((model(layer_name) - tensor) ** 2))
+        return coefficient * th.sum((model(layer_name) - tensor) ** 2)
 
     return inner
 
@@ -311,14 +311,14 @@ class LayerNMF:
                 raise ValueError(
                     "l2_layer_name must be specified if l2_coeff is non-zero"
                 )
-            obj -= l2_objective(l2_layer_name, l2_coeff)
+            obj += l2_objective(l2_layer_name, l2_coeff)
 
         if l2_diff_coeff != 0.0:
             if l2_diff_tensor is None:
                 raise ValueError(
                     "l2_diff_tensor must be specified if l2_diff_coeff is non-zero"
                 )
-            obj -= l2_diff_objective(l2_diff_tensor, l2_diff_coeff, l2_diff_layer_name)
+            obj += l2_diff_objective(l2_diff_tensor, l2_diff_coeff, l2_diff_layer_name)
 
         input_shape = tuple(self.model_inputs_preprocess.shape[1:])
 
