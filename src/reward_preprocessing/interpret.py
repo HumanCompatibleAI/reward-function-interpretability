@@ -400,11 +400,7 @@ def interpret(
             tensor = dataset_vis.to(device).requires_grad_(True)
             return [tensor], lambda: tensor
 
-        # TODO(df): refactor all this shit to use the same function as trad viz where
-        # it does the same stuff
         # TODO(df): also save dataset viz's?
-
-        # basically add our new params here
 
         transforms = _determine_transforms(reg)
         opt_dataset = nmf.vis_traditional(
@@ -465,6 +461,14 @@ def plot_trad_vis(
     assert len(actions) == len(obs)
     rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
     custom_logger.log(f"Rewards: {rews}")
+
+    # see what happens if we randomly shuffle
+    rnd_idx_obs = th.randperm(obs.nelement())
+    rnd_idx_next_obs = th.randperm(next_obs.nelement())
+    obs_rnd = obs.contiguous().view(-1)[rnd_idx_obs].view(obs.shape)
+    next_obs_rnd = next_obs.contiguous().view(-1)[rnd_idx_next_obs].view(next_obs.shape)
+    rews_rnd = rew_net(obs_rnd.to(device), actions, next_obs_rnd.to(device), done=None)
+    print("Rewards of shuffled visualizations:", rews_rnd)
 
     # Use numpy from here.
     obs = obs.detach().cpu().numpy()
