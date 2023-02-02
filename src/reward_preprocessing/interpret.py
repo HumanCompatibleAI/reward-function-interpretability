@@ -458,17 +458,33 @@ def plot_trad_vis(
     # also unfuck the arguments
     action_nums = th.tensor(list(range(num_features))).to(device)
     actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
+
+    for _ in range(10):
+        rand_obs = th.randn(obs.shape) * 1 + 0.5
+        rand_next_obs = th.randn(next_obs.shape) * 1 + 0.5
+        rand_rews = rew_net(
+            rand_obs.to(device).float(),
+            actions,
+            rand_next_obs.to(device).float(),
+            done=None,
+        )
+        print("Rewards of random obs and next obs:", rand_rews)
+
     assert len(actions) == len(obs)
     rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
     custom_logger.log(f"Rewards: {rews}")
 
     # see what happens if we randomly shuffle
-    rnd_idx_obs = th.randperm(obs.nelement())
-    rnd_idx_next_obs = th.randperm(next_obs.nelement())
-    obs_rnd = obs.contiguous().view(-1)[rnd_idx_obs].view(obs.shape)
-    next_obs_rnd = next_obs.contiguous().view(-1)[rnd_idx_next_obs].view(next_obs.shape)
-    rews_rnd = rew_net(obs_rnd.to(device), actions, next_obs_rnd.to(device), done=None)
-    print("Rewards of shuffled visualizations:", rews_rnd)
+    shuff_idx_obs = th.randperm(obs.nelement())
+    shuff_idx_next_obs = th.randperm(next_obs.nelement())
+    obs_shuff = obs.contiguous().view(-1)[shuff_idx_obs].view(obs.shape)
+    next_obs_shuff = (
+        next_obs.contiguous().view(-1)[shuff_idx_next_obs].view(next_obs.shape)
+    )
+    rews_shuff = rew_net(
+        obs_shuff.to(device), actions, next_obs_shuff.to(device), done=None
+    )
+    print("Rewards of shuffled visualizations:", rews_shuff)
 
     # Use numpy from here.
     obs = obs.detach().cpu().numpy()
