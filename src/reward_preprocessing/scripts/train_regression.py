@@ -3,12 +3,12 @@ import os.path
 from typing import Sequence, cast
 
 from imitation.data import types
-from imitation.rewards.reward_nets import CnnRewardNet
 from imitation.scripts.common import common, demonstrations
 from sacred.observers import FileStorageObserver
 import torch as th
 
 import reward_preprocessing.scripts.common.supervised as supervised_config
+from reward_preprocessing.models import CnnRewardNetWorkaround
 from reward_preprocessing.scripts.config.train_regression import train_regression_ex
 from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
 
@@ -31,7 +31,7 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
     with common.make_venv() as venv:
         # Init the regression CNN
-        model = CnnRewardNet(
+        model = CnnRewardNetWorkaround(
             **supervised["net_kwargs"],
             # We don't want the following to be overriden.
             observation_space=venv.observation_space,
@@ -74,7 +74,7 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
 def _log_model_info(custom_logger, model):
     custom_logger.log(model)
-    if isinstance(model, CnnRewardNet):
+    if isinstance(model, CnnRewardNetWorkaround):
         # These do not exist in all reward nets. However, they exist in CnnRewardNet.
         custom_logger.log(f"use_state: {model.use_state}")
         custom_logger.log(f"use_action: {model.use_action}")
