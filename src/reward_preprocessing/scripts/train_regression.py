@@ -7,8 +7,8 @@ from imitation.scripts.common import common, demonstrations
 from sacred.observers import FileStorageObserver
 import torch as th
 
-import reward_preprocessing.scripts.common.supervised as supervised_config
 from reward_preprocessing.models import CnnRewardNetWorkaround
+import reward_preprocessing.scripts.common.supervised as supervised_config
 from reward_preprocessing.scripts.config.train_regression import train_regression_ex
 from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
 
