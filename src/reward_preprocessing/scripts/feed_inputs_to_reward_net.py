@@ -50,9 +50,9 @@ def feed_inputs_one_obs(reward_net_path, super_dir, num_acts):
 
 def feed_inputs_two_obs(reward_net_path, super_dir, num_acts):
     """
-    TODO make this correct
-    Takes a reward net and a folder whose subfolders contain images,
-    then feeds the images to the reward net and prints the reward.
+    Takes a reward net and a folder whose sub-sub-folders contain pairs of
+    images, named obs.png and next_obs.png, then feeds those images to the
+    reward net and prints the reward.
 
     Note: this only works if the reward net uses both obs and next_obs
     """
@@ -125,13 +125,12 @@ if __name__ == "__main__":
         + "procgen:procgen-coinrun-v0/20221130_121635_89ed71/"
         + "checkpoints/00015/model.pt"
     )
-    reward_net_path = large_state_next_state_path
-    super_dir = "/nas/ucb/daniel/procgen_photoshops/double_obs"
-    # super_dir = "/nas/ucb/daniel/procgen_photoshops/single_obs"
-    # num_acts = 15
-    num_acts = 1
+    reward_net_path = large_all_path
+    num_acts = 15
     one_obs = False
     if one_obs:
+        super_dir = "/nas/ucb/daniel/procgen_photoshops/single_obs"
         feed_inputs_one_obs(reward_net_path, super_dir, num_acts)
     else:
+        super_dir = "/nas/ucb/daniel/procgen_photoshops/double_obs"
         feed_inputs_two_obs(reward_net_path, super_dir, num_acts)
