@@ -39,5 +39,7 @@ def defaults():
             "jitter": 8,  # Jitter for generated images.
         }
     }
+    # How many random images to check the reward of
+    num_random_samples = 3
 
     locals()  # quieten flake8

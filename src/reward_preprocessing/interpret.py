@@ -3,6 +3,7 @@ import os.path as osp
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import PIL.Image
+from imitation.rewards.reward_nets import RewardNet
 from imitation.scripts.common import common as common_config
 from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
@@ -25,8 +26,6 @@ from reward_preprocessing.common.utils import (
 )
 from reward_preprocessing.scripts.config.interpret import interpret_ex
 from reward_preprocessing.vis.reward_vis import LayerNMF
-
-# TODO(df, before merging): make magic sd constants actual params
 
 
 def _get_action_meaning(action_id: int):
@@ -99,6 +98,7 @@ def interpret(
     l2_coeff: Optional[float],
     img_save_path: Optional[str],
     reg: Dict[str, Dict[str, Any]],
+    num_random_samples: Optional[int],
 ):
     """Run visualization for interpretability.
 
@@ -122,8 +122,10 @@ def interpret(
         vis_scale: Scale the plotted images by this factor.
         vis_type:
             Type of visualization to use. Either "traditional" for gradient-based
-            visualization of activations, or "dataset" for dataset visualization.
-            TODO(df): update
+            visualization of activations, "dataset" for dataset visualization, or
+            "dataset_traditional" to start with dataset visualization, then do
+            gradient-based visualization using the dataset visualizations as
+            initializations.
         layer_name:
             Name of the layer to visualize. To figure this out run this script and the
             available layers in the loaded model will be printed. Available layers will
@@ -145,6 +147,9 @@ def interpret(
         reg:
             Regularization settings. See reward_preprocessing.scripts.config.interpret
             for defaults.
+        num_random_samples:
+            Number of random pixel observations to feed to the reward net, to test if
+            the network gives them sensible rewards.
     """
     if limit_num_obs <= 0:
         raise ValueError(
@@ -315,7 +320,6 @@ def interpret(
 
         plot_trad_vis(
             obs,
-            acts,
             next_obs,
             device,
             rew_net,
@@ -400,8 +404,6 @@ def interpret(
             tensor = dataset_vis.to(device).requires_grad_(True)
             return [tensor], lambda: tensor
 
-        # TODO(df): also save dataset viz's?
-
         transforms = _determine_transforms(reg)
         opt_dataset = nmf.vis_traditional(
             transforms=transforms,
@@ -416,7 +418,6 @@ def interpret(
 
         plot_trad_vis(
             obs,
-            acts,
             next_obs,
             device,
             rew_net,
@@ -432,19 +433,23 @@ def interpret(
             custom_logger,
         )
 
+    if num_random_samples is not None:
+        random_rewards(
+            num_random_samples, rew_net, obs, num_features, device, custom_logger
+        )
+
     if pyplot:
         plt.show()
     custom_logger.log("Done with visualization.")
 
 
 def plot_trad_vis(
-    obs,
-    acts,
-    next_obs,
-    device,
-    rew_net,
-    layer_name,
-    num_features,
+    obs: th.Tensor,
+    next_obs: th.Tensor,
+    device: Union[str, th.device],
+    rew_net: RewardNet,
+    layer_name: str,
+    num_features: int,
     nmf,
     fig,
     rows,
@@ -454,37 +459,20 @@ def plot_trad_vis(
     wandb_logging,
     custom_logger,
 ):
-    """TODO: docstring. also maybe rename?"""
-    # also unfuck the arguments
+    """Print out rewards and plot results of gradient-based visualization.
+
+    Key difference from dataset vis plotting seems to be the use of sub-images?
+    To be honest, I (Daniel Filan) wrote this docstring in a state of not really
+    understanding why this code is the way it is.
+
+    Hopefully the limited degree of type information available is still useful.
+    """
     action_nums = th.tensor(list(range(num_features))).to(device)
     actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
-
-    for _ in range(10):
-        rand_obs = th.randn(obs.shape) * 1 + 0.5
-        rand_next_obs = th.randn(next_obs.shape) * 1 + 0.5
-        rand_rews = rew_net(
-            rand_obs.to(device).float(),
-            actions,
-            rand_next_obs.to(device).float(),
-            done=None,
-        )
-        print("Rewards of random obs and next obs:", rand_rews)
 
     assert len(actions) == len(obs)
     rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
     custom_logger.log(f"Rewards: {rews}")
-
-    # see what happens if we randomly shuffle
-    shuff_idx_obs = th.randperm(obs.nelement())
-    shuff_idx_next_obs = th.randperm(next_obs.nelement())
-    obs_shuff = obs.contiguous().view(-1)[shuff_idx_obs].view(obs.shape)
-    next_obs_shuff = (
-        next_obs.contiguous().view(-1)[shuff_idx_next_obs].view(next_obs.shape)
-    )
-    rews_shuff = rew_net(
-        obs_shuff.to(device), actions, next_obs_shuff.to(device), done=None
-    )
-    print("Rewards of shuffled visualizations:", rews_shuff)
 
     # Use numpy from here.
     obs = obs.detach().cpu().numpy()
@@ -547,6 +535,23 @@ def plot_trad_vis(
             logger=custom_logger,
         )
         custom_logger.dump(step=num_features)
+
+
+def random_rewards(num_samples, rew_net, obs, num_features, device, custom_logger):
+    """Prints rewards of random observations."""
+    action_nums = th.tensor(list(range(num_features))).to(device)
+    actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
+
+    for _ in range(num_samples):
+        rand_obs = th.randn(obs.shape) + 0.5
+        rand_next_obs = th.randn(obs.shape) + 0.5
+        rand_rews = rew_net(
+            rand_obs.to(device).float(),
+            actions,
+            rand_next_obs.to(device).float(),
+            done=None,
+        )
+        custom_logger.log(f"Rewards of random obs and next obs: {rand_rews}")
 
 
 def _determine_transforms(reg: Dict[str, Dict[str, Any]]) -> List[Callable]:
