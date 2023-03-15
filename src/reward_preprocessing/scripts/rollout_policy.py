@@ -1,4 +1,7 @@
-"""Thin wrapper around imitation's eval_policy script."""
+"""Thin wrapper around imitation's eval_policy script.
+
+If you're not Daniel, you probably need to change these paths.
+"""
 from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.scripts.eval_policy import main_console
 
