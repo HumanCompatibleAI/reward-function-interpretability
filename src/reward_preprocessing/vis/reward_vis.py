@@ -98,12 +98,10 @@ def argmax_nd(
 
 @wrap_objective()
 def l2_objective(layer_name, coefficient, batch=None):
-    """L2 norm of specified layer, multiplied by the given coefficient."""
+    """Squared L2 norm of specified layer, multiplied by the given coefficient."""
 
     @handle_batch(batch)
     def inner(model):
-        # if random.random() < 0.01:
-        #     print("layer norm", th.sqrt(th.sum(model(layer_name) ** 2)))
         return coefficient * th.sum(model(layer_name) ** 2)
 
     return inner
@@ -111,18 +109,12 @@ def l2_objective(layer_name, coefficient, batch=None):
 
 @wrap_objective()
 def l2_diff_objective(tensor, coefficient, layer_name, batch=None):
-    """L2 norm of difference between specified layer and given tensor, multiplied by the
-    given coefficient."""
+    """Squared L2 norm of difference between specified layer and given tensor,
+    multiplied by the given coefficient.
+    """
 
     @handle_batch(batch)
     def inner(model):
-        # print(f"{model(layer_name).shape=}")
-        # if random.random() < 0.01:
-        #     # print(f"{model(layer_name)[0, -3:, 10:15, 10:15]=}")
-        #     print("tentsor norm", th.sqrt(th.sum(tensor ** 2)))
-        #     print("layer norm", th.sqrt(th.sum(model(layer_name) ** 2)))
-        #     print("diff norm", th.sqrt(th.sum((model(layer_name) - tensor) ** 2)))
-        # return coefficient * th.sqrt(th.sum((model(layer_name) - tensor) ** 2))
         return coefficient * th.sum((model(layer_name) - tensor) ** 2)
 
     return inner
