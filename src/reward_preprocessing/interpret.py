@@ -160,7 +160,7 @@ def interpret(
         )
     if vis_type not in ["dataset", "traditional", "dataset_traditional"]:
         raise ValueError(f"Unknown vis_type: {vis_type}")
-    if vis_type in ["dataset", "monochrome"] and gan_path is not None:
+    if vis_type == "dataset" and gan_path is not None:
         raise ValueError(f"GANs cannot be used with {vis_type} visualization.")
     if gan_path is not None and l2_coeff is None:
         raise ValueError("When GANs are used, l2_coeff must be set.")
