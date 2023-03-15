@@ -1,3 +1,5 @@
+# Script to feed hand-crafted png files as inputs into reward networks.
+
 import os
 import os.path as osp
 
@@ -9,7 +11,7 @@ import torch.nn.functional as func
 
 def feed_inputs_one_obs(reward_net_path, super_dir, num_acts):
     """
-    Takes a reward net and a folder whose subfolders contain images,
+    Takes a reward net and a folder whose subfolders contain png images,
     then feeds the images to the reward net and prints the reward.
 
     Note: this only works if the reward net doesn't use the next_obs
@@ -63,7 +65,6 @@ def feed_inputs_two_obs(reward_net_path, super_dir, num_acts):
         print("\nevaluating images of type: ", sub_dir)
         rewards = []
         for sub_sub_dir in os.listdir(osp.join(super_dir, sub_dir)):
-            # print("sub_sub_dir: ", sub_sub_dir)
             obs_in_dir = "obs.png" in os.listdir(
                 osp.join(super_dir, sub_dir, sub_sub_dir)
             )
