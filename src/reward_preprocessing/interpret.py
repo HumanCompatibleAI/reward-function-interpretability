@@ -182,7 +182,7 @@ def interpret(
 
     if gan_path is None:
         # Imitation reward nets have 4 input args, lucent expects models to only have 1.
-        # These wrappers make it so rew_net accepts a single input which is a
+        # This wrapper makes it so rew_net accepts a single input which is a
         # transition tensor.
         model_to_analyse = TensorTransitionWrapper(rew_net)
     else:  # Use GAN
