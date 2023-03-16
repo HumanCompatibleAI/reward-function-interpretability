@@ -11,6 +11,7 @@ import torch as th
 from torch import nn as nn
 from torch.utils import data as torch_data
 import vegans.utils
+
 import wandb
 
 
@@ -207,11 +208,13 @@ class TensorTransitionWrapper(nn.Module):
         arguments."""
         super().__init__()
         self.rew_net = rew_net
+        self.transition_tensor_identity_op = nn.Identity()
 
     def forward(self, transition_tensor: th.Tensor) -> th.Tensor:
         # Input data must be between 0 and 1 because that is what
         # tensor_to_transition expects.
-        obs, act, next_obs = tensor_to_transition(transition_tensor)
+        transition_tensor_ = self.transition_tensor_identity_op(transition_tensor)
+        obs, act, next_obs = tensor_to_transition(transition_tensor_)
 
         dones = th.zeros_like(obs[:, 0])
         return self.rew_net(state=obs, action=act, next_state=next_obs, done=dones)

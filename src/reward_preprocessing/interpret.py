@@ -3,6 +3,7 @@ import os.path as osp
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import PIL.Image
+from imitation.rewards.reward_nets import RewardNet
 from imitation.scripts.common import common as common_config
 from imitation.util.logger import HierarchicalLogger
 from lucent.modelzoo.util import get_model_layers
@@ -97,6 +98,7 @@ def interpret(
     l2_coeff: Optional[float],
     img_save_path: Optional[str],
     reg: Dict[str, Dict[str, Any]],
+    num_random_samples: Optional[int],
 ):
     """Run visualization for interpretability.
 
@@ -120,7 +122,10 @@ def interpret(
         vis_scale: Scale the plotted images by this factor.
         vis_type:
             Type of visualization to use. Either "traditional" for gradient-based
-            visualization of activations, or "dataset" for dataset visualization.
+            visualization of activations, "dataset" for dataset visualization, or
+            "dataset_traditional" to start with dataset visualization, then do
+            gradient-based visualization using the dataset visualizations as
+            initializations.
         layer_name:
             Name of the layer to visualize. To figure this out run this script and the
             available layers in the loaded model will be printed. Available layers will
@@ -142,6 +147,9 @@ def interpret(
         reg:
             Regularization settings. See reward_preprocessing.scripts.config.interpret
             for defaults.
+        num_random_samples:
+            Number of random pixel observations to feed to the reward net, to test if
+            the network gives them sensible rewards.
     """
     if limit_num_obs <= 0:
         raise ValueError(
@@ -150,10 +158,10 @@ def interpret(
             f"I don't think we actually ever want to use all so this is currently not "
             f"implemented."
         )
-    if vis_type not in ["dataset", "traditional"]:
+    if vis_type not in ["dataset", "traditional", "dataset_traditional"]:
         raise ValueError(f"Unknown vis_type: {vis_type}")
     if vis_type == "dataset" and gan_path is not None:
-        raise ValueError("GANs cannot be used with dataset visualization.")
+        raise ValueError(f"GANs cannot be used with {vis_type} visualization.")
     if gan_path is not None and l2_coeff is None:
         raise ValueError("When GANs are used, l2_coeff must be set.")
     if img_save_path is not None and img_save_path[-1] != "/":
@@ -248,10 +256,11 @@ def interpret(
             # This does the actual interpretability, i.e. it calculates the
             # visualizations.
             opt_transitions = nmf.vis_traditional(transforms=transforms)
-            # This gives us an array that optimizes the objectives, in the shape of the
-            # input which is a transition tensor. However, lucent helpfully transposes
-            # the output such that the channel dimension is last. Our functions expect
-            # channel dim before spatial dims, so we need to transpose it back.
+            # This gives us an array that optimizes the objectives, in the shape of
+            # the input which is a transition tensor. However, lucent helpfully
+            # transposes the output such that the channel dimension is last. Our
+            # functions expect channel dim before spatial dims, so we need to
+            # transpose it back.
             opt_transitions = opt_transitions.transpose(0, 3, 1, 2)
             # In the following we need opt_transitions to be a pytorch tensor.
             opt_transitions = th.tensor(opt_transitions)
@@ -308,75 +317,23 @@ def interpret(
         # Note that since actions is only used to choose which head to use, there are no
         # gradients from the reward to the action. Consequently, acts in opt_latent is
         # meaningless.
-        action_nums = th.tensor(list(range(num_features))).to(device)
-        actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
-        assert len(actions) == len(obs)
-        rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
-        custom_logger.log(f"Rewards: {rews}")
 
-        # Use numpy from here.
-        obs = obs.detach().cpu().numpy()
-        next_obs = next_obs.detach().cpu().numpy()
-        rews = rews.detach().cpu().numpy()
-
-        # We want to plot the name of the action, if applicable.
-        features_are_actions = _determine_features_are_actions(nmf, layer_name)
-
-        # Set of images, one for each feature, add each to plot
-        for feature_i in range(next_obs.shape[0]):
-            # Log the rewards
-            rew_key = f"rew_feat_{feature_i:02}"
-            if features_are_actions:
-                rew_key += f"_{_get_action_meaning(action_id=feature_i)}"
-            custom_logger.record(rew_key, rews[feature_i])
-            # Log the images
-            sub_img_obs = obs[feature_i]
-            sub_img_next_obs = next_obs[feature_i]
-            _log_single_transition_wandb(
-                custom_logger,
-                feature_i,
-                (sub_img_obs, sub_img_next_obs),
-                vis_scale,
-                wandb_logging,
-                features_are_actions,
-            )
-            _plot_img(
-                columns,
-                feature_i,
-                num_features,
-                fig,
-                (sub_img_obs, sub_img_next_obs),
-                rows,
-                features_are_actions,
-            )
-            if img_save_path is not None:
-                obs_PIL = array_to_image(sub_img_obs, vis_scale)
-                obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
-                next_obs_PIL = array_to_image(sub_img_next_obs, vis_scale)
-                next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
-                custom_logger.log(
-                    f"Saved feature {feature_i} viz in dir {img_save_path}."
-                )
-        # This greatly improves the spacing of subplots for the feature overview plot.
-        plt.tight_layout()
-
-        if wandb_logging:
-            # Take the matplotlib plot containing all visualizations and log it as a
-            # single image in wandb.
-            # We do this, so we have both the individual feature visualizations (logged
-            # above) in case we need them and the overview plot, which is a bit more
-            # useful.
-            img_buf = io.BytesIO()
-            plt.savefig(img_buf, format="png")
-            full_plot_img = PIL.Image.open(img_buf)
-            log_img_wandb(
-                img=full_plot_img,
-                caption="Feature Overview",
-                wandb_key="feature_overview",
-                scale=vis_scale,
-                logger=custom_logger,
-            )
-            custom_logger.dump(step=num_features)
+        plot_trad_vis(
+            obs,
+            next_obs,
+            device,
+            rew_net,
+            layer_name,
+            num_features,
+            nmf,
+            fig,
+            rows,
+            columns,
+            vis_scale,
+            img_save_path,
+            wandb_logging,
+            custom_logger,
+        )
 
     elif vis_type == "dataset":
         for feature_i in range(num_features):
@@ -427,9 +384,174 @@ def interpret(
                     f"Saved feature {feature_i} viz in dir {img_save_path}."
                 )
 
+    elif vis_type == "dataset_traditional":
+        best_transitions = []
+        for feature_i in range(num_features):
+            custom_logger.log(f"Feature {feature_i}")
+            _, indices = nmf.vis_dataset_thumbnail(
+                feature=feature_i,
+                num_mult=2,
+                expand_mult=1,
+            )
+
+            assert nmf.reducer is None
+            best_transitions.append(th.Tensor(inputs[indices[0][0]][None, :, :, :]))
+
+        dataset_vis = th.cat(best_transitions)
+        dataset_vis_clone = th.clone(dataset_vis).detach()
+
+        def pixel_image_start_best():
+            tensor = dataset_vis.to(device).requires_grad_(True)
+            return [tensor], lambda: tensor
+
+        transforms = _determine_transforms(reg)
+        opt_dataset = nmf.vis_traditional(
+            transforms=transforms,
+            param_f=pixel_image_start_best,
+            l2_diff_coeff=3e-1,
+            l2_diff_tensor=dataset_vis_clone,
+        )
+
+        opt_dataset = opt_dataset.transpose(0, 3, 1, 2)
+        opt_dataset = th.tensor(opt_dataset).to(device)
+        obs, acts, next_obs = tensor_to_transition(opt_dataset)
+
+        plot_trad_vis(
+            obs,
+            next_obs,
+            device,
+            rew_net,
+            layer_name,
+            num_features,
+            nmf,
+            fig,
+            rows,
+            columns,
+            vis_scale,
+            img_save_path,
+            wandb_logging,
+            custom_logger,
+        )
+
+    if num_random_samples is not None:
+        random_rewards(
+            num_random_samples, rew_net, obs, num_features, device, custom_logger
+        )
+
     if pyplot:
         plt.show()
     custom_logger.log("Done with visualization.")
+
+
+def plot_trad_vis(
+    obs: th.Tensor,
+    next_obs: th.Tensor,
+    device: Union[str, th.device],
+    rew_net: RewardNet,
+    layer_name: str,
+    num_features: int,
+    nmf,
+    fig,
+    rows,
+    columns,
+    vis_scale,
+    img_save_path,
+    wandb_logging,
+    custom_logger,
+):
+    """Print out rewards and plot results of gradient-based visualization.
+
+    Key difference from dataset vis plotting seems to be the use of sub-images?
+    To be honest, I (Daniel Filan) wrote this docstring in a state of not really
+    understanding why this code is the way it is.
+
+    Hopefully the limited degree of type information available is still useful.
+    """
+    action_nums = th.tensor(list(range(num_features))).to(device)
+    actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
+
+    assert len(actions) == len(obs)
+    rews = rew_net(obs.to(device), actions, next_obs.to(device), done=None)
+    custom_logger.log(f"Rewards: {rews}")
+
+    # Use numpy from here.
+    obs = obs.detach().cpu().numpy()
+    next_obs = next_obs.detach().cpu().numpy()
+    rews = rews.detach().cpu().numpy()
+
+    # We want to plot the name of the action, if applicable.
+    features_are_actions = _determine_features_are_actions(nmf, layer_name)
+
+    # Set of images, one for each feature, add each to plot
+    for feature_i in range(next_obs.shape[0]):
+        # Log the rewards
+        rew_key = f"rew_feat_{feature_i:02}"
+        if features_are_actions:
+            rew_key += f"_{_get_action_meaning(action_id=feature_i)}"
+        custom_logger.record(rew_key, rews[feature_i])
+        # Log the images
+        sub_img_obs = obs[feature_i]
+        sub_img_next_obs = next_obs[feature_i]
+        _log_single_transition_wandb(
+            custom_logger,
+            feature_i,
+            (sub_img_obs, sub_img_next_obs),
+            vis_scale,
+            wandb_logging,
+            features_are_actions,
+        )
+        _plot_img(
+            columns,
+            feature_i,
+            num_features,
+            fig,
+            (sub_img_obs, sub_img_next_obs),
+            rows,
+            features_are_actions,
+        )
+        if img_save_path is not None:
+            obs_PIL = array_to_image(sub_img_obs, vis_scale)
+            obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
+            next_obs_PIL = array_to_image(sub_img_next_obs, vis_scale)
+            next_obs_PIL.save(img_save_path + f"{feature_i}_next_obs.png")
+            custom_logger.log(f"Saved feature {feature_i} viz in dir {img_save_path}.")
+    # This greatly improves the spacing of subplots for the feature overview plot.
+    plt.tight_layout()
+
+    if wandb_logging:
+        # Take the matplotlib plot containing all visualizations and log it as a
+        # single image in wandb.
+        # We do this, so we have both the individual feature visualizations (logged
+        # above) in case we need them and the overview plot, which is a bit more
+        # useful.
+        img_buf = io.BytesIO()
+        plt.savefig(img_buf, format="png")
+        full_plot_img = PIL.Image.open(img_buf)
+        log_img_wandb(
+            img=full_plot_img,
+            caption="Feature Overview",
+            wandb_key="feature_overview",
+            scale=vis_scale,
+            logger=custom_logger,
+        )
+        custom_logger.dump(step=num_features)
+
+
+def random_rewards(num_samples, rew_net, obs, num_features, device, custom_logger):
+    """Prints rewards of random observations."""
+    action_nums = th.tensor(list(range(num_features))).to(device)
+    actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
+
+    for _ in range(num_samples):
+        rand_obs = th.randn(obs.shape) + 0.5
+        rand_next_obs = th.randn(obs.shape) + 0.5
+        rand_rews = rew_net(
+            rand_obs.to(device).float(),
+            actions,
+            rand_next_obs.to(device).float(),
+            done=None,
+        )
+        custom_logger.log(f"Rewards of random obs and next obs: {rand_rews}")
 
 
 def _determine_transforms(reg: Dict[str, Dict[str, Any]]) -> List[Callable]:

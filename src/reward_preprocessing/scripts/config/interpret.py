@@ -18,7 +18,9 @@ def defaults():
     # wandb logging or save images to disk.
     pyplot = False
     vis_scale = 4  # Scale the visualization img by this factor
-    vis_type = "traditional"  # "traditional" (gradient-based) or "dataset"
+    # Type of visualization to do. Options are "traditional" (gradient-based),
+    # "dataset", and "dataset_traditional" (first do dataset, then traditional).
+    vis_type = "traditional"
     # Name of the layer to visualize. To figure this out run interpret and the
     # available layers will be printed. For additional notes see interpret doc comment.
     layer_name = "reshaped_out"
@@ -37,5 +39,7 @@ def defaults():
             "jitter": 8,  # Jitter for generated images.
         }
     }
+    # How many random images to check the reward of
+    num_random_samples = 3
 
     locals()  # quieten flake8
