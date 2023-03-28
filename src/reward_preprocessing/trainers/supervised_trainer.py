@@ -11,9 +11,9 @@ import numpy as np
 import torch as th
 from torch.utils import data
 from tqdm import tqdm
+import wandb
 
 from reward_preprocessing.common.utils import log_img_wandb
-import wandb
 
 
 def _normalize_obs(obs: th.Tensor) -> th.Tensor:
