@@ -23,7 +23,7 @@ git+https://github.com/openai/gym3.git@4c38246
 # default in gym3, since gym3 immediately resets the environment after the
 # episode ends.
 # procgen @ git+https://github.com/PavelCz/procgenAISC.git@54de6b7553c55f12f53c346730681c4e4c9abd40
-procgen @ git+https://github.com/dfilan/procgen-expose-state.git@e533b21ba50694e681f05ee8319cceaa3abc4ff7
+procgen @ git+https://github.com/dfilan/procgen-expose-state.git@32271abfc0004c352bd79ef70dbcd5c5f1e9dca3
 # Revert to this older version because some library won't work otherwise
 protobuf==3.19
 git+https://github.com/dfilan/vegans.git@76a3c45
