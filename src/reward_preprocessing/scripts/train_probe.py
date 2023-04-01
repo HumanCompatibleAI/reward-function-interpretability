@@ -17,6 +17,7 @@ def train_coinrun_probe(traj_path, reward_net_path):
         attribute_dim=2,
         attribute_name=["agent_coin_vec_x", "agent_coin_vec_y"],
         loss_type="mse",
+        device=device,
     )
 
     trajs = demonstrations.load_expert_trajs(

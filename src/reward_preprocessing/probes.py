@@ -1,7 +1,7 @@
 """Train linear probes on reward nets."""
 
 import math
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 from imitation.rewards.reward_nets import CnnRewardNet
 import torch as th
@@ -22,13 +22,14 @@ class Probe(nn.Module):
         reward_net: CnnRewardNet,
         layer_name: str,
         attribute_dim: int,
-        attribute_name: Union[str, list[str]],
+        attribute_name: Union[str, List[str]],
         loss_type: str,
+        device: th.device,
     ) -> None:
         super(Probe, self).__init__()
         self.attribute_name = attribute_name
         self.attribute_dim = attribute_dim
-        self.model = reward_net.cnn
+        self.model = reward_net.cnn.to(device)
         self.use_state = reward_net.use_state
         self.use_action = reward_net.use_action
         self.use_next_state = reward_net.use_next_state
@@ -36,6 +37,7 @@ class Probe(nn.Module):
         self.layer_name = layer_name
         self.probe_head = None
         self.loss_type = loss_type
+        self.device = device
 
         if self.loss_type not in ["mse", "cross_entropy"]:
             raise ValueError(
@@ -58,10 +60,10 @@ class Probe(nn.Module):
         if not (self.use_state or self.use_next_state):
             raise ValueError("Reward net must use state or next_state")
 
-        x = th.zeros(1, input_channels, 64, 64)
+        x = th.zeros(1, input_channels, 64, 64).to(device)
         # man I wish I had broken out the function that took sas' to a tensor
         # when I was writing CnnRewardNet.
-        for name, child in enumerate(self.model.named_children()):
+        for name, child in self.model.named_children():
             x = child.forward(x)
             if name == self.layer_name:
                 avg_pool = nn.AdaptiveAvgPool2d(1)
@@ -70,6 +72,8 @@ class Probe(nn.Module):
                 self.probe_head = nn.Sequential(avg_pool, flatten, fc)
         if self.probe_head is None:
             raise ValueError(f"Could not find layer {self.layer_name} to probe")
+
+        self.probe_head.to(device)
 
     def forward(self, x: th.Tensor) -> th.Tensor:
         self.model.eval()
@@ -87,9 +91,6 @@ class Probe(nn.Module):
         batch_size: int,
         num_epochs: int,
     ) -> None:
-        device = "cuda" if th.cuda.is_available() else "cpu"
-        self.model.to(device)
-        self.probe_head.to(device)
         train_loader, test_loader = self.make_loaders(dataset, frac_train, batch_size)
         init_train_loss = self.eval_on_dataloader(train_loader)
         print("Initial train loss:", init_train_loss)
@@ -168,6 +169,8 @@ class Probe(nn.Module):
             if optimizer is not None:
                 optimizer.zero_grad()
             args, target = self.data_dict_to_args_and_target(data)
+            args.to(self.device)
+            target.to(self.device)
             outputs = self.forward(args)
             loss = self.loss_func(outputs, target)
             if optimizer is not None:
