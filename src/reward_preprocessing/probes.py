@@ -3,7 +3,7 @@
 import math
 from typing import List, Optional, Tuple, Union
 
-from imitation.rewards.reward_nets import CnnRewardNet
+from imitation.rewards.reward_nets import CnnRewardNet, cnn_transpose
 import torch as th
 from torch import nn
 
@@ -29,11 +29,12 @@ class Probe(nn.Module):
         super(Probe, self).__init__()
         self.attribute_name = attribute_name
         self.attribute_dim = attribute_dim
-        self.model = reward_net.cnn.to(device)
+        self.model = reward_net.cnn
         self.use_state = reward_net.use_state
         self.use_action = reward_net.use_action
         self.use_next_state = reward_net.use_next_state
         self.use_done = reward_net.use_done
+        self.hwc_format = reward_net.hwc_format
         self.layer_name = layer_name
         self.probe_head = None
         self.loss_type = loss_type
@@ -60,6 +61,8 @@ class Probe(nn.Module):
         if not (self.use_state or self.use_next_state):
             raise ValueError("Reward net must use state or next_state")
 
+        self.model.to(self.device)
+
         x = th.zeros(1, input_channels, 64, 64).to(device)
         # man I wish I had broken out the function that took sas' to a tensor
         # when I was writing CnnRewardNet.
@@ -73,11 +76,11 @@ class Probe(nn.Module):
         if self.probe_head is None:
             raise ValueError(f"Could not find layer {self.layer_name} to probe")
 
-        self.probe_head.to(device)
+        self.probe_head.to(self.device)
 
     def forward(self, x: th.Tensor) -> th.Tensor:
         self.model.eval()
-        for name, child in enumerate(self.model.named_children()):
+        for name, child in self.model.named_children():
             x = child.forward(x)
             if name == self.layer_name:
                 return self.probe_head(x)
@@ -133,10 +136,13 @@ class Probe(nn.Module):
         target = (
             info_dict[self.attribute_name]
             if not isinstance(self.attribute_name, list)
-            else th.cat([info_dict[name] for name in self.attribute_name], axis=1)
+            else th.stack([info_dict[name] for name in self.attribute_name], axis=1)
         )
         obses = data_dict["obs"]
         next_obses = data_dict["next_obs"]
+        if self.hwc_format:
+            obses = cnn_transpose(obses)
+            next_obses = cnn_transpose(next_obses)
         args = None
         if self.use_state and self.use_next_state:
             args = th.concat([obses, next_obses], axis=1)
