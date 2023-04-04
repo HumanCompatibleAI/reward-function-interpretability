@@ -1,6 +1,6 @@
 import dataclasses
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import List, Mapping, Optional, Sequence, Tuple, Union
 
 import PIL
 from PIL import Image
@@ -344,3 +344,32 @@ def flatten_trajectories_with_rew_double_info(
     lengths = set(map(len, cat_parts.values()))
     assert len(lengths) == 1, f"expected one length, got {lengths}"
     return DoubleInfoTransitionsWithRew(**cat_parts)
+
+
+def transitions_collate_fn(
+    batch: Sequence[Mapping[str, np.ndarray]],
+) -> Mapping[str, Union[np.ndarray, th.Tensor]]:
+    """Custom `th.utils.data.DataLoader` collate_fn for `DoubleInfoTransitionsWithRew`.
+
+    Use this as the `collate_fn` argument to `DataLoader` if using an instance of
+    `TransitionsMinimal` as the `dataset` argument. Modified from imitation.data.types.
+
+    Args:
+        batch: The batch to collate.
+
+    Returns:
+        A collated batch. Uses Torch's default collate function for everything
+        except the "infos" key. For "infos", we join all the info dicts into a
+        list of dicts. (The default behavior would recursively collate every
+        info dict into a single dict, which is incorrect.)
+    """
+    batch_no_infos = [
+        {k: np.array(v) for k, v in sample.items() if k not in ["infos", "next_infos"]}
+        for sample in batch
+    ]
+
+    result = torch_data.dataloader.default_collate(batch_no_infos)
+    assert isinstance(result, dict)
+    result["infos"] = [sample["infos"] for sample in batch]
+    result["next_infos"] = [sample["next_infos"] for sample in batch]
+    return result

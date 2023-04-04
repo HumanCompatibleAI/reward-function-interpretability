@@ -1,6 +1,7 @@
 """Train linear probes on reward nets."""
 
 import math
+import random
 from typing import List, Optional, Tuple, Union
 
 from imitation.rewards.reward_nets import CnnRewardNet, cnn_transpose
@@ -8,7 +9,10 @@ from stable_baselines3.common import preprocessing
 import torch as th
 from torch import nn
 
-from reward_preprocessing.common.utils import DoubleInfoTransitionsWithRew
+from reward_preprocessing.common.utils import (
+    DoubleInfoTransitionsWithRew,
+    transitions_collate_fn,
+)
 
 
 class Probe(nn.Module):
@@ -107,7 +111,7 @@ class Probe(nn.Module):
         optimizer = th.optim.SGD(self.probe_head.parameters(), lr=lr)
         for epoch in range(num_epochs):
             epoch_loss = self.eval_on_dataloader(train_loader, optimizer=optimizer)
-            print(f"Average loss over epoch {epoch}:", epoch_loss)
+            print(f"Train loss over epoch {epoch}:", epoch_loss)
             epoch_test_loss = self.eval_on_dataloader(test_loader)
             print(f"Test loss after epoch {epoch}:", epoch_test_loss)
         print("Training complete!")
@@ -118,30 +122,41 @@ class Probe(nn.Module):
         frac_train: float,
         batch_size: int,
     ) -> Tuple[th.utils.data.DataLoader, th.utils.data.DataLoader]:
-        # TODO shuffle the dataset
-        shuffled_dataset = dataset
+        shuffled_dataset = random.sample(dataset, len(dataset))
         num_train = math.floor(frac_train * len(dataset))
         train_data = shuffled_dataset[:num_train]
         test_data = shuffled_dataset[num_train:]
-        # wait probably these lists are enough to be th.utils.data.Datasets
         train_loader = th.utils.data.DataLoader(
-            train_data, batch_size=batch_size, shuffle=True
+            train_data,
+            batch_size=batch_size,
+            shuffle=True,
+            collate_fn=transitions_collate_fn,
         )
         test_loader = th.utils.data.DataLoader(
-            test_data, batch_size=batch_size, shuffle=True
+            test_data,
+            batch_size=batch_size,
+            shuffle=True,
+            collate_fn=transitions_collate_fn,
         )
         return train_loader, test_loader
 
     def data_dict_to_args_and_target(
         self, data_dict: dict
     ) -> Tuple[th.Tensor, th.Tensor]:
-        info_dict = (
+        info_dicts = (
             data_dict["next_infos"] if self.use_next_state else data_dict["infos"]
         )
         target = (
-            info_dict[self.attribute_name]
-            if not isinstance(self.attribute_name, list)
-            else th.stack([info_dict[name] for name in self.attribute_name], axis=1)
+            th.tensor(
+                [
+                    [info_dict[name] for name in self.attribute_name]
+                    for info_dict in info_dicts
+                ]
+            ).to(th.float32)
+            if isinstance(self.attribute_name, list)
+            else th.tensor(
+                [info_dict[self.attribute_name] for info_dict in info_dicts]
+            ).to(th.float32)
         )
         obses = data_dict["obs"]
         next_obses = data_dict["next_obs"]
