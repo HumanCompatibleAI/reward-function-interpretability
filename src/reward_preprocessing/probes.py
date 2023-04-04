@@ -4,6 +4,7 @@ import math
 from typing import List, Optional, Tuple, Union
 
 from imitation.rewards.reward_nets import CnnRewardNet, cnn_transpose
+from stable_baselines3.common import preprocessing
 import torch as th
 from torch import nn
 
@@ -17,6 +18,8 @@ class Probe(nn.Module):
     # TODO: remove magic constants for numbers of channels
     # TODO: change name to CnnProbe???
     # TODO: add check on attribute_dim
+    # TODO: would be nice to reuse reward_net methods to a greater extent than I
+    # currently am able to.
     def __init__(
         self,
         reward_net: CnnRewardNet,
@@ -34,6 +37,8 @@ class Probe(nn.Module):
         self.use_action = reward_net.use_action
         self.use_next_state = reward_net.use_next_state
         self.use_done = reward_net.use_done
+        self.observation_space = reward_net.observation_space
+        self.normalize_inputs = reward_net.normalize_images
         self.hwc_format = reward_net.hwc_format
         self.layer_name = layer_name
         self.probe_head = None
@@ -143,6 +148,12 @@ class Probe(nn.Module):
         if self.hwc_format:
             obses = cnn_transpose(obses)
             next_obses = cnn_transpose(next_obses)
+        obses = preprocessing.preprocess_obs(
+            obses, self.observation_space, self.normalize_inputs
+        )
+        next_obses = preprocessing.preprocess_obs(
+            next_obses, self.observation_space, self.normalize_inputs
+        )
         args = None
         if self.use_state and self.use_next_state:
             args = th.concat([obses, next_obses], axis=1)
@@ -175,12 +186,13 @@ class Probe(nn.Module):
             if optimizer is not None:
                 optimizer.zero_grad()
             args, target = self.data_dict_to_args_and_target(data)
-            args.to(self.device)
-            target.to(self.device)
+            args = args.to(self.device)
+            target = target.to(self.device)
             outputs = self.forward(args)
             loss = self.loss_func(outputs, target)
             if optimizer is not None:
                 loss.backward()
                 optimizer.step()
             total_loss += loss.item()
+            num_batches += 1
         return total_loss / num_batches
