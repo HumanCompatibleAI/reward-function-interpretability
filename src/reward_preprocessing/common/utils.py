@@ -315,25 +315,24 @@ class DoubleInfoTransitionsWithRew(types.TransitionsWithRew):
 def flatten_trajectories_with_rew_double_info(
     trajectories: Sequence[types.TrajectoryWithRew],
 ) -> DoubleInfoTransitionsWithRew:
-    # note: this doesn't include the last transition because I don't know how to deal
-    # with info dict of the last transition.
-    # TODO: fix that!!!
+    # note: this doesn't include the last transition because it seems to have the same
+    # obs and next_obs
     keys = ["obs", "next_obs", "acts", "rews", "dones", "infos", "next_infos"]
     parts = {key: [] for key in keys}
     for traj in trajectories:
-        parts["acts"].append(traj.acts[:-1])
-        parts["obs"].append(traj.obs[:-2])
-        parts["next_obs"].append(traj.obs[1:-1])
-        dones = np.zeros(len(traj.acts) - 1, dtype=bool)
+        parts["acts"].append(traj.acts[1:-1])
+        parts["obs"].append(traj.obs[1:-2])
+        parts["next_obs"].append(traj.obs[2:-1])
+        dones = np.zeros(len(traj.acts) - 2, dtype=bool)
         parts["dones"].append(dones)
-        parts["rews"].append(traj.rews[:-1])
+        parts["rews"].append(traj.rews[1:-1])
 
         if traj.infos is None:
             infos = np.array([{}] * (len(traj) - 1))
             next_infos = np.array([{}] * (len(traj) - 1))
         else:
-            infos = traj.infos[:-1]
-            next_infos = traj.infos[1:]
+            infos = traj.infos[:-2]
+            next_infos = traj.infos[1:-1]
 
         parts["infos"].append(infos)
         parts["next_infos"].append(next_infos)

@@ -18,7 +18,6 @@ from reward_preprocessing.common.utils import (
 class Probe(nn.Module):
     # inspired by
     # https://github.com/yukimasano/linear-probes/blob/master/eval_linear_probes.py
-    # when you optimize, can just optimize over probe_head.params
     # TODO: remove magic constants for numbers of channels
     # TODO: change name to CnnProbe???
     # TODO: add check on attribute_dim
@@ -103,6 +102,17 @@ class Probe(nn.Module):
         batch_size: int,
         num_epochs: int,
     ) -> None:
+        """Train a probe on a dataset using stochastic gradient descent.
+
+        Args:
+          - dataset: collection of transitions (with info dicts for the obs and the
+            next_obs).
+          - lr: learning rate.
+          - frac_train: proportion of the dataset to train on. remainder is a held-out
+            test set.
+          - batch_size: batch size.
+          - num_epochs: number of epochs to train for.
+        """
         train_loader, test_loader = self.make_loaders(dataset, frac_train, batch_size)
         init_train_loss = self.eval_on_dataloader(train_loader)
         print("Initial train loss:", init_train_loss)

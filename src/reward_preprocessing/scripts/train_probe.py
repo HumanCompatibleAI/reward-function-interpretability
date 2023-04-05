@@ -31,7 +31,7 @@ def train_coinrun_probe(traj_path, reward_net_path):
 
 
 if __name__ == "__main__":
-    traj_path = "coinrun_rollouts_5_episodes_2023-03.npz"
+    traj_path = "coinrun_rollouts_5_episodes_2023-04.npz"
     net_path = (
         "/nas/ucb/pavel/out/interpret/train_regression/procgen:procgen-coinrun-v0/"
         + "20221130_121635_89ed71/checkpoints/00015/model.pt"
