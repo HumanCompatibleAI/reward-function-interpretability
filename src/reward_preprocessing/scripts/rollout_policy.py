@@ -26,7 +26,7 @@ def maze():
         "/home/daniel/reward-function-interpretability/"
         + "maze_rollouts_3e4_episodes_2023-02.npz"
     )
-    common = dict(env_name="procgen:procgen-maze-v0")
+    common = dict(env_name="procgen:procgen-maze-final-obs-v0")
     locals()  # make flake8 happy
 
 
@@ -46,7 +46,7 @@ def bigfish():
         "/home/daniel/reward-function-interpretability/"
         + "bigfish_rollouts_1e5_episodes_2023-02.npz"
     )
-    common = dict(env_name="procgen:procgen-bigfish-v0")
+    common = dict(env_name="procgen:procgen-bigfish-final-obs-v0")
     locals()  # make flake8 happy
 
 
@@ -66,7 +66,7 @@ def maze_10_eps():
         "/home/daniel/reward-function-interpretability/"
         + "maze_rollouts_10_episodes_2023-02.npz"
     )
-    common = dict(env_name="procgen:procgen-maze-v0")
+    common = dict(env_name="procgen:procgen-maze-final-obs-v0")
     locals()  # make flake8 happy
 
 
@@ -86,7 +86,48 @@ def bigfish_20_eps():
         "/home/daniel/reward-function-interpretability/"
         + "bigfish_rollouts_20_episodes_2023-02.npz"
     )
-    common = dict(env_name="procgen:procgen-bigfish-v0")
+    common = dict(env_name="procgen:procgen-bigfish-final-obs-v0")
+    locals()  # make flake8 happy
+
+
+@eval_policy_ex.named_config
+def coinrun_5_eps():
+    expert = dict(
+        policy_type="ppo",
+        loader_kwargs=dict(
+            path=(
+                "/home/daniel/reward-function-interpretability/"
+                + "output/train_rl/procgen:procgen-coinrun-v0/"
+                + "20230322_161913_02c432/policies/final/"
+            ),
+        ),
+    )
+    eval_n_episodes = 5
+    rollout_save_path = (
+        "/home/daniel/reward-function-interpretability/"
+        + "coinrun_rollouts_5_episodes_2023-04.npz"
+    )
+    common = dict(env_name="procgen:procgen-coinrun-final-obs-v0")
+    locals()  # make flake8 happy
+
+
+@eval_policy_ex.named_config
+def bigfish_5_eps():
+    expert = dict(
+        policy_type="ppo",
+        loader_kwargs=dict(
+            path=(
+                "/home/daniel/reward-function-interpretability/"
+                + "procgen_training_2023-02/bigfish/policies/final/"
+            ),
+        ),
+    )
+    eval_n_episodes = 20
+    rollout_save_path = (
+        "/home/daniel/reward-function-interpretability/"
+        + "bigfish_rollouts_5_episodes_2023-04.npz"
+    )
+    common = dict(env_name="procgen:procgen-bigfish-final-obs-v0")
     locals()  # make flake8 happy
 
 

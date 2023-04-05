@@ -27,7 +27,7 @@ def make_fin_obs_auto_reset_procgen(procgen_env_id: str, **make_env_kwargs) -> g
     """Make procgen with auto reset and fixed final observation."""
     # The order of the wrappers matters here. Final obs wrapper must be applied first,
     # then auto reset wrapper. This is because the final obs wrapper depends on the
-    # done signal, on order to fix the final observation of an episode. The auto reset
+    # done signal, in order to fix the final observation of an episode. The auto reset
     # wrapper will reset the done signal to False for the original episode end.
     env = AutoResetWrapper(
         ProcgenFinalObsWrapper(

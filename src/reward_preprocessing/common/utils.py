@@ -315,8 +315,12 @@ class DoubleInfoTransitionsWithRew(types.TransitionsWithRew):
 def flatten_trajectories_with_rew_double_info(
     trajectories: Sequence[types.TrajectoryWithRew],
 ) -> DoubleInfoTransitionsWithRew:
-    # note: this doesn't include the last transition because it seems to have the same
-    # obs and next_obs
+    """Flatten trajectories into transitions with info dicts for obs and next_obs.
+
+    Note: this will not include the final transition of the trajectory, because the
+    info dictionary grouped with the final observation actually contains state
+    information pertaining to the next episode.
+    """
     keys = ["obs", "next_obs", "acts", "rews", "dones", "infos", "next_infos"]
     parts = {key: [] for key in keys}
     for traj in trajectories:
