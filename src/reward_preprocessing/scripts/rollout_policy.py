@@ -51,6 +51,26 @@ def bigfish():
 
 
 @eval_policy_ex.named_config
+def coinrun():
+    expert = dict(
+        policy_type="ppo",
+        loader_kwargs=dict(
+            path=(
+                "/home/daniel/reward-function-interpretability/"
+                + "procgen_training_2023-02/coinrun/policies/final/"
+            ),
+        ),
+    )
+    eval_n_episodes = 3e4
+    rollout_save_path = (
+        "/home/daniel/reward-function-interpretability/"
+        + "coinrun_rollouts_3e4_episodes_2023-04.npz"
+    )
+    common = dict(env_name="procgen:procgen-coinrun-final-obs-v0")
+    locals()  # make flake8 happy
+
+
+@eval_policy_ex.named_config
 def maze_10_eps():
     expert = dict(
         policy_type="ppo",

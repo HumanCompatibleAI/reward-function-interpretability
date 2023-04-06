@@ -18,7 +18,7 @@ from reward_preprocessing.common.utils import (
 class Probe(nn.Module):
     # inspired by
     # https://github.com/yukimasano/linear-probes/blob/master/eval_linear_probes.py
-    # TODO: remove magic constants for numbers of channels
+    # TODO: remove magic constants for numbers of channels, shape of inputs
     # TODO: change name to CnnProbe???
     # TODO: add check on attribute_dim
     # TODO: would be nice to reuse reward_net methods to a greater extent than I
@@ -97,7 +97,6 @@ class Probe(nn.Module):
     def train(
         self,
         dataset: DoubleInfoTransitionsWithRew,
-        lr: float,
         frac_train: float,
         batch_size: int,
         num_epochs: int,
@@ -118,7 +117,7 @@ class Probe(nn.Module):
         print("Initial train loss:", init_train_loss)
         init_test_loss = self.eval_on_dataloader(test_loader)
         print("Initial test loss:", init_test_loss)
-        optimizer = th.optim.SGD(self.probe_head.parameters(), lr=lr)
+        optimizer = th.optim.Adam(self.probe_head.parameters())
         for epoch in range(num_epochs):
             epoch_loss = self.eval_on_dataloader(train_loader, optimizer=optimizer)
             print(f"Train loss over epoch {epoch}:", epoch_loss)

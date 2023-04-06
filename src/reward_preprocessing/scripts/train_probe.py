@@ -15,12 +15,19 @@ from reward_preprocessing.scripts.config.train_probe import train_probe_ex
 
 @train_probe_ex.capture
 def train_probe(
-    dataset, reward_net, device, attributes, attr_dim, batch_size, num_epochs
+    dataset,
+    reward_net,
+    device,
+    layer_name,
+    attributes,
+    attr_dim,
+    batch_size,
+    num_epochs,
 ):
     """Train a probe on the provided reward net and trajectories."""
     probe = Probe(
         reward_net,
-        layer_name="act4",
+        layer_name=layer_name,
         attribute_dim=attr_dim,
         attribute_name=attributes,
         loss_type="mse",
@@ -29,7 +36,6 @@ def train_probe(
 
     probe.train(
         dataset=dataset,
-        lr=0.01,
         frac_train=0.9,
         batch_size=batch_size,
         num_epochs=num_epochs,
@@ -48,7 +54,7 @@ def benchmark_accuracy(dataset, use_next_info: bool, attributes: Union[str, List
         mean = sum(vec) / len(vec)
         attr_mse = sum(map(lambda x: (x - mean) ** 2, vec)) / len(vec)
         mse += attr_mse
-    print("Loss from predicting mean:", mse)
+    print("\nLoss from predicting mean:", mse)
 
 
 @train_probe_ex.main
@@ -56,6 +62,7 @@ def run_experiment(
     supervised,  # from ingredient
     traj_path: str,
     reward_net_path: str,
+    layer_name: str,
     attributes: Union[str, List[str]],
     batch_size: int,
     num_epochs: int,
@@ -70,9 +77,12 @@ def run_experiment(
     dataset = flatten_trajectories_with_rew_double_info(trajs)
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
     reward_net = th.load(reward_net_path, map_location=device)
+
     train_probe(dataset, reward_net, device)
+
     if compare_to_mean:
         benchmark_accuracy(dataset, use_next_info=reward_net.use_next_state)
+
     if compare_to_random_net:
         print("\nTraining probe on randomly initialized network:")
         with common.make_venv() as venv:
