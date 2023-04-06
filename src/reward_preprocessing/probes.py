@@ -164,7 +164,7 @@ class Probe(nn.Module):
             ).to(th.float32)
             if isinstance(self.attribute_name, list)
             else th.tensor(
-                [info_dict[self.attribute_name] for info_dict in info_dicts]
+                [[info_dict[self.attribute_name]] for info_dict in info_dicts]
             ).to(th.float32)
         )
         obses = data_dict["obs"]
