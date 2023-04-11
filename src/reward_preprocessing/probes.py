@@ -18,7 +18,8 @@ from reward_preprocessing.common.utils import (
 class CnnProbe(nn.Module):
     # inspired by
     # https://github.com/yukimasano/linear-probes/blob/master/eval_linear_probes.py
-    # TODO: remove magic constants for numbers of channels, shape of inputs
+    # TODO: make abstract class this inherits from that can also be a parent class of
+    # e.g. MlpProbe
     # TODO: add check on attribute_dim
     # TODO: would be nice to reuse reward_net methods to a greater extent than I
     # currently am able to.
@@ -30,6 +31,7 @@ class CnnProbe(nn.Module):
         attribute_name: Union[str, List[str]],
         loss_type: str,
         device: th.device,
+        obs_shape: Tuple[int, int, int] = (3, 64, 64),
     ) -> None:
         super(CnnProbe, self).__init__()
         self.attribute_name = attribute_name
@@ -60,17 +62,17 @@ class CnnProbe(nn.Module):
         input_channels = 0
 
         if self.use_state:
-            input_channels += 3
+            input_channels += obs_shape[0]
 
         if self.use_next_state:
-            input_channels += 3
+            input_channels += obs_shape[0]
 
         if not (self.use_state or self.use_next_state):
             raise ValueError("Reward net must use state or next_state")
 
         self.model.to(self.device)
 
-        x = th.zeros(1, input_channels, 64, 64).to(device)
+        x = th.zeros(1, input_channels, obs_shape[1], obs_shape[2]).to(device)
         # man I wish I had broken out the function that took sas' to a tensor
         # when I was writing CnnRewardNet.
         for name, child in self.model.named_children():
