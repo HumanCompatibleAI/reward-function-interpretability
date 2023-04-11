@@ -22,7 +22,8 @@ git+https://github.com/openai/gym3.git@4c38246
 # final episode is useful when training reward functions and is not available by
 # default in gym3, since gym3 immediately resets the environment after the
 # episode ends.
-# procgen @ git+https://github.com/PavelCz/procgenAISC.git@54de6b7553c55f12f53c346730681c4e4c9abd40
+# This was again forked by dfilan so that info dicts would include state
+# information that can be probed.
 procgen @ git+https://github.com/dfilan/procgen-expose-state.git@32271abfc0004c352bd79ef70dbcd5c5f1e9dca3
 # Revert to this older version because some library won't work otherwise
 protobuf==3.19
