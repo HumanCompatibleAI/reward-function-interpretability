@@ -15,11 +15,10 @@ from reward_preprocessing.common.utils import (
 )
 
 
-class Probe(nn.Module):
+class CnnProbe(nn.Module):
     # inspired by
     # https://github.com/yukimasano/linear-probes/blob/master/eval_linear_probes.py
     # TODO: remove magic constants for numbers of channels, shape of inputs
-    # TODO: change name to CnnProbe???
     # TODO: add check on attribute_dim
     # TODO: would be nice to reuse reward_net methods to a greater extent than I
     # currently am able to.
@@ -32,7 +31,7 @@ class Probe(nn.Module):
         loss_type: str,
         device: th.device,
     ) -> None:
-        super(Probe, self).__init__()
+        super(CnnProbe, self).__init__()
         self.attribute_name = attribute_name
         self.attribute_dim = attribute_dim
         self.model = reward_net.cnn

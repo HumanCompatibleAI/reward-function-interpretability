@@ -9,7 +9,7 @@ import torch as th
 
 from reward_preprocessing.common.utils import flatten_trajectories_with_rew_double_info
 from reward_preprocessing.models import CnnRewardNetWorkaround
-from reward_preprocessing.probes import Probe
+from reward_preprocessing.probes import CnnProbe
 from reward_preprocessing.scripts.config.train_probe import train_probe_ex
 
 
@@ -25,7 +25,7 @@ def train_probe(
     num_epochs,
 ):
     """Train a probe on the provided reward net and trajectories."""
-    probe = Probe(
+    probe = CnnProbe(
         reward_net,
         layer_name=layer_name,
         attribute_dim=attr_dim,
