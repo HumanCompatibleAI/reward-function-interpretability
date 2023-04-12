@@ -25,6 +25,11 @@ def config():
     # Limit the total number of samples (train and test) to this number. Default of -1
     # to not limit the number of samples.
     limit_samples = -1
+    # use adversarial training. below are configs to be set if adversarial is set to
+    # True
+    adversarial = False
+    nonsense_reward = None
+    visualizations_per_epoch = None
 
     # Apparently in sacred I need default values for parameters that I want to be able
     # to override. At least that's how I interpret this information:
@@ -86,6 +91,10 @@ def make_trainer(
     num_loader_workers: int,
     limit_samples: int,
     opt_kwargs: Optional[Mapping[str, Any]],
+    adversarial: bool,
+    nonsense_reward: Optional[float],
+    num_acts: Optional[int],
+    visualizations_per_epoch: Optional[int],
     debugging: Mapping,
 ) -> SupervisedTrainer:
     # MSE loss with mean reduction (the default)
@@ -105,6 +114,10 @@ def make_trainer(
         opt_kwargs=opt_kwargs,
         custom_logger=custom_logger,
         allow_variable_horizon=True,
+        adversarial=adversarial,
+        nonsense_reward=nonsense_reward,
+        num_acts=num_acts,
+        visualizations_per_epoch=visualizations_per_epoch,
         debug_settings=debugging,
     )
     return trainer

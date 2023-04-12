@@ -304,20 +304,6 @@ def interpret(
             opt_transitions = gan.generator(opt_latent_th)
             obs, acts, next_obs = tensor_to_transition(opt_transitions)
 
-        # What reward does the model output for these generated transitions?
-        # (done isn't used in the reward function)
-        # There are three possible options here:
-        # - The reward net does not use action -> it does not matter what we pass as
-        #   action.
-        # - The reward net does use action, and we are optimizing an intermediate layer
-        #   -> since action is only used on the final layer (to choose which of the 15
-        #   heads has the correct reward), it does not matter what we pass as action.
-        # - The reward net does use action, and we are optimizing the final layer
-        #  -> the action index of the action corresponds to the index of the feature.
-        # Note that since actions is only used to choose which head to use, there are no
-        # gradients from the reward to the action. Consequently, acts in opt_latent is
-        # meaningless.
-
         plot_trad_vis(
             obs,
             next_obs,
@@ -467,6 +453,20 @@ def plot_trad_vis(
 
     Hopefully the limited degree of type information available is still useful.
     """
+    # What reward does the model output for these generated transitions?
+    # (done isn't used in the reward function)
+    # There are three possible options here:
+    # - The reward net does not use action -> it does not matter what we pass as
+    #   action.
+    # - The reward net does use action, and we are optimizing an intermediate layer
+    #   -> since action is only used on the final layer (to choose which of the 15
+    #   heads has the correct reward), it does not matter what we pass as action.
+    # - The reward net does use action, and we are optimizing the final layer
+    #  -> the action index of the action corresponds to the index of the feature.
+    # Note that since actions is only used to choose which head to use, there are no
+    # gradients from the reward to the action. Consequently, acts in opt_latent is
+    # meaningless.
+
     action_nums = th.tensor(list(range(num_features))).to(device)
     actions = th.nn.functional.one_hot(action_nums, num_classes=num_features)
 

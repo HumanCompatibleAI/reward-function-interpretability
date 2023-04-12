@@ -29,7 +29,7 @@ def default():
 @train_probe_ex.named_config
 def coinrun_large_all():
     # doesn't set layer_name
-    traj_path = "coinrun_rollouts_5_episodes_2023-04.npz"
+    traj_path = "coinrun_rollouts_3e3_episodes_2023-04.npz"
     reward_net_path = (
         "/nas/ucb/pavel/out/interpret/train_regression/procgen:procgen-coinrun-v0/"
         + "20221130_121635_89ed71/checkpoints/00015/model.pt"

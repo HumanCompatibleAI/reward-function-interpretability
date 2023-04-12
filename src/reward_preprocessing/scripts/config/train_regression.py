@@ -81,3 +81,14 @@ def very_large_net():
         )
     )
     locals()  # make flake8 happy
+
+
+@train_regression_ex.named_config
+def adversarial_training():
+    supervised = dict(
+        adversarial=True,
+        nonsense_reward=0.0,
+        visualizations_per_epoch=20,  # TODO figure out a reasonable number for this
+        # or: set as fraction of batch size * batches per epoch
+    )
+    locals()

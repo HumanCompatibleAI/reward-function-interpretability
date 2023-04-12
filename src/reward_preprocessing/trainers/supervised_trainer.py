@@ -1,3 +1,4 @@
+import math
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Type
 
 from gym import spaces
@@ -12,7 +13,14 @@ import torch as th
 from torch.utils import data
 from tqdm import tqdm
 
-from reward_preprocessing.common.utils import log_img_wandb
+from reward_preprocessing.common.utils import (
+    TensorTransitionWrapper,
+    TransformedDataset,
+    log_img_wandb,
+    make_transition_to_tensor,
+    tensor_to_transition,
+)
+from reward_preprocessing.vis.reward_vis import LayerNMF
 import wandb
 
 
@@ -41,6 +49,10 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         limit_samples: int = -1,
         opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         opt_kwargs: Optional[Mapping[str, Any]] = None,
+        adversarial: bool = False,
+        nonsense_reward: Optional[float] = None,
+        num_acts: Optional[int] = None,
+        visualizations_per_epoch: Optional[int] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
@@ -78,8 +90,12 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 before overriding this.
             debug_settings: Dictionary of various debug settings.
         """
+        # TODO docs for new args
         self._train_loader = None
         self._test_loader = None
+        self._train_set = None
+        self._shuffle = None
+        self._shuffle_generator = None
         super().__init__(
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
@@ -102,6 +118,28 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         )
 
         self.limit_samples = limit_samples
+
+        self.adversarial = adversarial
+        if self.adversarial:
+            if nonsense_reward is None:
+                raise ValueError(
+                    "Must provide reward value for adversarially generated"
+                    + " inputs as the 'nonsense_value' argument."
+                )
+            if visualizations_per_epoch is None:
+                raise ValueError(
+                    "Must specify how many visualizations to add per epoch"
+                    + " as the 'visualizations_per_epoch' argument."
+                )
+            if num_acts is None:
+                raise ValueError(
+                    "Must specify how many actions are available in this"
+                    + " environment as the 'num_acts' argument."
+                )
+            self.nonsense_reward = nonsense_reward
+            self.visualizations_per_epoch = visualizations_per_epoch
+            self.wrapped_reward_net = TensorTransitionWrapper(self.reward_net)
+            self.num_acts = num_acts
 
         if demonstrations is not None:
             self.set_demonstrations(demonstrations, seed)
@@ -147,8 +185,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 )
         else:
             # Debug setting with disabled shuffling: Non-random split.
-            train = th.utils.data.Subset(dataset, range(num_train))
-            test = th.utils.data.Subset(dataset, range(num_train, num_train + num_test))
+            train = data.Subset(dataset, range(num_train))
+            test = data.Subset(dataset, range(num_train, num_train + num_test))
             # Not needed, since shuffling is disabled anyway.
             shuffle_generator = None
 
@@ -161,13 +199,17 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             len(test) == num_test
         ), f"Test set has wrong length. Is {len(test)}, should be {num_test}"
 
+        self._train_set = train
+        self._shuffle = shuffle
+        self._shuffle_generator = shuffle_generator
+
         self._train_loader = data.DataLoader(
-            train,
-            shuffle=shuffle,
+            self._train_set,
+            shuffle=self._shuffle,
             batch_size=self._batch_size,
             num_workers=self._num_loader_workers,
             collate_fn=transitions_collate_fn,
-            generator=shuffle_generator,
+            generator=self._shuffle_generator,
         )
         self._test_loader = data.DataLoader(
             test,
@@ -176,6 +218,16 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             num_workers=self._num_loader_workers,
             collate_fn=transitions_collate_fn,
         )
+
+        if self.adversarial:
+            tensor_transitions = TransformedDataset(
+                dataset, make_transition_to_tensor(self.num_acts)
+            )
+            transitions_dataloader = data.DataLoader(
+                tensor_transitions, shuffle=True, batch_size=self._batch_size
+            )
+            trans_tens_batch = next(iter(transitions_dataloader))
+            self.trans_tens_batch = trans_tens_batch.float()
 
     def train(
         self,
@@ -190,6 +242,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             device: Device to train on.
             callback: Optional callback to call after each epoch, takes the epoch number
                 as the single argument (epoch numbers start at 1).
+                Will usually save the network at certain epochs. If network is being
+                adversarially trained, should also save the latest network
+                visualizations.
         """
         self._logger.log(f"Using optimizer {self._opt}")
         self._logger.log(f"Using loss function {self._loss_fn}")
@@ -208,8 +263,80 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 device,
                 epoch,
             )
+            if self.adversarial:
+                self._add_adversarial_inputs(epoch, device)
             if callback is not None:
                 callback(epoch)
+
+    def _add_adversarial_inputs(self, epoch: int, device):
+        """Generates inputs that max reward_net output, adds them to train data."""
+        num_viz_calls = (
+            self.visualizations_per_epoch
+            if not self.reward_net.use_action
+            else math.ceil(self.visualizations_per_epoch / self.num_acts)
+        )
+        vis_obs = []
+        vis_acts = []
+        vis_next_obs = []
+        for i in range(num_viz_calls):
+            obs, acts, next_obs = self._visualize_network(device)
+            if i == 0:
+                vis_obs = obs.detach().cpu().numpy()
+                vis_acts = acts.detach().cpu().numpy()
+                vis_next_obs = next_obs.detach().cpu().numpy()
+            else:
+                vis_obs = np.concatenate([vis_obs, obs.detach().cpu().numpy()], axis=0)
+                vis_acts = np.concatenate(
+                    [vis_acts, acts.detach().cpu().numpy()], axis=0
+                )
+                vis_next_obs = np.concatenate(
+                    [vis_next_obs, next_obs.detach().cpu().numpy()], axis=0
+                )
+        dones = np.array([False] * vis_obs.shape[0])
+        infos = np.array([{}] * vis_obs.shape[0])
+        rews = np.array([self.nonsense_reward] * vis_obs.shape[0])
+        vis_dataset = types.TransitionsWithRew(
+            obs=vis_obs,
+            acts=vis_acts,
+            next_obs=vis_next_obs,
+            dones=dones,
+            infos=infos,
+            rews=rews,
+        )
+
+        self._train_set = data.ConcatDataset([self._train_set, vis_dataset])
+        self.latest_visualizations = vis_dataset
+        self._train_loader = data.DataLoader(
+            self._train_set,
+            shuffle=self._shuffle,
+            batch_size=self._batch_size,
+            num_workers=self._num_loader_workers,
+            collate_fn=transitions_collate_fn,
+            generator=self._shuffle_generator,
+        )
+
+    def _visualize_network(self, device):
+        num_features = self.num_acts if self.reward_net.use_action else 1
+
+        nmf = LayerNMF(
+            model=self.wrapped_reward_net,
+            features=num_features,
+            layer_name="rew_net_cnn_dense_final",
+            model_inputs_preprocess=self.trans_tens_batch.to(device),
+            activation_fn="relu",
+        )
+        visualization_np = nmf.vis_traditional()
+        visualization_tens = th.tensor(visualization_np)
+        visualization_tens = th.permute(visualization_tens, (0, 3, 1, 2))
+        obs, acts, next_obs = tensor_to_transition(visualization_tens)
+        # There isn't ever any gradient to the actions, which are just used (if at all)
+        # to select which final-layer neuron to read out reward from.
+        # So, if actions are meaningful at all, they should go sequentially,
+        # since in that eventuality each transition will be chosen to maximize the
+        # reward conditioned on some variable action, that action varying sequentially.
+        action_nums = th.tensor(list(range(num_features))).to(device)
+        actions_consec = th.nn.functional.one_hot(action_nums, num_classes=num_features)
+        return obs, actions_consec, next_obs
 
     def _train_batch(
         self,
