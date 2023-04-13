@@ -12,6 +12,7 @@ import numpy as np
 import torch as th
 from torch.utils import data
 from tqdm import tqdm
+import wandb
 
 from reward_preprocessing.common.utils import (
     TensorTransitionWrapper,
@@ -21,7 +22,6 @@ from reward_preprocessing.common.utils import (
     tensor_to_transition,
 )
 from reward_preprocessing.vis.reward_vis import LayerNMF
-import wandb
 
 
 def _normalize_obs(obs: th.Tensor) -> th.Tensor:
@@ -270,15 +270,15 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
 
     def _add_adversarial_inputs(self, epoch: int, device):
         """Generates inputs that max reward_net output, adds them to train data."""
-        num_viz_calls = (
+        vis_obs = []
+        vis_acts = []
+        vis_next_obs = []
+        num_vis_calls = (
             self.visualizations_per_epoch
             if not self.reward_net.use_action
             else math.ceil(self.visualizations_per_epoch / self.num_acts)
         )
-        vis_obs = []
-        vis_acts = []
-        vis_next_obs = []
-        for i in range(num_viz_calls):
+        for i in range(num_vis_calls):
             obs, acts, next_obs = self._visualize_network(device)
             if i == 0:
                 vis_obs = obs.detach().cpu().numpy()
@@ -294,7 +294,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 )
         dones = np.array([False] * vis_obs.shape[0])
         infos = np.array([{}] * vis_obs.shape[0])
-        rews = np.array([self.nonsense_reward] * vis_obs.shape[0])
+        rews = np.array([self.nonsense_reward] * vis_obs.shape[0]).astype(np.float32)
         vis_dataset = types.TransitionsWithRew(
             obs=vis_obs,
             acts=vis_acts,
@@ -335,8 +335,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         # since in that eventuality each transition will be chosen to maximize the
         # reward conditioned on some variable action, that action varying sequentially.
         action_nums = th.tensor(list(range(num_features))).to(device)
-        actions_consec = th.nn.functional.one_hot(action_nums, num_classes=num_features)
-        return obs, actions_consec, next_obs
+        return obs, action_nums, next_obs
 
     def _train_batch(
         self,
