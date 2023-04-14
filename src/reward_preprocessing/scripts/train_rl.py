@@ -22,7 +22,7 @@ def coinrun_aisc_fixed_coin():
     )
     policy_save_interval = 1_000_000
     common = dict(
-        env_name="procgen:procgen-coinrun-v0",
+        env_name="procgen:procgen-coinrun-final-obs-v0",
         num_vec=256,  # Goal Misg paper uses 64 envs for each of 4 workers.
         env_make_kwargs=dict(num_levels=100_000, distribution_mode="hard"),
     )

@@ -21,7 +21,7 @@ def coinrun():
         policy_cls=reward_preprocessing.policies.base.ImpalaPolicy,
     )
     common = dict(
-        env_name="procgen:procgen-coinrun-autoreset-v0",
+        env_name="procgen:procgen-coinrun-final-obs-autoreset-v0",
         # Limit the length of episodes. When using autoreset this is necessary since
         # episodes never end.
         # This should probably be set to 1000 at maximum, since there is the hard-coded

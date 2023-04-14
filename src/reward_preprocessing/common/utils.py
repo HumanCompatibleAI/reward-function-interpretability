@@ -1,5 +1,6 @@
+import dataclasses
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Mapping, Optional, Sequence, Tuple, Union
 
 import PIL
 from PIL import Image
@@ -290,3 +291,88 @@ def save_loss_plots(losses, save_dir):
     """Save plots of generator/adversary losses over training."""
     fig, _ = vegans.utils.plot_losses(losses, show=False)
     fig.savefig(Path(save_dir) / "loss_fig.png")
+
+
+@dataclasses.dataclass(frozen=True)
+class DoubleInfoTransitionsWithRew(types.TransitionsWithRew):
+    """A batch of obs-info_dict-act-next_obs-next_info_dict-done transitions."""
+
+    next_infos: np.ndarray
+    """Array of info dicts corresponding to the next_obs observation.
+
+    Shape: (batch_size,).
+    """
+
+    def __post_init__(self):
+        """Validate that next_infos has right shape"""
+        if len(self.next_infos) != len(self.next_obs):
+            raise ValueError(
+                "next_infos and next_obs must have same number of timesteps: "
+                + f"{len(self.next_infos)} != {len(self.next_obs)}",
+            )
+
+
+def flatten_trajectories_with_rew_double_info(
+    trajectories: Sequence[types.TrajectoryWithRew],
+) -> DoubleInfoTransitionsWithRew:
+    """Flatten trajectories into transitions with info dicts for obs and next_obs.
+
+    Note: this will not include the final transition of the trajectory, because the
+    info dictionary grouped with the final observation actually contains state
+    information pertaining to the next episode.
+    """
+    keys = ["obs", "next_obs", "acts", "rews", "dones", "infos", "next_infos"]
+    parts = {key: [] for key in keys}
+    for traj in trajectories:
+        parts["acts"].append(traj.acts[1:-1])
+        parts["obs"].append(traj.obs[1:-2])
+        parts["next_obs"].append(traj.obs[2:-1])
+        dones = np.zeros(len(traj.acts) - 2, dtype=bool)
+        parts["dones"].append(dones)
+        parts["rews"].append(traj.rews[1:-1])
+
+        if traj.infos is None:
+            infos = np.array([{}] * (len(traj) - 1))
+            next_infos = np.array([{}] * (len(traj) - 1))
+        else:
+            infos = traj.infos[:-2]
+            next_infos = traj.infos[1:-1]
+
+        parts["infos"].append(infos)
+        parts["next_infos"].append(next_infos)
+
+    cat_parts = {
+        key: np.concatenate(part_list, axis=0) for key, part_list in parts.items()
+    }
+    lengths = set(map(len, cat_parts.values()))
+    assert len(lengths) == 1, f"expected one length, got {lengths}"
+    return DoubleInfoTransitionsWithRew(**cat_parts)
+
+
+def transitions_collate_fn(
+    batch: Sequence[Mapping[str, np.ndarray]],
+) -> Mapping[str, Union[np.ndarray, th.Tensor]]:
+    """Custom `th.utils.data.DataLoader` collate_fn for `DoubleInfoTransitionsWithRew`.
+
+    Use this as the `collate_fn` argument to `DataLoader` if using an instance of
+    `TransitionsMinimal` as the `dataset` argument. Modified from imitation.data.types.
+
+    Args:
+        batch: The batch to collate.
+
+    Returns:
+        A collated batch. Uses Torch's default collate function for everything
+        except the "infos" key. For "infos", we join all the info dicts into a
+        list of dicts. (The default behavior would recursively collate every
+        info dict into a single dict, which is incorrect.)
+    """
+    batch_no_infos = [
+        {k: np.array(v) for k, v in sample.items() if k not in ["infos", "next_infos"]}
+        for sample in batch
+    ]
+
+    result = torch_data.dataloader.default_collate(batch_no_infos)
+    assert isinstance(result, dict)
+    result["infos"] = [sample["infos"] for sample in batch]
+    result["next_infos"] = [sample["next_infos"] for sample in batch]
+    return result
