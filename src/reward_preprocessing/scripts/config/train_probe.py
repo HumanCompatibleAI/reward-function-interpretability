@@ -34,7 +34,7 @@ def coinrun_large_all():
         "/nas/ucb/pavel/out/interpret/train_regression/procgen:procgen-coinrun-v0/"
         + "20221130_121635_89ed71/checkpoints/00015/model.pt"
     )
-    attributes = ["agent_coin_vec_x", "agent_coin_vec_y"]
+    attributes = ["agent_goal_vec_x", "agent_goal_vec_y"]
     attr_dim = 2
     # 'supervised' determines the architecture of the randomly initialized network - set
     # it to be the same as the architecture of the reward net being loaded.
