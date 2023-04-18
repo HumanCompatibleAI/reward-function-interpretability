@@ -1,6 +1,6 @@
 import os
 import os.path
-from typing import List, Union
+from typing import List, Optional, Union
 
 from imitation.data import types
 from imitation.scripts.common import common, demonstrations
@@ -21,6 +21,7 @@ def train_probe(
     layer_name,
     attributes,
     attr_dim,
+    attr_cap,
     batch_size,
     num_epochs,
 ):
@@ -30,6 +31,7 @@ def train_probe(
         layer_name=layer_name,
         attribute_dim=attr_dim,
         attribute_name=attributes,
+        attribute_max=attr_cap,
         loss_type="mse",
         device=device,
     )
@@ -64,6 +66,7 @@ def run_experiment(
     reward_net_path: str,
     layer_name: str,
     attributes: Union[str, List[str]],
+    attr_cap: Optional[float],
     batch_size: int,
     num_epochs: int,
     compare_to_mean: bool,

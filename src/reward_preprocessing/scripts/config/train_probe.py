@@ -19,6 +19,7 @@ def default():
     layer_name = None  # should be act0, act1, act2, act3, or act4
     attributes = None
     attr_dim = None
+    attr_cap = None
     batch_size = 64
     num_epochs = 5
     compare_to_mean = True
