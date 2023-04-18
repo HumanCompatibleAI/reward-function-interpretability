@@ -29,6 +29,7 @@ class CnnProbe(nn.Module):
         layer_name: str,
         attribute_dim: int,
         attribute_name: Union[str, List[str]],
+        attribute_max: Optional[float],
         loss_type: str,
         device: th.device,
         obs_shape: Tuple[int, int, int] = (3, 64, 64),
@@ -36,6 +37,7 @@ class CnnProbe(nn.Module):
         super(CnnProbe, self).__init__()
         self.attribute_name = attribute_name
         self.attribute_dim = attribute_dim
+        self.attribute_max = attribute_max
         self.model = reward_net.cnn
         self.use_state = reward_net.use_state
         self.use_action = reward_net.use_action
@@ -48,6 +50,11 @@ class CnnProbe(nn.Module):
         self.probe_head = None
         self.loss_type = loss_type
         self.device = device
+
+        if self.attribute_max is not None and self.attribute_max <= 0:
+            raise ValueError(
+                f"attribute_max was {self.attribute_max}, should be positive."
+            )
 
         if self.loss_type not in ["mse", "cross_entropy"]:
             raise ValueError(
@@ -159,13 +166,19 @@ class CnnProbe(nn.Module):
         target = (
             th.tensor(
                 [
-                    [info_dict[name] for name in self.attribute_name]
+                    [
+                        self.cap_state_var(info_dict[name])
+                        for name in self.attribute_name
+                    ]
                     for info_dict in info_dicts
                 ]
             ).to(th.float32)
             if isinstance(self.attribute_name, list)
             else th.tensor(
-                [[info_dict[self.attribute_name]] for info_dict in info_dicts]
+                [
+                    [self.cap_state_var(info_dict[self.attribute_name])]
+                    for info_dict in info_dicts
+                ]
             ).to(th.float32)
         )
         obses = data_dict["obs"]
@@ -189,6 +202,14 @@ class CnnProbe(nn.Module):
         else:
             assert False, "either use_state or use_next_state should have been True"
         return args, target
+
+    def cap_state_var(self, state_var):
+        if self.attribute_max is not None:
+            mined_var = min(state_var, self.attribute_max)
+            maxed_var = max(mined_var, -self.attribute_max)
+            return maxed_var
+        else:
+            return state_var
 
     def eval_on_dataloader(
         self,
