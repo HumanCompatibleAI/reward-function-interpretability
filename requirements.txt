@@ -24,7 +24,7 @@ git+https://github.com/openai/gym3.git@4c38246
 # episode ends.
 # This was again forked by dfilan so that info dicts would include state
 # information that can be probed.
-procgen @ git+https://github.com/dfilan/procgen-expose-state.git@df8675cd1105829dff1f2a889586095457d6c15a
+procgen @ git+https://github.com/dfilan/procgen-expose-state.git@1a15a4a47919957ff8f1007ab873f006759bcc52
 # Revert to this older version because some library won't work otherwise
 protobuf==3.19
 git+https://github.com/dfilan/vegans.git@76a3c45
