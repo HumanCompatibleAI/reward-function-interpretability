@@ -31,6 +31,26 @@ def maze():
 
 
 @eval_policy_ex.named_config
+def heist():
+    expert = dict(
+        policy_type="ppo",
+        loader_kwargs=dict(
+            path=(
+                "/home/daniel/reward-function-interpretability/"
+                + "procgen_training/heist/policies/final/"
+            ),
+        ),
+    )
+    eval_n_episodes = 3e3
+    rollout_save_path = (
+        "/home/daniel/reward-function-interpretability/"
+        + "heist_rollouts_3e3_episodes_2023-04.npz"
+    )
+    common = dict(env_name="procgen:procgen-heist-final-obs-v0")
+    locals()
+
+
+@eval_policy_ex.named_config
 def bigfish():
     expert = dict(
         policy_type="ppo",

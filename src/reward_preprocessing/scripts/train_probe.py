@@ -19,6 +19,7 @@ def train_probe(
     reward_net,
     device,
     layer_name,
+    num_probe_layers,
     attributes,
     attr_dim,
     attr_cap,
@@ -29,6 +30,7 @@ def train_probe(
     probe = CnnProbe(
         reward_net,
         layer_name=layer_name,
+        num_probe_layers=num_probe_layers,
         attribute_dim=attr_dim,
         attribute_name=attributes,
         attribute_max=attr_cap,
