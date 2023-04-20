@@ -17,10 +17,11 @@ def default():
     traj_path = None  # set this and following 4 variables in named configs or via CLI
     reward_net_path = None
     layer_name = None  # should be act0, act1, act2, act3, or act4
+    num_probe_layers = 0
     attributes = None
     attr_dim = None
     attr_cap = None
-    batch_size = 64
+    batch_size = 128
     num_epochs = 5
     compare_to_mean = True
     compare_to_random_net = True

@@ -37,6 +37,11 @@ class CnnProbe(nn.Module):
         device: th.device,
         obs_shape: Tuple[int, int, int] = (3, 64, 64),
     ) -> None:
+        """Make a probe on an underlying CNN.
+
+
+        num_probe_layers: Number of hidden layers in the probe head.
+        """
         super(CnnProbe, self).__init__()
         self.attribute_name = attribute_name
         self.attribute_dim = attribute_dim
@@ -87,23 +92,12 @@ class CnnProbe(nn.Module):
         self.model.to(self.device)
 
         x = th.zeros(1, input_channels, obs_shape[1], obs_shape[2]).to(device)
-
-        # for name, child in self.model.named_children():
-        #     x = child.forward(x)
-        #     if name == self.layer_name:
-        #         avg_pool = nn.AdaptiveAvgPool2d(1)
-        #         flatten = nn.Flatten()
-        #         fc = nn.Linear(x.size(1), attribute_dim)
-        #         self.probe_head = nn.Sequential(avg_pool, flatten, fc)
-        # if self.probe_head is None:
-        #     raise ValueError(f"Could not find layer {self.layer_name} to probe")
-
-        # man I wish I had broken out the function that took sas' to a tensor
-        # when I was writing CnnRewardNet.
         layer_count = 0
         layers = []
         started_probe = False
         added_probe = False
+        # man I wish I had broken out the function that took sas' to a tensor
+        # when I was writing CnnRewardNet.
         for name, child in self.model.named_children():
             # Iterate thru modules of the reward net.
             # Once you've hit self.layer_name, start adding layers to the probe head of
@@ -126,7 +120,11 @@ class CnnProbe(nn.Module):
                         + "commence at first such layer."
                     )
                 started_probe = True
-            if started_probe and layer_count == self.num_probe_layers:
+            if (
+                started_probe
+                and layer_count == self.num_probe_layers
+                and not added_probe
+            ):
                 if len(x.shape) > 2:
                     avg_pool = nn.AdaptiveAvgPool2d(1)
                     flatten = nn.Flatten()
@@ -141,10 +139,13 @@ class CnnProbe(nn.Module):
         assert started_probe or not added_probe
 
         if not started_probe:
-            raise ValueError(f"Could not find layer {self.layer_name} to probe")
+            raise ValueError(f"Could not find layer {self.layer_name} to probe.")
 
         if layer_count < self.num_probe_layers:
-            raise ValueError(f"Attempted to probe {self.num_probe_layers}")
+            raise ValueError(
+                f"Attempted to make probe with {self.num_probe_layers} layers, which is"
+                + " more layers than in the remaining network."
+            )
 
         # if the above errors weren't raised, the layer should have been added.
         assert added_probe

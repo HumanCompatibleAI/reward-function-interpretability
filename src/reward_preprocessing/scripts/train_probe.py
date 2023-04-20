@@ -67,6 +67,7 @@ def run_experiment(
     traj_path: str,
     reward_net_path: str,
     layer_name: str,
+    num_probe_layers: int,
     attributes: Union[str, List[str]],
     attr_cap: Optional[float],
     batch_size: int,
