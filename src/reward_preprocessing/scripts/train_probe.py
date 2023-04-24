@@ -19,6 +19,7 @@ def train_probe(
     reward_net,
     device,
     layer_name,
+    num_probe_layers,
     attributes,
     attr_dim,
     attr_cap,
@@ -29,6 +30,7 @@ def train_probe(
     probe = CnnProbe(
         reward_net,
         layer_name=layer_name,
+        num_probe_layers=num_probe_layers,
         attribute_dim=attr_dim,
         attribute_name=attributes,
         attribute_max=attr_cap,
@@ -65,6 +67,7 @@ def run_experiment(
     traj_path: str,
     reward_net_path: str,
     layer_name: str,
+    num_probe_layers: int,
     attributes: Union[str, List[str]],
     attr_cap: Optional[float],
     batch_size: int,

@@ -1,8 +1,9 @@
-"""Train linear probes on reward nets."""
+"""Train probes on reward nets."""
 
 import math
 import random
 from typing import List, Optional, Tuple, Union
+import warnings
 
 from imitation.rewards.reward_nets import CnnRewardNet, cnn_transpose
 from stable_baselines3.common import preprocessing
@@ -11,6 +12,7 @@ from torch import nn
 
 from reward_preprocessing.common.utils import (
     DoubleInfoTransitionsWithRew,
+    copy_module,
     transitions_collate_fn,
 )
 
@@ -18,15 +20,16 @@ from reward_preprocessing.common.utils import (
 class CnnProbe(nn.Module):
     # inspired by
     # https://github.com/yukimasano/linear-probes/blob/master/eval_linear_probes.py
-    # TODO: make abstract class this inherits from that can also be a parent class of
-    # e.g. MlpProbe
     # TODO: add check on attribute_dim
     # TODO: would be nice to reuse reward_net methods to a greater extent than I
     # currently am able to.
+    # TODO(df): write documentation
+    # TODO(df): make this generic over base reward nets (should be v little work)
     def __init__(
         self,
         reward_net: CnnRewardNet,
         layer_name: str,
+        num_probe_layers: int,
         attribute_dim: int,
         attribute_name: Union[str, List[str]],
         attribute_max: Optional[float],
@@ -34,6 +37,11 @@ class CnnProbe(nn.Module):
         device: th.device,
         obs_shape: Tuple[int, int, int] = (3, 64, 64),
     ) -> None:
+        """Make a probe on an underlying CNN.
+
+
+        num_probe_layers: Number of hidden layers in the probe head.
+        """
         super(CnnProbe, self).__init__()
         self.attribute_name = attribute_name
         self.attribute_dim = attribute_dim
@@ -48,9 +56,11 @@ class CnnProbe(nn.Module):
         self.hwc_format = reward_net.hwc_format
         self.layer_name = layer_name
         self.probe_head = None
+        self.num_probe_layers = num_probe_layers
         self.loss_type = loss_type
         self.device = device
 
+        # type-check inputs
         if self.attribute_max is not None and self.attribute_max <= 0:
             raise ValueError(
                 f"attribute_max was {self.attribute_max}, should be positive."
@@ -66,6 +76,8 @@ class CnnProbe(nn.Module):
             assert self.loss_type == "cross_entropy"
             self.loss_func = nn.CrossEntropyLoss()
 
+        # get shape of reward_net inputs, to find activation shape at layer_name,
+        # to determine the shape of the linear layer at the end of the probe.
         input_channels = 0
 
         if self.use_state:
@@ -80,21 +92,69 @@ class CnnProbe(nn.Module):
         self.model.to(self.device)
 
         x = th.zeros(1, input_channels, obs_shape[1], obs_shape[2]).to(device)
+        layer_count = 0
+        layers = []
+        started_probe = False
+        added_probe = False
         # man I wish I had broken out the function that took sas' to a tensor
         # when I was writing CnnRewardNet.
         for name, child in self.model.named_children():
+            # Iterate thru modules of the reward net.
+            # Once you've hit self.layer_name, start adding layers to the probe head of
+            # the same type as layers of the network.
+            # Increment the layer_count for each activation function you encounter in
+            # the network, until it hits self.num_probe_layers. At that point, add a
+            # linear head to the end of the probe.
             x = child.forward(x)
+            if started_probe and not added_probe:
+                layers.append(copy_module(child))
+                # Checks whether we've hit an activation function
+                if isinstance(
+                    child, (nn.ReLU, nn.ELU, nn.LeakyReLU, nn.GELU, nn.Sigmoid, nn.Tanh)
+                ):
+                    layer_count += 1
             if name == self.layer_name:
-                avg_pool = nn.AdaptiveAvgPool2d(1)
-                flatten = nn.Flatten()
+                if started_probe:
+                    warnings.warn(
+                        f"Reward network has multiple layers named {name}, probe will "
+                        + "commence at first such layer."
+                    )
+                started_probe = True
+            if (
+                started_probe
+                and layer_count == self.num_probe_layers
+                and not added_probe
+            ):
+                if len(x.shape) > 2:
+                    avg_pool = nn.AdaptiveAvgPool2d(1)
+                    flatten = nn.Flatten()
+                    layers += [avg_pool, flatten]
                 fc = nn.Linear(x.size(1), attribute_dim)
-                self.probe_head = nn.Sequential(avg_pool, flatten, fc)
-        if self.probe_head is None:
-            raise ValueError(f"Could not find layer {self.layer_name} to probe")
+                layers.append(fc)
+                self.probe_head = nn.Sequential(*layers)
+                added_probe = True
+
+        # This code should work such that if added_probe is True, then started_probe
+        # should also be True. The following assert checks that material conditional.
+        assert started_probe or not added_probe
+
+        if not started_probe:
+            raise ValueError(f"Could not find layer {self.layer_name} to probe.")
+
+        if layer_count < self.num_probe_layers:
+            raise ValueError(
+                f"Attempted to make probe with {self.num_probe_layers} layers, which is"
+                + " more layers than in the remaining network."
+            )
+
+        # if the above errors weren't raised, the layer should have been added.
+        assert added_probe
 
         self.probe_head.to(self.device)
 
     def forward(self, x: th.Tensor) -> th.Tensor:
+        # feed input thru the network until hitting the probed layer, where you apply
+        # the probe head.
         self.model.eval()
         for name, child in self.model.named_children():
             x = child.forward(x)
@@ -160,6 +220,7 @@ class CnnProbe(nn.Module):
     def data_dict_to_args_and_target(
         self, data_dict: dict
     ) -> Tuple[th.Tensor, th.Tensor]:
+        # extract state variables being probed for, and create inputs to the reward net.
         info_dicts = (
             data_dict["next_infos"] if self.use_next_state else data_dict["infos"]
         )
