@@ -62,7 +62,7 @@ def benchmark_accuracy(dataset, use_next_info: bool, attributes: Union[str, List
 
 
 @train_probe_ex.main
-def run_experiment(
+def train_probes_experiment(
     supervised,  # from ingredient
     traj_path: str,
     reward_net_path: str,
