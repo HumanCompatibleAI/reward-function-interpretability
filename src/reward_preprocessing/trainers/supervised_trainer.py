@@ -52,7 +52,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         adversarial: bool = False,
         nonsense_reward: Optional[float] = None,
         num_acts: Optional[int] = None,
-        visualizations_per_epoch: Optional[int] = None,
+        vis_frac_per_epoch: Optional[float] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
@@ -126,10 +126,16 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                     "Must provide reward value for adversarially generated"
                     + " inputs as the 'nonsense_value' argument."
                 )
-            if visualizations_per_epoch is None:
+            if vis_frac_per_epoch is None:
                 raise ValueError(
-                    "Must specify how many visualizations to add per epoch"
-                    + " as the 'visualizations_per_epoch' argument."
+                    "Must specify how many visualizations to add per epoch as a "
+                    + "fraction of the train set size, as the 'vis_frac_per_epoch' "
+                    + "argument."
+                )
+            if vis_frac_per_epoch < 0.0 or vis_frac_per_epoch > 1.0:
+                raise ValueError(
+                    "vis_frac_per_epoch should be between 0 and 1, but is set as "
+                    + f"{vis_frac_per_epoch}"
                 )
             if num_acts is None:
                 raise ValueError(
@@ -137,7 +143,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                     + " environment as the 'num_acts' argument."
                 )
             self.nonsense_reward = nonsense_reward
-            self.visualizations_per_epoch = visualizations_per_epoch
+            self.vis_frac_per_epoch = vis_frac_per_epoch
             self.wrapped_reward_net = TensorTransitionWrapper(self.reward_net)
             self.num_acts = num_acts
 
@@ -220,6 +226,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         )
 
         if self.adversarial:
+            self.num_vis_per_epoch = int(num_train * self.vis_frac_per_epoch)
             tensor_transitions = TransformedDataset(
                 dataset, make_transition_to_tensor(self.num_acts)
             )
@@ -274,9 +281,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         vis_acts = []
         vis_next_obs = []
         num_vis_calls = (
-            self.visualizations_per_epoch
+            self.num_vis_per_epoch
             if not self.reward_net.use_action
-            else math.ceil(self.visualizations_per_epoch / self.num_acts)
+            else math.ceil(self.num_vis_per_epoch / self.num_acts)
         )
         for i in range(num_vis_calls):
             obs, acts, next_obs = self._visualize_network(device)

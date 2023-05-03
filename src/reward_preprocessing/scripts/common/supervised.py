@@ -29,7 +29,7 @@ def config():
     # True
     adversarial = False
     nonsense_reward = None
-    visualizations_per_epoch = None
+    vis_frac_per_epoch = None
 
     # Apparently in sacred I need default values for parameters that I want to be able
     # to override. At least that's how I interpret this information:
@@ -94,7 +94,7 @@ def make_trainer(
     adversarial: bool,
     nonsense_reward: Optional[float],
     num_acts: Optional[int],
-    visualizations_per_epoch: Optional[int],
+    vis_frac_per_epoch: Optional[float],
     debugging: Mapping,
 ) -> SupervisedTrainer:
     # MSE loss with mean reduction (the default)
@@ -117,7 +117,7 @@ def make_trainer(
         adversarial=adversarial,
         nonsense_reward=nonsense_reward,
         num_acts=num_acts,
-        visualizations_per_epoch=visualizations_per_epoch,
+        vis_frac_per_epoch=vis_frac_per_epoch,
         debug_settings=debugging,
     )
     return trainer
