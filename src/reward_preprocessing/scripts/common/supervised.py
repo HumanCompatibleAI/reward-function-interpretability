@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def config():
     epochs = 100  # Number of training epochs
     test_frac = 0.1  # Fraction of training data to use for testing
-    test_freq = 64  # Frequency of running tests (in batches)
+    test_freq = 256  # Frequency of running tests (in batches)
     batch_size = 128  # Batch size for training a supervised model
     num_loader_workers = 0  # Number of workers for data loading
     # Limit the total number of samples (train and test) to this number. Default of -1
