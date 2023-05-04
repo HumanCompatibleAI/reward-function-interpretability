@@ -78,8 +78,17 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 might have different sizes. SupervisedTrainer will normalize the
                 loss per sample (i.e. per transition) for logging.
             limit_samples: If positive, only use this many samples from the dataset.
+            test_subset_within_epoch:
+                If not none, only use this many test batches when evaluating test loss
+                in the middle of a training epoch.
             opt_cls: Optimizer class to use for training.
             opt_kwargs: Keyword arguments to pass to optimizer.
+            adversarial: Train on adversarial examples (aka network visualizations).
+            nonsense_reward: Reward to assign to adversarial examples.
+            num_acts: Number of acts the network can take.
+            vis_frac_per_epoch:
+                How many adversarial examples to add to the train set per epoch,
+                expressed as a fraction of the original train set.
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon:
                 If False (default), algorithm will raise an
@@ -91,7 +100,6 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 before overriding this.
             debug_settings: Dictionary of various debug settings.
         """
-        # TODO docs for new args
         self._train_loader = None
         self._test_loader = None
         self._train_set = None
@@ -228,7 +236,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         )
 
         if self.adversarial:
+            # Figure out how many adversarial examples to add per epoch.
             self.num_vis_per_epoch = int(num_train * self.vis_frac_per_epoch)
+            # Generate data for pre-processing for adversarial example purposes.
             tensor_transitions = TransformedDataset(
                 dataset, make_transition_to_tensor(self.num_acts)
             )
@@ -279,6 +289,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
 
     def _add_adversarial_inputs(self, epoch: int, device):
         """Generates inputs that max reward_net output, adds them to train data."""
+        # Generate dataset of adversarial examples / visualizations.
         vis_obs = []
         vis_acts = []
         vis_next_obs = []
@@ -301,6 +312,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 vis_next_obs = np.concatenate(
                     [vis_next_obs, next_obs.detach().cpu().numpy()], axis=0
                 )
+        # Turn them into TransitionsWithRew.
         dones = np.array([False] * vis_obs.shape[0])
         infos = np.array([{}] * vis_obs.shape[0])
         rews = np.array([self.nonsense_reward] * vis_obs.shape[0]).astype(np.float32)
@@ -313,6 +325,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             rews=rews,
         )
 
+        # Add to the train dataset.
         self._train_set = data.ConcatDataset([self._train_set, vis_dataset])
         self.latest_visualizations = vis_dataset
         self._train_loader = data.DataLoader(
@@ -374,7 +387,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 self.logger.record("epoch", epoch)
                 # Log the mean loss over the batch.
                 self.logger.record("train_loss", loss.item())
-                # Determine the mean loss over the entire test dataset.
+                # Determine the mean loss over (a subset of) the test dataset.
                 test_loss = self._eval_on_dataset(
                     device,
                     self._loss_fn,
@@ -401,7 +414,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
     ) -> float:
         """Evaluate model on provided data loader. Returns loss, averaged over the
         number of samples in the dataset. Model is set to eval mode before evaluation
-        and back to train mode afterwards.
+        and back to train mode afterwards. Set num_iters to only evaluate on a subset.
         """
         self.reward_net.eval()
         weighted_test_loss = 0.0
