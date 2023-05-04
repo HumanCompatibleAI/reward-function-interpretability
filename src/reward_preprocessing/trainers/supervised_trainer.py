@@ -47,6 +47,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         num_loader_workers: int,
         loss_fn: Callable[[th.Tensor, th.Tensor], th.Tensor],
         limit_samples: int = -1,
+        test_subset_within_epoch: Optional[int] = None,
         opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         opt_kwargs: Optional[Mapping[str, Any]] = None,
         adversarial: bool = False,
@@ -104,6 +105,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self._batch_size = batch_size
         self._test_frac = test_frac
         self._test_freq = test_freq
+        self._test_subset_within_epoch = test_subset_within_epoch
         self._num_loader_workers = num_loader_workers
         self._loss_fn = loss_fn
 
@@ -374,7 +376,10 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 self.logger.record("train_loss", loss.item())
                 # Determine the mean loss over the entire test dataset.
                 test_loss = self._eval_on_dataset(
-                    device, self._loss_fn, self._test_loader
+                    device,
+                    self._loss_fn,
+                    self._test_loader,
+                    num_iters=self._test_subset_within_epoch,
                 )
                 self.logger.record("test_loss", test_loss)
                 self.logger.dump(self._global_batch_step)
@@ -392,6 +397,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         device: str,
         loss_fn: Callable[[th.Tensor, th.Tensor], th.Tensor],
         dataloader: th.utils.data.DataLoader,
+        num_iters: Optional[int] = None,
     ) -> float:
         """Evaluate model on provided data loader. Returns loss, averaged over the
         number of samples in the dataset. Model is set to eval mode before evaluation
@@ -404,6 +410,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         # Also: If dataloader truncates, there are fewer items being used for evaluation
         # than there are in the full (un-truncated) dataset.
         num_items = 0
+        i = 0
         with th.no_grad():
             for data_dict in dataloader:
                 model_args, target = self._data_dict_to_model_args_and_target(
@@ -413,6 +420,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 # Sum up batch loss
                 weighted_test_loss += loss_fn(output, target).item() * len(target)
                 num_items += len(target)  # Count total number of samples
+                i += 1
+                if num_iters is not None and i == num_iters:
+                    # break out of loop early if we don't want to loop over whole test
+                    # set
+                    break
 
         sample_test_loss = weighted_test_loss / num_items  # Make it per-sample loss
         self.reward_net.train()

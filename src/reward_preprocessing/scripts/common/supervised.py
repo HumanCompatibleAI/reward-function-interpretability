@@ -25,6 +25,9 @@ def config():
     # Limit the total number of samples (train and test) to this number. Default of -1
     # to not limit the number of samples.
     limit_samples = -1
+    # Only evaluate test loss on 4 batches when you're in the middle of a train epoch.
+    # Set to None to evaluate on the whole test set.
+    test_subset_within_epoch = 4
     # use adversarial training. below are configs to be set if adversarial is set to
     # True
     adversarial = False
@@ -90,6 +93,7 @@ def make_trainer(
     batch_size: int,
     num_loader_workers: int,
     limit_samples: int,
+    test_subset_within_epoch: Optional[int],
     opt_kwargs: Optional[Mapping[str, Any]],
     adversarial: bool,
     nonsense_reward: Optional[float],
@@ -111,6 +115,7 @@ def make_trainer(
         test_freq=test_freq,
         num_loader_workers=num_loader_workers,
         loss_fn=loss_fn,
+        test_subset_within_epoch=test_subset_within_epoch,
         opt_kwargs=opt_kwargs,
         custom_logger=custom_logger,
         allow_variable_horizon=True,
