@@ -1,6 +1,6 @@
 import os
 import os.path
-from typing import List, Union
+from typing import List, Optional, Union
 
 from imitation.data import types
 from imitation.scripts.common import common, demonstrations
@@ -9,7 +9,7 @@ import torch as th
 
 from reward_preprocessing.common.utils import flatten_trajectories_with_rew_double_info
 from reward_preprocessing.models import CnnRewardNetWorkaround
-from reward_preprocessing.probes import Probe
+from reward_preprocessing.probes import CnnProbe
 from reward_preprocessing.scripts.config.train_probe import train_probe_ex
 
 
@@ -19,17 +19,21 @@ def train_probe(
     reward_net,
     device,
     layer_name,
+    num_probe_layers,
     attributes,
     attr_dim,
+    attr_cap,
     batch_size,
     num_epochs,
 ):
     """Train a probe on the provided reward net and trajectories."""
-    probe = Probe(
+    probe = CnnProbe(
         reward_net,
         layer_name=layer_name,
+        num_probe_layers=num_probe_layers,
         attribute_dim=attr_dim,
         attribute_name=attributes,
+        attribute_max=attr_cap,
         loss_type="mse",
         device=device,
     )
@@ -58,12 +62,14 @@ def benchmark_accuracy(dataset, use_next_info: bool, attributes: Union[str, List
 
 
 @train_probe_ex.main
-def run_experiment(
+def train_probes_experiment(
     supervised,  # from ingredient
     traj_path: str,
     reward_net_path: str,
     layer_name: str,
+    num_probe_layers: int,
     attributes: Union[str, List[str]],
+    attr_cap: Optional[float],
     batch_size: int,
     num_epochs: int,
     compare_to_mean: bool,

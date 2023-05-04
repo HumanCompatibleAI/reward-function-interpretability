@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 from pathlib import Path
 from typing import List, Mapping, Optional, Sequence, Tuple, Union
@@ -375,3 +376,14 @@ def transitions_collate_fn(
     result["infos"] = [sample["infos"] for sample in batch]
     result["next_infos"] = [sample["next_infos"] for sample in batch]
     return result
+
+
+def copy_module(mod: nn.Module) -> nn.Module:
+    """Return a new module of the same type as mod, but with reset parameters."""
+    copy_mod = copy.deepcopy(mod)
+    if hasattr(copy_mod, "reset_parameters"):
+        copy_mod.reset_parameters()
+    for descendent_mod in copy_mod.modules():
+        if hasattr(descendent_mod, "reset_parameters"):
+            descendent_mod.reset_parameters()
+    return copy_mod
