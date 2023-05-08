@@ -238,6 +238,14 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         if self.adversarial:
             # Figure out how many adversarial examples to add per epoch.
             self.num_vis_per_epoch = int(num_train * self.vis_frac_per_epoch)
+            if self.num_vis_per_epoch < 1:
+                raise ValueError(
+                    "vis_frac_per_epoch is set too low: its value is "
+                    + f"{self.vis_frac_per_epoch}, and at that value "
+                    + f"{self.num_vis_per_epoch} adversarial examples will be added "
+                    + "per epoch. vis_frac_per_epoch should be at least 1 / (size of "
+                    + f"train set), and train set has size {num_train}."
+                )
             # Generate data for pre-processing for adversarial example purposes.
             tensor_transitions = TransformedDataset(
                 dataset, make_transition_to_tensor(self.num_acts)
