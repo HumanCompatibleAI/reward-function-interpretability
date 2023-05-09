@@ -325,22 +325,25 @@ def flatten_trajectories_with_rew_double_info(
     keys = ["obs", "next_obs", "acts", "rews", "dones", "infos", "next_infos"]
     parts = {key: [] for key in keys}
     for traj in trajectories:
-        parts["acts"].append(traj.acts[1:-1])
-        parts["obs"].append(traj.obs[1:-2])
-        parts["next_obs"].append(traj.obs[2:-1])
-        dones = np.zeros(len(traj.acts) - 2, dtype=bool)
-        parts["dones"].append(dones)
-        parts["rews"].append(traj.rews[1:-1])
-
-        if traj.infos is None:
-            infos = np.array([{}] * (len(traj) - 1))
-            next_infos = np.array([{}] * (len(traj) - 1))
+        if len(traj.acts) <= 2:
+            continue
         else:
-            infos = traj.infos[:-2]
-            next_infos = traj.infos[1:-1]
+            parts["acts"].append(traj.acts[1:-1])
+            parts["obs"].append(traj.obs[1:-2])
+            parts["next_obs"].append(traj.obs[2:-1])
+            dones = np.zeros(len(traj.acts) - 2, dtype=bool)
+            parts["dones"].append(dones)
+            parts["rews"].append(traj.rews[1:-1])
 
-        parts["infos"].append(infos)
-        parts["next_infos"].append(next_infos)
+            if traj.infos is None:
+                infos = np.array([{}] * (len(traj) - 1))
+                next_infos = np.array([{}] * (len(traj) - 1))
+            else:
+                infos = traj.infos[:-2]
+                next_infos = traj.infos[1:-1]
+
+            parts["infos"].append(infos)
+            parts["next_infos"].append(next_infos)
 
     cat_parts = {
         key: np.concatenate(part_list, axis=0) for key, part_list in parts.items()
