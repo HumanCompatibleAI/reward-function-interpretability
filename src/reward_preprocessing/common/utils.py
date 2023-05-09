@@ -314,6 +314,7 @@ class DoubleInfoTransitionsWithRew(types.TransitionsWithRew):
 
 def flatten_trajectories_with_rew_double_info(
     trajectories: Sequence[types.TrajectoryWithRew],
+    limit_num_eps: Optional[int],
 ) -> DoubleInfoTransitionsWithRew:
     """Flatten trajectories into transitions with info dicts for obs and next_obs.
 
@@ -323,26 +324,26 @@ def flatten_trajectories_with_rew_double_info(
     """
     keys = ["obs", "next_obs", "acts", "rews", "dones", "infos", "next_infos"]
     parts = {key: [] for key in keys}
-    for traj in trajectories:
-        if len(traj.acts) <= 2:
-            continue
+    long_trajs = filter(lambda traj: len(traj.acts) > 2, trajectories)
+    if limit_num_eps is not None:
+        long_trajs = long_trajs[0:limit_num_eps]
+    for traj in long_trajs:
+        parts["acts"].append(traj.acts[1:-1])
+        parts["obs"].append(traj.obs[1:-2])
+        parts["next_obs"].append(traj.obs[2:-1])
+        dones = np.zeros(len(traj.acts) - 2, dtype=bool)
+        parts["dones"].append(dones)
+        parts["rews"].append(traj.rews[1:-1])
+
+        if traj.infos is None:
+            infos = np.array([{}] * (len(traj) - 1))
+            next_infos = np.array([{}] * (len(traj) - 1))
         else:
-            parts["acts"].append(traj.acts[1:-1])
-            parts["obs"].append(traj.obs[1:-2])
-            parts["next_obs"].append(traj.obs[2:-1])
-            dones = np.zeros(len(traj.acts) - 2, dtype=bool)
-            parts["dones"].append(dones)
-            parts["rews"].append(traj.rews[1:-1])
+            infos = traj.infos[:-2]
+            next_infos = traj.infos[1:-1]
 
-            if traj.infos is None:
-                infos = np.array([{}] * (len(traj) - 1))
-                next_infos = np.array([{}] * (len(traj) - 1))
-            else:
-                infos = traj.infos[:-2]
-                next_infos = traj.infos[1:-1]
-
-            parts["infos"].append(infos)
-            parts["next_infos"].append(next_infos)
+        parts["infos"].append(infos)
+        parts["next_infos"].append(next_infos)
 
     cat_parts = {
         key: np.concatenate(part_list, axis=0) for key, part_list in parts.items()
