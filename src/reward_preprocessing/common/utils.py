@@ -1,5 +1,6 @@
 import copy
 import dataclasses
+import itertools
 from pathlib import Path
 from typing import List, Mapping, Optional, Sequence, Tuple, Union
 
@@ -326,7 +327,7 @@ def flatten_trajectories_with_rew_double_info(
     parts = {key: [] for key in keys}
     long_trajs = filter(lambda traj: len(traj.acts) > 2, trajectories)
     if limit_num_eps is not None:
-        long_trajs = long_trajs[0:limit_num_eps]
+        long_trajs = itertools.islice(long_trajs, limit_num_eps)
     for traj in long_trajs:
         parts["acts"].append(traj.acts[1:-1])
         parts["obs"].append(traj.obs[1:-2])
