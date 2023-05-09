@@ -1,4 +1,5 @@
 import math
+import random
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Type
 
 from gym import spaces
@@ -46,6 +47,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         test_freq: int,
         num_loader_workers: int,
         loss_fn: Callable[[th.Tensor, th.Tensor], th.Tensor],
+        frac_zero_reward_retained: Optional[float] = None,
         limit_samples: int = -1,
         test_subset_within_epoch: Optional[int] = None,
         opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
@@ -77,6 +79,10 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 the batch, but accumulated over the batch. This is because batches
                 might have different sizes. SupervisedTrainer will normalize the
                 loss per sample (i.e. per transition) for logging.
+            frac_zero_reward_retained:
+                If not None, remove 1 - (this fraction) of training examples where the
+                reward is zero, to manually re-weight the dataset to non-zero reward
+                transitions.
             limit_samples: If positive, only use this many samples from the dataset.
             test_subset_within_epoch:
                 If not none, only use this many test batches when evaluating test loss
@@ -116,6 +122,15 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self._test_subset_within_epoch = test_subset_within_epoch
         self._num_loader_workers = num_loader_workers
         self._loss_fn = loss_fn
+
+        if frac_zero_reward_retained is not None:
+            if frac_zero_reward_retained < 0.0 or frac_zero_reward_retained > 1.0:
+                raise ValueError(
+                    "frac_zero_reward_retained should be between 0 and 1, is set to"
+                    + f"{frac_zero_reward_retained}"
+                )
+
+        self._frac_zero_reward_retained = frac_zero_reward_retained
 
         self.reward_net = reward_net
 
@@ -169,6 +184,45 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         reward data."""
         # Trajectories -> Transitions (both with reward)
         dataset = flatten_trajectories_with_rew(demonstrations)
+        if self._frac_zero_reward_retained is not None:
+            # randomly filter out zero-reward transitions (manual reweighting)
+            started = False
+            for datum in dataset:
+                if (
+                    datum["rews"] != 0.0
+                    or random.random() < self._frac_zero_reward_retained
+                ):
+                    if not started:
+                        new_obs = datum["obs"][None, :, :, :]
+                        new_acts = [datum["acts"]]
+                        new_next_obs = datum["next_obs"][None, :, :, :]
+                        new_infos = [datum["infos"]]
+                        new_dones = [datum["dones"]]
+                        new_rews = [datum["rews"]]
+                        started = True
+                    else:
+                        new_obs = np.concatenate(
+                            [new_obs, datum["obs"][None, :, :, :]], axis=0
+                        )
+                        new_acts.append(datum["acts"])
+                        new_next_obs = np.concatenate(
+                            [new_next_obs, datum["next_obs"][None, :, :, :]], axis=0
+                        )
+                        new_infos.append(datum["infos"])
+                        new_dones.append(datum["dones"])
+                        new_rews.append(datum["rews"])
+            new_infos = np.array(new_infos)
+            new_dones = np.array(new_dones)
+            new_rews = np.array(new_rews)
+            dataset = types.TransitionsWithRew(
+                obs=np.array(new_obs),
+                acts=np.array(new_acts),
+                infos=np.array(new_infos),
+                next_obs=new_next_obs,
+                dones=new_dones,
+                rews=new_rews,
+            )
+            print("done filtering dataset")
         if self.limit_samples == 0:
             raise ValueError("Can't train on 0 samples")
         elif self.limit_samples > 0:

@@ -33,6 +33,9 @@ def config():
     adversarial = False
     nonsense_reward = None
     vis_frac_per_epoch = None
+    # Retain this fraction of zero-reward transitions and filter out the rest to
+    # manually re-weight the dataset. Default of "None" to not filter out anything.
+    frac_zero_reward_retained = None
 
     # Apparently in sacred I need default values for parameters that I want to be able
     # to override. At least that's how I interpret this information:
@@ -92,6 +95,7 @@ def make_trainer(
     test_freq: int,
     batch_size: int,
     num_loader_workers: int,
+    frac_zero_reward_retained: Optional[float],
     limit_samples: int,
     test_subset_within_epoch: Optional[int],
     opt_kwargs: Optional[Mapping[str, Any]],
@@ -116,6 +120,7 @@ def make_trainer(
         num_loader_workers=num_loader_workers,
         loss_fn=loss_fn,
         test_subset_within_epoch=test_subset_within_epoch,
+        frac_zero_reward_retained=frac_zero_reward_retained,
         opt_kwargs=opt_kwargs,
         custom_logger=custom_logger,
         allow_variable_horizon=True,
