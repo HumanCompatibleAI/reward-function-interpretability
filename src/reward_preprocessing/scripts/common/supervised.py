@@ -25,8 +25,8 @@ def config():
     # Limit the total number of samples (train and test) to this number. Default of -1
     # to not limit the number of samples.
     limit_samples = -1
-    # Filter out this fraction of zero-reward transitions to manually re-weight the
-    # dataset. Default of "None" to not filter out anything.
+    # Retain this fraction of zero-reward transitions and filter out the rest to
+    # manually re-weight the dataset. Default of "None" to not filter out anything.
     frac_zero_reward_retained = None
 
     # Apparently in sacred I need default values for parameters that I want to be able
