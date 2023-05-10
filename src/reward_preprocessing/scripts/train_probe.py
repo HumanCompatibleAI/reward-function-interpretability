@@ -65,7 +65,6 @@ def benchmark_accuracy(dataset, use_next_info: bool, attributes: Union[str, List
 def train_probes_experiment(
     supervised,  # from ingredient
     traj_path: str,
-    limit_num_eps: Optional[int],
     reward_net_path: str,
     layer_name: str,
     num_probe_layers: int,
@@ -81,7 +80,7 @@ def train_probes_experiment(
         n_expert_demos=None,
     )
     assert isinstance(trajs[0], types.TrajectoryWithRew)
-    dataset = flatten_trajectories_with_rew_double_info(trajs, limit_num_eps)
+    dataset = flatten_trajectories_with_rew_double_info(trajs)
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
     reward_net = th.load(reward_net_path, map_location=device)
 

@@ -21,7 +21,6 @@ def default():
     attributes = None
     attr_dim = None
     attr_cap = None
-    limit_num_eps = None
     batch_size = 128
     num_epochs = 5
     compare_to_mean = True
