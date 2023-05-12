@@ -211,16 +211,14 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                         new_infos.append(datum["infos"])
                         new_dones.append(datum["dones"])
                         new_rews.append(datum["rews"])
-            new_infos = np.array(new_infos)
-            new_dones = np.array(new_dones)
-            new_rews = np.array(new_rews)
+
             dataset = types.TransitionsWithRew(
                 obs=np.array(new_obs),
                 acts=np.array(new_acts),
                 infos=np.array(new_infos),
-                next_obs=new_next_obs,
-                dones=new_dones,
-                rews=new_rews,
+                next_obs=np.array(new_next_obs),
+                dones=np.array(new_dones),
+                rews=np.array(new_rews),
             )
             print("done filtering dataset")
         if self.limit_samples == 0:
@@ -387,9 +385,10 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             rews=rews,
         )
 
+        # below is used to save the visualizations (in scripts/train_regression.py)
+        self.latest_visualizations = vis_dataset
         # Add to the train dataset.
         self._train_set = data.ConcatDataset([self._train_set, vis_dataset])
-        self.latest_visualizations = vis_dataset
         self._train_loader = data.DataLoader(
             self._train_set,
             shuffle=self._shuffle,
@@ -430,16 +429,37 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.reward_net.train()
         weighted_batch_losses = 0
         sample_count = 0
+        # For adversarial training, find the 95th percentile gradient norm in the first
+        # epoch, and clip future gradients to that.
+        # This avoids gradients exploding due to extremely large mis-predictions on
+        # adversarial examples.
+        if self.adversarial and epoch == 1:
+            grad_norms = []
+
         for batch_idx, data_dict in enumerate(self._train_loader):
             self._global_batch_step += 1
             model_args, target = self._data_dict_to_model_args_and_target(
                 data_dict, device
             )
-
             self._opt.zero_grad()
             output = self.reward_net(*model_args)
             loss = self._loss_fn(output, target)
             loss.backward()
+
+            if self.adversarial and epoch == 1:
+                grads = [
+                    param.grad.detach().flatten()
+                    for param in self.reward_net.parameters()
+                    if param.grad is not None
+                ]
+                grad_norm = th.cat(grads).norm()
+                grad_norms.append(grad_norm)
+            if self.adversarial and epoch > 1:
+                # clip norm
+                th.nn.utils.clip_grad_norm_(
+                    self.reward_net.parameters(), self._grad_clip_val
+                )
+
             self._opt.step()
             # Weigh each loss by the number of samples in the batch. This way we can
             # divide by the number of samples to get the average per-sample loss.
@@ -460,6 +480,10 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 self.logger.dump(self._global_batch_step)
 
         # At the end of the epoch.
+        if self.adversarial and epoch == 1:
+            grad_norms.sort()
+            ninety_fifth_percentile = int(len(grad_norms) * 0.95)
+            self._grad_clip_val = grad_norms[ninety_fifth_percentile]
         per_sample_ep_loss = weighted_batch_losses / sample_count
         self.logger.record("epoch_train_loss", per_sample_ep_loss)
         test_loss = self._eval_on_dataset(device, self._loss_fn, self._test_loader)

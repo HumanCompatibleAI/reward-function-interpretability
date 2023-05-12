@@ -23,7 +23,7 @@ def defaults():
     vis_type = "traditional"
     # Name of the layer to visualize. To figure this out run interpret and the
     # available layers will be printed. For additional notes see interpret doc comment.
-    layer_name = "reshaped_out"
+    layer_name = "rew_net_cnn_dense_final"
     # Number of features to use for dim reduction. No dim recution if None.
     num_features = None
     # Path to the GAN model. If None simply visualize reward net without the use of GAN.
