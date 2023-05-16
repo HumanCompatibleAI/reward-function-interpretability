@@ -57,6 +57,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         nonsense_reward: Optional[float] = None,
         num_acts: Optional[int] = None,
         vis_frac_per_epoch: Optional[float] = None,
+        gradient_clip_percentile: Optional[float] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
@@ -96,6 +97,10 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             vis_frac_per_epoch:
                 How many adversarial examples to add to the train set per epoch,
                 expressed as a fraction of the original train set.
+            gradient_clip_percentile:
+                If doing adversarial training, the percentile of norms of first epoch
+                gradients that we clip gradients of later epochs (that include
+                high-loss adversarial examples) to.
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon:
                 If False (default), algorithm will raise an
@@ -168,6 +173,16 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                     "Must specify how many actions are available in this"
                     + " environment as the 'num_acts' argument."
                 )
+            if gradient_clip_percentile is None:
+                raise ValueError(
+                    "Must specify what percentile of first-epoch gradient norms to clip"
+                    + " later epoch gradient norms to."
+                )
+            if gradient_clip_percentile < 0.0 or gradient_clip_percentile > 1.0:
+                raise ValueError(
+                    "gradient_clip_percentile should be between 0 and 1, but is set as "
+                    + f"{gradient_clip_percentile}"
+                )
 
             # TODO check start epoch
             self.start_epoch = start_epoch
@@ -175,6 +190,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             self.vis_frac_per_epoch = vis_frac_per_epoch
             self.wrapped_reward_net = TensorTransitionWrapper(self.reward_net)
             self.num_acts = num_acts
+            self.gradient_clip_percentile = gradient_clip_percentile
 
         if demonstrations is not None:
             self.set_demonstrations(demonstrations, seed)
@@ -433,8 +449,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.reward_net.train()
         weighted_batch_losses = 0
         sample_count = 0
-        # For adversarial training, find the 95th percentile gradient norm in the first
-        # epoch, and clip future gradients to that.
+        # For adversarial training, find the (self.gradient_clip_percentile)th
+        # percentile gradient norm in the first epoch, and clip future gradients to
+        # that.
         # This avoids gradients exploding due to extremely large mis-predictions on
         # adversarial examples.
         if self.adversarial and epoch == 1:
@@ -486,8 +503,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         # At the end of the epoch.
         if self.adversarial and epoch == 1:
             grad_norms.sort()
-            ninety_fifth_percentile = int(len(grad_norms) * 0.95)
-            self._grad_clip_val = grad_norms[ninety_fifth_percentile]
+            percentile = int(len(grad_norms) * self.gradient_clip_percentile)
+            self._grad_clip_val = grad_norms[percentile]
         per_sample_ep_loss = weighted_batch_losses / sample_count
         self.logger.record("epoch_train_loss", per_sample_ep_loss)
         test_loss = self._eval_on_dataset(device, self._loss_fn, self._test_loader)

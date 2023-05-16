@@ -88,6 +88,7 @@ def adversarial_training():
     supervised = dict(
         adversarial=True,
         nonsense_reward=0.0,
-        vis_frac_per_epoch=0.04,  # TODO figure out a reasonable number for this
+        vis_frac_per_epoch=0.04,
+        gradient_clip_percentile=0.95,  # TODO figure out a reasonable number for this
     )
     locals()

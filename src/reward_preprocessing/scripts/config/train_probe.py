@@ -50,3 +50,30 @@ def coinrun_large_all():
     )
     common = dict(env_name="procgen:procgen-coinrun-final-obs-v0")
     locals()
+
+
+@train_probe_ex.named_config
+def heist_large_all():
+    # doesn't set layer_name
+    traj_path = (
+        "/home/daniel/reward-function-interpretability/"
+        + "heist_rollouts_3e3_episodes_2023-05.npz"
+    )
+    reward_net_path = (
+        "/home/daniel/reward-function-interpretability/output/train_regression/"
+        + "procgen:procgen-heist-final-obs-v0/20230504_161528_b8e9ba/checkpoints/"
+        + "01119/model.pt"
+    )
+    attributes = "agent_goal_x"
+    attr_dim = 1
+    attr_cap = 13
+    supervised = dict(
+        net_kwargs=dict(
+            use_state=True,
+            use_action=True,
+            use_next_state=True,
+            hid_channels=(96, 256, 384, 384, 256),
+        )
+    )
+    common = dict(env_name="procgen:procgen-heist-final-obs-v0")
+    locals()
