@@ -53,7 +53,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         opt_kwargs: Optional[Mapping[str, Any]] = None,
         adversarial: bool = False,
-        start_epoch: Optional[int] = None,  # TODO: document
+        start_epoch: Optional[int] = None,  # TODO: document, rename
         nonsense_reward: Optional[float] = None,
         num_acts: Optional[int] = None,
         vis_frac_per_epoch: Optional[float] = None,

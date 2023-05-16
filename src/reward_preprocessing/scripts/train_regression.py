@@ -14,11 +14,11 @@ from reward_preprocessing.scripts.config.train_regression import train_regressio
 from reward_preprocessing.trainers.supervised_trainer import SupervisedTrainer
 
 
-def save(trainer: SupervisedTrainer, save_path):
+def save(trainer: SupervisedTrainer, save_path, epoch_num):
     """Save regression model (and adversarial examples if applicable)."""
     os.makedirs(save_path, exist_ok=True)
     th.save(trainer.reward_net, os.path.join(save_path, "model.pt"))
-    if trainer.adversarial:
+    if trainer.adversarial and epoch_num >= trainer.start_epoch:
         # saves a TransitionsWithRew object
         th.save(trainer.latest_visualizations, os.path.join(save_path, "vis.ds"))
 
@@ -43,7 +43,6 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
             use_done=False,
         )
         # Figure out the number of actions
-        num_acts = 5 if supervised["adversarial"] else None
         if supervised["adversarial"]:
             if isinstance(venv.action_space, Discrete):
                 num_acts = venv.action_space.n
@@ -75,7 +74,11 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
     def checkpoint_callback(epoch_num):
         if checkpoint_epoch_interval > 0 and epoch_num % checkpoint_epoch_interval == 0:
-            save(trainer, os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"))
+            save(
+                trainer,
+                os.path.join(log_dir, "checkpoints", f"{epoch_num:05d}"),
+                epoch_num,
+            )
 
     custom_logger.log("Start training regression model.")
     # Start training
@@ -87,7 +90,9 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
 
     # Save final artifacts.
     if checkpoint_epoch_interval >= 0:
-        save(trainer, os.path.join(log_dir, "checkpoints", "final"))
+        save(
+            trainer, os.path.join(log_dir, "checkpoints", "final"), supervised["epochs"]
+        )
 
 
 def _log_model_info(custom_logger, model):
