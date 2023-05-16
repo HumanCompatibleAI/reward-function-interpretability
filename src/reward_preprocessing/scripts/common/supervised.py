@@ -36,6 +36,7 @@ def config():
     # Retain this fraction of zero-reward transitions and filter out the rest to
     # manually re-weight the dataset. Default of "None" to not filter out anything.
     frac_zero_reward_retained = None
+    gradient_clip_percentile = None
 
     # Apparently in sacred I need default values for parameters that I want to be able
     # to override. At least that's how I interpret this information:
@@ -103,6 +104,7 @@ def make_trainer(
     nonsense_reward: Optional[float],
     num_acts: Optional[int],
     vis_frac_per_epoch: Optional[float],
+    gradient_clip_percentile: Optional[float],
     debugging: Mapping,
 ) -> SupervisedTrainer:
     # MSE loss with mean reduction (the default)
@@ -128,6 +130,7 @@ def make_trainer(
         nonsense_reward=nonsense_reward,
         num_acts=num_acts,
         vis_frac_per_epoch=vis_frac_per_epoch,
+        gradient_clip_percentile=gradient_clip_percentile,
         debug_settings=debugging,
     )
     return trainer

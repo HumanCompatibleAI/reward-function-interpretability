@@ -44,7 +44,7 @@ def heist():
     eval_n_episodes = 3e3
     rollout_save_path = (
         "/home/daniel/reward-function-interpretability/"
-        + "heist_rollouts_3e3_episodes_2023-04.npz"
+        + "heist_rollouts_3e3_episodes_2023-05.npz"
     )
     common = dict(env_name="procgen:procgen-heist-final-obs-v0")
     locals()
@@ -174,6 +174,26 @@ def bigfish_5_eps():
 @eval_policy_ex.named_config
 def explore_tiny_amount():
     explore_kwargs = dict(switch_prob=1.0, random_prob=0.01)
+    locals()
+
+
+@eval_policy_ex.named_config
+def heist_100_eps():
+    expert = dict(
+        policy_type="ppo",
+        loader_kwargs=dict(
+            path=(
+                "/home/daniel/reward-function-interpretability/"
+                + "procgen_training/heist/policies/final/"
+            ),
+        ),
+    )
+    eval_n_episodes = 100
+    rollout_save_path = (
+        "/home/daniel/reward-function-interpretability/"
+        + "heist_rollouts_100_episodes_2023-04.npz"
+    )
+    common = dict(env_name="procgen:procgen-heist-final-obs-v0")
     locals()
 
 
