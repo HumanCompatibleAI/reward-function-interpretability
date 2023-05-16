@@ -53,6 +53,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         opt_kwargs: Optional[Mapping[str, Any]] = None,
         adversarial: bool = False,
+        start_epoch: Optional[int] = None,  # TODO: document
         nonsense_reward: Optional[float] = None,
         num_acts: Optional[int] = None,
         vis_frac_per_epoch: Optional[float] = None,
@@ -167,6 +168,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                     "Must specify how many actions are available in this"
                     + " environment as the 'num_acts' argument."
                 )
+
+            # TODO check start epoch
+            self.start_epoch = start_epoch
             self.nonsense_reward = nonsense_reward
             self.vis_frac_per_epoch = vis_frac_per_epoch
             self.wrapped_reward_net = TensorTransitionWrapper(self.reward_net)
@@ -342,7 +346,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 device,
                 epoch,
             )
-            if self.adversarial:
+            if self.adversarial and epoch == self.start_epoch:
                 self._add_adversarial_inputs(epoch, device)
             if callback is not None:
                 callback(epoch)

@@ -31,6 +31,7 @@ def config():
     # use adversarial training. below are configs to be set if adversarial is set to
     # True
     adversarial = False
+    start_epoch = None
     nonsense_reward = None
     vis_frac_per_epoch = None
     # Retain this fraction of zero-reward transitions and filter out the rest to
@@ -100,6 +101,7 @@ def make_trainer(
     test_subset_within_epoch: Optional[int],
     opt_kwargs: Optional[Mapping[str, Any]],
     adversarial: bool,
+    start_epoch: Optional[int],
     nonsense_reward: Optional[float],
     num_acts: Optional[int],
     vis_frac_per_epoch: Optional[float],
@@ -125,6 +127,7 @@ def make_trainer(
         custom_logger=custom_logger,
         allow_variable_horizon=True,
         adversarial=adversarial,
+        start_epoch=start_epoch,
         nonsense_reward=nonsense_reward,
         num_acts=num_acts,
         vis_frac_per_epoch=vis_frac_per_epoch,
