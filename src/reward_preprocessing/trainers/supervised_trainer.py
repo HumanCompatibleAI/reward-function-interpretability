@@ -362,7 +362,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 device,
                 epoch,
             )
-            if self.adversarial and epoch == self.start_epoch:
+            if self.adversarial and epoch >= self.start_epoch:
                 self._add_adversarial_inputs(epoch, device)
             if callback is not None:
                 callback(epoch)
@@ -451,10 +451,10 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         sample_count = 0
         # For adversarial training, find the (self.gradient_clip_percentile)th
         # percentile gradient norm in the first epoch, and clip future gradients to
-        # that.
+        # that. TODO not the first epoch
         # This avoids gradients exploding due to extremely large mis-predictions on
         # adversarial examples.
-        if self.adversarial and epoch == 1:
+        if self.adversarial and epoch == self.start_epoch:
             grad_norms = []
 
         for batch_idx, data_dict in enumerate(self._train_loader):
@@ -467,7 +467,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             loss = self._loss_fn(output, target)
             loss.backward()
 
-            if self.adversarial and epoch == 1:
+            if self.adversarial and epoch == self.start_epoch:
                 grads = [
                     param.grad.detach().flatten()
                     for param in self.reward_net.parameters()
@@ -475,7 +475,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 ]
                 grad_norm = th.cat(grads).norm()
                 grad_norms.append(grad_norm)
-            if self.adversarial and epoch > 1:
+            if self.adversarial and epoch > self.start_epoch:
                 # clip norm
                 th.nn.utils.clip_grad_norm_(
                     self.reward_net.parameters(), self._grad_clip_val
@@ -501,7 +501,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 self.logger.dump(self._global_batch_step)
 
         # At the end of the epoch.
-        if self.adversarial and epoch == 1:
+        if self.adversarial and epoch == self.start_epoch:
             grad_norms.sort()
             percentile = int(len(grad_norms) * self.gradient_clip_percentile)
             self._grad_clip_val = grad_norms[percentile]
