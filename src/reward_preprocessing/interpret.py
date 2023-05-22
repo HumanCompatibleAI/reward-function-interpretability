@@ -552,6 +552,13 @@ def random_rewards(num_samples, rew_net, obs, num_features, device, custom_logge
             done=None,
         )
         custom_logger.log(f"Rewards of random obs and next obs: {rand_rews}")
+        half_rand_rews = rew_net(
+            rand_obs.to(device).float(),
+            actions,
+            rand_obs.to(device).float(),
+            done=None,
+        )
+        custom_logger.log(f"Rewards of random obs and same next obs: {half_rand_rews}")
 
 
 def _determine_transforms(reg: Dict[str, Dict[str, Any]]) -> List[Callable]:
