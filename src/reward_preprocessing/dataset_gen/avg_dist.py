@@ -1,4 +1,6 @@
 import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -15,35 +17,50 @@ np.random.seed(seed)
 if number_pairs > len(colors):
     raise ValueError("Not enough colors for the number of pairs")
 
-fig, ax = plt.subplots()
-fig.set_size_inches(size)
 
-distances = []  # Collect distances between same-colored circles
-for pair_i in range(number_pairs):
-    a_x = np.random.uniform(0, 1)
-    a_y = np.random.uniform(0, 1)
-    a = plt.Circle(
-        (a_x, a_y),
-        circle_radius,
-        color=colors[pair_i],
-        clip_on=False,
-    )
+def generate_transition():
+    fig, ax = plt.subplots()
+    fig.set_size_inches(size)
 
-    ax.add_patch(a)
+    def random_coordinate():
+        return np.random.uniform(0 + circle_radius, 1 - circle_radius)
 
-    b_x = np.random.uniform(0, 1)
-    b_y = np.random.uniform(0, 1)
-    b = plt.Circle(
-        (b_x, b_y),
-        circle_radius,
-        color=colors[pair_i],
-        clip_on=False,
-    )
+    distances = []  # Collect distances between same-colored circles
+    for pair_i in range(number_pairs):
+        a_x = random_coordinate()
+        a_y = random_coordinate()
+        a = plt.Circle(
+            (a_x, a_y),
+            circle_radius,
+            color=colors[pair_i],
+            clip_on=False,
+        )
 
-    ax.add_patch(b)
+        ax.add_patch(a)
 
-    distance = np.sqrt((a_x - b_x) ** 2 + (a_y - b_y) ** 2)
-    distances.append(distance)
-    
-plt.axis("off")
-fig.savefig("plotcircles.png", bbox_inches="tight")
+        b_x = random_coordinate()
+        b_y = random_coordinate()
+        b = plt.Circle(
+            (b_x, b_y),
+            circle_radius,
+            color=colors[pair_i],
+            clip_on=False,
+        )
+
+        ax.add_patch(b)
+
+        distance = np.sqrt((a_x - b_x) ** 2 + (a_y - b_y) ** 2)
+        distances.append(distance)
+    plt.axis("off")
+    fig.tight_layout(pad=0)
+    fig.canvas.draw()
+    # fig.savefig("plotcircles.png", bbox_inches="tight")
+    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    return data
+
+
+data = generate_transition()
+
+plt.imshow(data, interpolation="nearest")
+plt.show()
