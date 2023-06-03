@@ -80,11 +80,11 @@ for i in range(num_transitions):
 obs_list.append(obs_list[-1].copy())
 
 condensed = {
-    "obs": np.array(obs_list).astype(np.double),
+    "obs": np.array(obs_list).astype(np.float32),
     "acts": np.zeros((num_transitions,)).astype(np.int8),
     "infos": np.array(infos_list),
     "terminal": np.array([True] * num_transitions),
-    "rews": np.array(avg_distances),
+    "rews": np.array(avg_distances).astype(np.float32),
     # The indices are pretty arbitrary, they show where an episode ends. Since we
     # don't have a real RL environment, they are not really meaningful. As they are
     # nevertheless required to save a rollout dataset, we simply choose the index such
