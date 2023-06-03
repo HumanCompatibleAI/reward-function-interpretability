@@ -80,7 +80,7 @@ for i in range(num_transitions):
 obs_list.append(obs_list[-1].copy())
 
 condensed = {
-    "obs": obs_list,
+    "obs": np.array(obs_list),
     "acts": np.zeros((num_transitions,)).astype(np.int8),
     "infos": np.array(infos_list),
     "terminal": np.array([True] * num_transitions),
