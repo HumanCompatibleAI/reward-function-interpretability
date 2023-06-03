@@ -11,8 +11,8 @@ number_pairs = 3
 circle_radius = 0.05
 colors = ["r", "b", "g"]  # Add more colores to allow more pairs
 seed = 0
-num_transitions = 200
-traj_path = "/nas/ucb/pavel/rfi/test/simple-env-traj.npz"
+num_transitions = 10000
+traj_path = "/nas/ucb/pavel/rfi/test/simple-env-10000.npz"
 
 # Set the seed
 np.random.seed(seed)
