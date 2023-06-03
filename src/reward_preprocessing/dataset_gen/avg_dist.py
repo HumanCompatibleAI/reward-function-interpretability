@@ -10,7 +10,6 @@ size = (2, 2)  # In inches
 number_pairs = 3
 circle_radius = 0.05
 colors = ["r", "b", "g"]  # Add more colores to allow more pairs
-matplotlib.use("TkAgg")
 seed = 0
 num_transitions = 200
 traj_path = "/nas/ucb/pavel/rfi/test/simple-env-traj.npz"
