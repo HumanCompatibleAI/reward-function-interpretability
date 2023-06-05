@@ -1,6 +1,7 @@
 import os
 import os.path
 
+import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
 from sacred.observers import FileStorageObserver
@@ -8,6 +9,8 @@ from sacred.observers import FileStorageObserver
 from reward_preprocessing.scripts.config.generate_simple_trajectories import (
     generate_simple_trajectories_ex,
 )
+
+matplotlib.use("TkAgg")
 
 
 @generate_simple_trajectories_ex.main
@@ -107,7 +110,6 @@ def generate_transition(
 
     data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
     data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-
     plt.close()
 
     avg_distance = np.mean(distances)

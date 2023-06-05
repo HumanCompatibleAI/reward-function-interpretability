@@ -1,8 +1,5 @@
 from imitation.scripts.common import common
-import matplotlib
 import sacred
-
-matplotlib.use("Agg")
 
 generate_simple_trajectories_ex = sacred.Experiment(
     "generate_simple_trajectories",
