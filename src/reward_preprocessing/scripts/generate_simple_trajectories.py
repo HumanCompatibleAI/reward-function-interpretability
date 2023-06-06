@@ -10,7 +10,7 @@ from reward_preprocessing.scripts.config.generate_simple_trajectories import (
     generate_simple_trajectories_ex,
 )
 
-matplotlib.use("TkAgg")
+matplotlib.use("Agg")
 
 
 @generate_simple_trajectories_ex.main
@@ -41,7 +41,7 @@ def generate_simple_trajectories(
     obs_list.append(obs_list[-1].copy())
 
     condensed = {
-        "obs": np.array(obs_list).astype(np.float32),
+        "obs": np.array(obs_list).astype(np.uint8),
         "acts": np.zeros((num_transitions,)).astype(np.int8),
         "infos": np.array(infos_list),
         "terminal": np.array([True] * num_transitions),
