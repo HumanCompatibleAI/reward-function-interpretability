@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from sacred.observers import FileStorageObserver
 
-from reward_preprocessing.scripts.config.generate_simple_trajectories import (
+from reward_preprocessing.scripts.config.gen_dots_and_dists import (
     generate_simple_trajectories_ex,
 )
 
