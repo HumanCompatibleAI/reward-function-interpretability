@@ -15,7 +15,7 @@ def defaults():
     circle_radius = 0.05
     num_transitions = 10000
     seed = 0
-    traj_path = "/nas/ucb/pavel/rfi/test/simple-env-10000.npz"
+    traj_path = "/nas/ucb/pavel/rfi/test/dots-and-dists-10000.npz"
     size = (2, 2)  # Size of the observation in inches
-    colors = ["r", "b", "g", "y", "c"]  # Add more colores to allow more pairs
+    colors = ["r", "b", "g", "y", "c"]  # Add more colors to allow more pairs
     locals()  # make flake8 happy
