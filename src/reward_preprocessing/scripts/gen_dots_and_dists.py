@@ -1,5 +1,6 @@
 import os
 import os.path
+from typing import List, Tuple
 
 import matplotlib
 from matplotlib import pyplot as plt
@@ -20,8 +21,8 @@ def generate_simple_trajectories(
     num_transitions: int,
     seed: int,
     traj_path: str,
-    colors: list[str],
-    size: tuple[int, int],
+    colors: List[str],
+    size: Tuple[int, int],
 ):
 
     # Set the seed
@@ -49,7 +50,7 @@ def generate_simple_trajectories(
         # The indices are pretty arbitrary, they show where an episode ends. Since we
         # don't have a real RL environment, they are not really meaningful. As they are
         # nevertheless required to save a rollout dataset, we simply choose the index
-        # such that there are always 1 episodes in the dataset.
+        # such that there is always 1 episode in the dataset.
         "indices": np.array([]),
     }
 
@@ -66,8 +67,8 @@ def generate_simple_trajectories(
 def generate_transition(
     number_pairs: int,
     circle_radius: float,
-    size: tuple[float, float],
-    colors: list[str],
+    size: Tuple[float, float],
+    colors: List[str],
 ):
     if number_pairs > len(colors):
         raise ValueError("Not enough colors for the number of pairs")
