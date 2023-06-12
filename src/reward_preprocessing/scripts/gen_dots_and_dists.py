@@ -54,7 +54,6 @@ def generate_simple_trajectories(
         "indices": np.array([]),
     }
 
-    # This just adjusts the file name to include the number of timesteps (in 1000s).
     save_path = traj_path
     tmp_path = save_path + ".tmp"
     with open(tmp_path, "wb") as f:
