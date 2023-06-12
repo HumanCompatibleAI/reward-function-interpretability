@@ -1,4 +1,3 @@
-from imitation.scripts.common import common
 import sacred
 
 generate_simple_trajectories_ex = sacred.Experiment(
