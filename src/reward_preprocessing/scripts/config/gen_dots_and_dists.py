@@ -3,9 +3,6 @@ import sacred
 
 generate_simple_trajectories_ex = sacred.Experiment(
     "generate_simple_trajectories",
-    ingredients=[
-        common.common_ingredient,
-    ],
 )
 
 
