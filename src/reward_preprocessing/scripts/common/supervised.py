@@ -1,6 +1,7 @@
 """Common configuration elements for training supervised models."""
 
 import logging
+import math
 from typing import Any, Mapping, Optional, Sequence
 
 from imitation.data import types
@@ -109,10 +110,18 @@ def make_trainer(
     gradient_clip_percentile: Optional[float],
     debugging: Mapping,
 ) -> SupervisedTrainer:
-    # MSE loss with mean reduction (the default)
-    # Mean reduction means every batch affects model updates the same, regardless of
-    # batch_size.
-    loss_fn = th.nn.MSELoss()
+    if not adversarial:
+        # MSE loss with mean reduction (the default)
+        # Mean reduction means every batch affects model updates the same, regardless of
+        # batch_size.
+        loss_fn = th.nn.MSELoss()
+    else:
+        # Huber loss with mean reduction
+        # When the prediction is within a distance of sqrt(3) of the regression target,
+        # this is just equal to half of the MSE loss, otherwise it's L1 loss.
+        # Designed to ensure that visualizations don't overwhelm the loss during
+        # adversarial training
+        loss_fn = th.nn.HuberLoss(delta=math.sqrt(3))
 
     trainer = SupervisedTrainer(
         demonstrations=expert_trajectories,

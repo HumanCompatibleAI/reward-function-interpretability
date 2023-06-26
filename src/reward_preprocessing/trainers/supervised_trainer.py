@@ -477,9 +477,10 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 grad_norms.append(grad_norm)
             if self.adversarial and epoch > self.start_epoch:
                 # clip norm
-                th.nn.utils.clip_grad_norm_(
-                    self.reward_net.parameters(), self._grad_clip_val
-                )
+                # th.nn.utils.clip_grad_norm_(
+                #     self.reward_net.parameters(), self._grad_clip_val
+                # )
+                pass
 
             self._opt.step()
             # Weigh each loss by the number of samples in the batch. This way we can
