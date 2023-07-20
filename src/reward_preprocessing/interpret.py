@@ -101,7 +101,9 @@ def interpret(
     img_save_path: Optional[str],
     reg: Dict[str, Dict[str, Any]],
     num_random_samples: Optional[int],
-    manual_path: Optional[str] = "/nas/ucb/daniel/procgen_photoshops/double_obs/sprite_coin_translated/",
+    manual_path: Optional[
+        str
+    ] = "/nas/ucb/daniel/procgen_photoshops/double_obs/sprite_coin_translated/",
 ):
     """Run visualization for interpretability.
 
@@ -161,7 +163,12 @@ def interpret(
             f"I don't think we actually ever want to use all so this is currently not "
             f"implemented."
         )
-    if vis_type not in ["dataset", "traditional", "dataset_traditional", "manual_traditional"]:
+    if vis_type not in [
+        "dataset",
+        "traditional",
+        "dataset_traditional",
+        "manual_traditional",
+    ]:
         raise ValueError(f"Unknown vis_type: {vis_type}")
     if vis_type == "dataset" and gan_path is not None:
         raise ValueError(f"GANs cannot be used with {vis_type} visualization.")
@@ -445,11 +452,13 @@ def interpret(
                 next_obs_path = osp.join(manual_path, sub_dir, "next_obs.png")
                 obs = np.asarray(PIL.Image.open(obs_path))[:, :, 0:3]
                 next_obs = np.asarray(PIL.Image.open(next_obs_path))[:, :, 0:3]
-                transition = trans_to_tensor({"obs": obs, "next_obs": next_obs, "acts": i})
+                transition = trans_to_tensor(
+                    {"obs": obs, "next_obs": next_obs, "acts": i}
+                )
                 man_transitions.append(th.Tensor(transition)[None, :, :, :])
 
         man_trans_tens = th.cat(man_transitions)
-        man_trans_tens_clone = th.clone(man_trans_tens).detach()
+        # man_trans_tens_clone = th.clone(man_trans_tens).detach()
 
         def pixel_image_start_man():
             tensor = man_trans_tens.to(device).requires_grad_(True)
