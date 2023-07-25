@@ -53,7 +53,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         opt_kwargs: Optional[Mapping[str, Any]] = None,
         adversarial: bool = False,
-        start_epoch: Optional[int] = None,  # TODO: document, rename
+        start_epoch: Optional[int] = None,
         nonsense_reward: Optional[float] = None,
         num_acts: Optional[int] = None,
         vis_frac_per_epoch: Optional[float] = None,
@@ -92,6 +92,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             opt_cls: Optimizer class to use for training.
             opt_kwargs: Keyword arguments to pass to optimizer.
             adversarial: Train on adversarial examples (aka network visualizations).
+            start_epoch: Epoch when adversarial examples begin to be added.
             nonsense_reward: Reward to assign to adversarial examples.
             num_acts: Number of acts the network can take.
             vis_frac_per_epoch:
@@ -183,8 +184,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                     "gradient_clip_percentile should be between 0 and 1, but is set as "
                     + f"{gradient_clip_percentile}"
                 )
+            if start_epoch is None or start_epoch < 0:
+                raise ValueError(
+                    f"start_epoch should be an int, but is instead {start_epoch}."
+                )
 
-            # TODO check start epoch
             self.start_epoch = start_epoch
             self.nonsense_reward = nonsense_reward
             self.vis_frac_per_epoch = vis_frac_per_epoch
@@ -450,8 +454,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         weighted_batch_losses = 0
         sample_count = 0
         # For adversarial training, find the (self.gradient_clip_percentile)th
-        # percentile gradient norm in the first epoch, and clip future gradients to
-        # that. TODO not the first epoch
+        # percentile gradient norm in the first epoch before clipping starts, and clip
+        # future gradients to that.
         # This avoids gradients exploding due to extremely large mis-predictions on
         # adversarial examples.
         if self.adversarial and epoch == self.start_epoch:
@@ -477,10 +481,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 grad_norms.append(grad_norm)
             if self.adversarial and epoch > self.start_epoch:
                 # clip norm
-                # th.nn.utils.clip_grad_norm_(
-                #     self.reward_net.parameters(), self._grad_clip_val
-                # )
-                pass
+                th.nn.utils.clip_grad_norm_(
+                    self.reward_net.parameters(), self._grad_clip_val
+                )
 
             self._opt.step()
             # Weigh each loss by the number of samples in the batch. This way we can
