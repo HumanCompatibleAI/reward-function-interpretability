@@ -77,3 +77,17 @@ def heist_large_all():
     )
     common = dict(env_name="procgen:procgen-heist-final-obs-v0")
     locals()
+
+
+@train_probe_ex.named_config
+def dots_and_dists():
+    common = dict(env_name="DotsAndDists-64-v0")
+    supervised = dict(
+        net_kwargs=dict(
+            use_state=True,
+            use_action=True,
+            use_next_state=True,
+            hid_channels=(96, 256, 384, 384, 256),
+        )
+    )
+    locals()

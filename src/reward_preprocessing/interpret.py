@@ -1,4 +1,5 @@
 import io
+import os
 import os.path as osp
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -20,6 +21,7 @@ from reward_preprocessing.common.utils import (
     TensorTransitionWrapper,
     array_to_image,
     log_img_wandb,
+    make_transition_to_tensor,
     ndarray_to_transition,
     rollouts_to_dataloader,
     tensor_to_transition,
@@ -100,6 +102,9 @@ def interpret(
     img_save_path: Optional[str],
     reg: Dict[str, Dict[str, Any]],
     num_random_samples: Optional[int],
+    manual_path: Optional[
+        str
+    ] = "/nas/ucb/daniel/procgen_photoshops/double_obs/sprite_coin_translated/",
 ):
     """Run visualization for interpretability.
 
@@ -159,7 +164,12 @@ def interpret(
             f"I don't think we actually ever want to use all so this is currently not "
             f"implemented."
         )
-    if vis_type not in ["dataset", "traditional", "dataset_traditional"]:
+    if vis_type not in [
+        "dataset",
+        "traditional",
+        "dataset_traditional",
+        "manual_traditional",
+    ]:
         raise ValueError(f"Unknown vis_type: {vis_type}")
     if vis_type == "dataset" and gan_path is not None:
         raise ValueError(f"GANs cannot be used with {vis_type} visualization.")
@@ -420,6 +430,57 @@ def interpret(
             custom_logger,
         )
 
+    elif vis_type == "manual_traditional":
+        trans_to_tensor = make_transition_to_tensor(num_features)
+        man_transitions = []
+        for i, sub_dir in enumerate(os.listdir(manual_path)):
+            if i < num_features:
+                obs_path = osp.join(manual_path, sub_dir, "obs.png")
+                next_obs_path = osp.join(manual_path, sub_dir, "next_obs.png")
+                obs = np.asarray(PIL.Image.open(obs_path))[:, :, 0:3]
+                next_obs = np.asarray(PIL.Image.open(next_obs_path))[:, :, 0:3]
+                transition = trans_to_tensor(
+                    {"obs": obs, "next_obs": next_obs, "acts": i}
+                )
+                man_transitions.append(th.Tensor(transition)[None, :, :, :])
+
+        man_trans_tens = th.cat(man_transitions)
+        # man_trans_tens_clone = th.clone(man_trans_tens).detach()
+
+        def pixel_image_start_man():
+            tensor = man_trans_tens.to(device).requires_grad_(True)
+            return [tensor], lambda: tensor
+
+        transforms = _determine_transforms(reg)
+        opt_dataset = nmf.vis_traditional(
+            transforms=transforms,
+            param_f=pixel_image_start_man,
+            num_steps=32,
+            # l2_diff_coeff=3e-1,
+            # l2_diff_tensor=man_trans_tens_clone,
+        )
+
+        opt_dataset = opt_dataset.transpose(0, 3, 1, 2)
+        opt_dataset = th.tensor(opt_dataset).to(device)
+        obs, acts, next_obs = tensor_to_transition(opt_dataset)
+
+        plot_trad_vis(
+            obs,
+            next_obs,
+            device,
+            rew_net,
+            layer_name,
+            num_features,
+            nmf,
+            fig,
+            rows,
+            columns,
+            vis_scale,
+            img_save_path,
+            wandb_logging,
+            custom_logger,
+        )
+
     if num_random_samples is not None:
         random_rewards(
             num_random_samples, rew_net, obs, num_features, device, custom_logger
@@ -511,6 +572,9 @@ def plot_trad_vis(
             features_are_actions,
         )
         if img_save_path is not None:
+            # Make the save directory if it doesn't exist
+            if not osp.exists(img_save_path):
+                os.mkdir(img_save_path)
             obs_PIL = array_to_image(sub_img_obs, vis_scale)
             obs_PIL.save(img_save_path + f"{feature_i}_obs.png")
             next_obs_PIL = array_to_image(sub_img_next_obs, vis_scale)

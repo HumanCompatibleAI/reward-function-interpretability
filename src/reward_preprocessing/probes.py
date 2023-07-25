@@ -1,5 +1,6 @@
 """Train probes on reward nets."""
 
+import itertools
 import math
 import random
 from typing import List, Optional, Tuple, Union
@@ -98,6 +99,7 @@ class CnnProbe(nn.Module):
         added_probe = False
         # man I wish I had broken out the function that took sas' to a tensor
         # when I was writing CnnRewardNet.
+        all_names = []
         for name, child in self.model.named_children():
             # Iterate thru modules of the reward net.
             # Once you've hit self.layer_name, start adding layers to the probe head of
@@ -113,6 +115,7 @@ class CnnProbe(nn.Module):
                     child, (nn.ReLU, nn.ELU, nn.LeakyReLU, nn.GELU, nn.Sigmoid, nn.Tanh)
                 ):
                     layer_count += 1
+            all_names.append(name)
             if name == self.layer_name:
                 if started_probe:
                     warnings.warn(
@@ -139,7 +142,10 @@ class CnnProbe(nn.Module):
         assert started_probe or not added_probe
 
         if not started_probe:
-            raise ValueError(f"Could not find layer {self.layer_name} to probe.")
+            raise ValueError(
+                f"Could not find layer {self.layer_name} to probe. "
+                + f"List of layer names: {all_names}"
+            )
 
         if layer_count < self.num_probe_layers:
             raise ValueError(
@@ -180,15 +186,21 @@ class CnnProbe(nn.Module):
           - batch_size: batch size.
           - num_epochs: number of epochs to train for.
         """
-        train_loader, test_loader = self.make_loaders(dataset, frac_train, batch_size)
+        train_loader, test_loader, num_train_batches = self.make_loaders(
+            dataset, frac_train, batch_size
+        )
         init_train_loss = self.eval_on_dataloader(train_loader)
         print("Initial train loss:", init_train_loss)
         init_test_loss = self.eval_on_dataloader(test_loader)
         print("Initial test loss:", init_test_loss)
         optimizer = th.optim.Adam(self.probe_head.parameters())
         for epoch in range(num_epochs):
-            epoch_loss = self.eval_on_dataloader(train_loader, optimizer=optimizer)
-            print(f"Train loss over epoch {epoch}:", epoch_loss)
+            epoch_loss = self.eval_on_dataloader(
+                train_loader, optimizer=optimizer, num_train_batches=num_train_batches
+            )
+            print(
+                f"Average train loss over last 10 batches of epoch {epoch}:", epoch_loss
+            )
             epoch_test_loss = self.eval_on_dataloader(test_loader)
             print(f"Test loss after epoch {epoch}:", epoch_test_loss)
         print("Training complete!")
@@ -209,13 +221,14 @@ class CnnProbe(nn.Module):
             shuffle=True,
             collate_fn=transitions_collate_fn,
         )
+        num_train_batches = math.ceil(num_train / batch_size)
         test_loader = th.utils.data.DataLoader(
             test_data,
             batch_size=batch_size,
             shuffle=True,
             collate_fn=transitions_collate_fn,
         )
-        return train_loader, test_loader
+        return train_loader, test_loader, num_train_batches
 
     def data_dict_to_args_and_target(
         self, data_dict: dict
@@ -227,21 +240,26 @@ class CnnProbe(nn.Module):
         target = (
             th.tensor(
                 [
-                    [
-                        self.cap_state_var(info_dict[name])
-                        for name in self.attribute_name
-                    ]
+                    list(
+                        itertools.chain.from_iterable(
+                            [
+                                self.cap_state_var(info_dict[name])
+                                for name in self.attribute_name
+                            ]
+                        )
+                    )
                     for info_dict in info_dicts
                 ]
             ).to(th.float32)
             if isinstance(self.attribute_name, list)
             else th.tensor(
                 [
-                    [self.cap_state_var(info_dict[self.attribute_name])]
+                    self.cap_state_var(info_dict[self.attribute_name])
                     for info_dict in info_dicts
                 ]
             ).to(th.float32)
         )
+
         obses = data_dict["obs"]
         next_obses = data_dict["next_obs"]
         if self.hwc_format:
@@ -264,7 +282,7 @@ class CnnProbe(nn.Module):
             assert False, "either use_state or use_next_state should have been True"
         return args, target
 
-    def cap_state_var(self, state_var):
+    def cap_state_var_(self, state_var):
         if self.attribute_max is not None:
             mined_var = min(state_var, self.attribute_max)
             maxed_var = max(mined_var, -self.attribute_max)
@@ -272,10 +290,17 @@ class CnnProbe(nn.Module):
         else:
             return state_var
 
+    def cap_state_var(self, state_var):
+        if isinstance(state_var, list):
+            return list(map(self.cap_state_var_, state_var))
+        else:
+            return [self.cap_state_var_(state_var)]
+
     def eval_on_dataloader(
         self,
         data_loader: th.utils.data.DataLoader,
         optimizer: Optional[th.optim.Optimizer] = None,
+        num_train_batches: Optional[int] = None,
     ) -> float:
         """Evaluates the probe on a data loader, and optionally trains it.
 
@@ -289,7 +314,7 @@ class CnnProbe(nn.Module):
             self.probe_head.eval()
         total_loss = 0.0
         num_batches = 0
-        for data in data_loader:
+        for i, data in enumerate(data_loader):
             if optimizer is not None:
                 optimizer.zero_grad()
             args, target = self.data_dict_to_args_and_target(data)
