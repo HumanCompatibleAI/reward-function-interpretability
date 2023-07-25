@@ -325,6 +325,10 @@ class CnnProbe(nn.Module):
             if optimizer is not None:
                 loss.backward()
                 optimizer.step()
-            total_loss += loss.item()
-            num_batches += 1
+                if num_train_batches - i < 10:
+                    total_loss += loss.item()
+                    num_batches += 1
+            else:
+                total_loss += loss.item()
+                num_batches += 1
         return total_loss / num_batches
