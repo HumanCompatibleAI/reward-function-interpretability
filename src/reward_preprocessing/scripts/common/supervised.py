@@ -30,15 +30,16 @@ def config():
     # Set to None to evaluate on the whole test set.
     test_subset_within_epoch = 4
     # use adversarial training. below are configs to be set if adversarial is set to
-    # True
+    # True. for details, see documentation of SupervisedTrainer in
+    # trainers/supervised_trainer.py
     adversarial = False
     start_epoch = None
     nonsense_reward = None
     vis_frac_per_epoch = None
+    gradient_clip_percentile = None
     # Retain this fraction of zero-reward transitions and filter out the rest to
     # manually re-weight the dataset. Default of "None" to not filter out anything.
     frac_zero_reward_retained = None
-    gradient_clip_percentile = None
 
     # Apparently in sacred I need default values for parameters that I want to be able
     # to override. At least that's how I interpret this information:
