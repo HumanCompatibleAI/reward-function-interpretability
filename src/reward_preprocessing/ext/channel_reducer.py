@@ -98,7 +98,7 @@ class ChannelReducer(object):
         if not isinstance(new_flat, np.ndarray):
             return new_flat
         new_shape = list(orig_shape)
-        # All dimensions go back to the previous shape except the dimension we didn't,
+        # All dimensions go back to the previous shape except the dimension we didn't
         # flatten, which is the dimension we reduced.
         new_shape[reduction_dim] = -1
         return new_flat.reshape(new_shape)

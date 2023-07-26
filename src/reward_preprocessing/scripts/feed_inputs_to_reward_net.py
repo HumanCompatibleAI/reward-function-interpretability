@@ -92,11 +92,10 @@ def feed_inputs_two_obs(reward_net_path, super_dir, num_acts):
             if num_acts == 1:
                 rewards.append(reward.item())
             else:
-                print(reward)
-        if num_acts == 1:
-            rewards = np.array(rewards)
-            print("mean reward: ", np.mean(rewards))
-            print("reward std: ", np.std(rewards))
+                rewards += reward.tolist()
+        rewards = np.array(rewards)
+        print("mean reward: ", np.mean(rewards))
+        print("reward std: ", np.std(rewards))
 
 
 if __name__ == "__main__":
@@ -126,7 +125,12 @@ if __name__ == "__main__":
         + "procgen:procgen-coinrun-v0/20221130_121635_89ed71/"
         + "checkpoints/00015/model.pt"
     )
-    reward_net_path = large_all_path
+    adversarially_trained_path = (
+        "/nas/ucb/daniel/nas_reward_function_interpretability/output/train_regression/"
+        + "procgen:procgen-coinrun-final-obs-v0/20230530_011818_8f2886/checkpoints/"
+        + "final/model.pt"
+    )
+    reward_net_path = adversarially_trained_path
     num_acts = 15
     one_obs = False
     if one_obs:

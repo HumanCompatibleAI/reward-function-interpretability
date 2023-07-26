@@ -1,3 +1,4 @@
+import math
 import random
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Type
 
@@ -14,7 +15,14 @@ from torch.utils import data
 from tqdm import tqdm
 import wandb
 
-from reward_preprocessing.common.utils import log_img_wandb
+from reward_preprocessing.common.utils import (
+    TensorTransitionWrapper,
+    TransformedDataset,
+    log_img_wandb,
+    make_transition_to_tensor,
+    tensor_to_transition,
+)
+from reward_preprocessing.vis.reward_vis import LayerNMF
 
 
 def _normalize_obs(obs: th.Tensor) -> th.Tensor:
@@ -41,8 +49,15 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         loss_fn: Callable[[th.Tensor, th.Tensor], th.Tensor],
         frac_zero_reward_retained: Optional[float] = None,
         limit_samples: int = -1,
+        test_subset_within_epoch: Optional[int] = None,
         opt_cls: Type[th.optim.Optimizer] = th.optim.Adam,
         opt_kwargs: Optional[Mapping[str, Any]] = None,
+        adversarial: bool = False,
+        start_epoch: Optional[int] = None,
+        nonsense_reward: Optional[float] = None,
+        num_acts: Optional[int] = None,
+        vis_frac_per_epoch: Optional[float] = None,
+        gradient_clip_percentile: Optional[float] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         seed: Optional[int] = None,
@@ -71,8 +86,22 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 reward is zero, to manually re-weight the dataset to non-zero reward
                 transitions.
             limit_samples: If positive, only use this many samples from the dataset.
+            test_subset_within_epoch:
+                If not none, only use this many test batches when evaluating test loss
+                in the middle of a training epoch.
             opt_cls: Optimizer class to use for training.
             opt_kwargs: Keyword arguments to pass to optimizer.
+            adversarial: Train on adversarial examples (aka network visualizations).
+            start_epoch: Epoch when adversarial examples begin to be added.
+            nonsense_reward: Reward to assign to adversarial examples.
+            num_acts: Number of acts the network can take.
+            vis_frac_per_epoch:
+                How many adversarial examples to add to the train set per epoch,
+                expressed as a fraction of the original train set.
+            gradient_clip_percentile:
+                If doing adversarial training, the percentile of norms of first epoch
+                gradients that we clip gradients of later epochs (that include
+                high-loss adversarial examples) to.
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon:
                 If False (default), algorithm will raise an
@@ -86,6 +115,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         """
         self._train_loader = None
         self._test_loader = None
+        self._train_set = None
+        self._shuffle = None
+        self._shuffle_generator = None
         super().__init__(
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
@@ -94,6 +126,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self._batch_size = batch_size
         self._test_frac = test_frac
         self._test_freq = test_freq
+        self._test_subset_within_epoch = test_subset_within_epoch
         self._num_loader_workers = num_loader_workers
         self._loss_fn = loss_fn
 
@@ -117,6 +150,51 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         )
 
         self.limit_samples = limit_samples
+
+        self.adversarial = adversarial
+        if self.adversarial:
+            if nonsense_reward is None:
+                raise ValueError(
+                    "Must provide reward value for adversarially generated"
+                    + " inputs as the 'nonsense_value' argument."
+                )
+            if vis_frac_per_epoch is None:
+                raise ValueError(
+                    "Must specify how many visualizations to add per epoch as a "
+                    + "fraction of the train set size, as the 'vis_frac_per_epoch' "
+                    + "argument."
+                )
+            if vis_frac_per_epoch < 0.0 or vis_frac_per_epoch > 1.0:
+                raise ValueError(
+                    "vis_frac_per_epoch should be between 0 and 1, but is set as "
+                    + f"{vis_frac_per_epoch}"
+                )
+            if num_acts is None:
+                raise ValueError(
+                    "Must specify how many actions are available in this"
+                    + " environment as the 'num_acts' argument."
+                )
+            if gradient_clip_percentile is None:
+                raise ValueError(
+                    "Must specify what percentile of first-epoch gradient norms to clip"
+                    + " later epoch gradient norms to."
+                )
+            if gradient_clip_percentile < 0.0 or gradient_clip_percentile > 1.0:
+                raise ValueError(
+                    "gradient_clip_percentile should be between 0 and 1, but is set as "
+                    + f"{gradient_clip_percentile}"
+                )
+            if start_epoch is None or start_epoch < 0:
+                raise ValueError(
+                    f"start_epoch should be an int, but is instead {start_epoch}."
+                )
+
+            self.start_epoch = start_epoch
+            self.nonsense_reward = nonsense_reward
+            self.vis_frac_per_epoch = vis_frac_per_epoch
+            self.wrapped_reward_net = TensorTransitionWrapper(self.reward_net)
+            self.num_acts = num_acts
+            self.gradient_clip_percentile = gradient_clip_percentile
 
         if demonstrations is not None:
             self.set_demonstrations(demonstrations, seed)
@@ -157,16 +235,14 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                         new_infos.append(datum["infos"])
                         new_dones.append(datum["dones"])
                         new_rews.append(datum["rews"])
-            new_infos = np.array(new_infos)
-            new_dones = np.array(new_dones)
-            new_rews = np.array(new_rews)
+
             dataset = types.TransitionsWithRew(
                 obs=np.array(new_obs),
                 acts=np.array(new_acts),
                 infos=np.array(new_infos),
-                next_obs=new_next_obs,
-                dones=new_dones,
-                rews=new_rews,
+                next_obs=np.array(new_next_obs),
+                dones=np.array(new_dones),
+                rews=np.array(new_rews),
             )
             print("done filtering dataset")
         if self.limit_samples == 0:
@@ -201,8 +277,8 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 )
         else:
             # Debug setting with disabled shuffling: Non-random split.
-            train = th.utils.data.Subset(dataset, range(num_train))
-            test = th.utils.data.Subset(dataset, range(num_train, num_train + num_test))
+            train = data.Subset(dataset, range(num_train))
+            test = data.Subset(dataset, range(num_train, num_train + num_test))
             # Not needed, since shuffling is disabled anyway.
             shuffle_generator = None
 
@@ -215,13 +291,17 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             len(test) == num_test
         ), f"Test set has wrong length. Is {len(test)}, should be {num_test}"
 
+        self._train_set = train
+        self._shuffle = shuffle
+        self._shuffle_generator = shuffle_generator
+
         self._train_loader = data.DataLoader(
-            train,
-            shuffle=shuffle,
+            self._train_set,
+            shuffle=self._shuffle,
             batch_size=self._batch_size,
             num_workers=self._num_loader_workers,
             collate_fn=transitions_collate_fn,
-            generator=shuffle_generator,
+            generator=self._shuffle_generator,
         )
         self._test_loader = data.DataLoader(
             test,
@@ -230,6 +310,27 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             num_workers=self._num_loader_workers,
             collate_fn=transitions_collate_fn,
         )
+
+        if self.adversarial:
+            # Figure out how many adversarial examples to add per epoch.
+            self.num_vis_per_epoch = int(num_train * self.vis_frac_per_epoch)
+            if self.num_vis_per_epoch < 1:
+                raise ValueError(
+                    "vis_frac_per_epoch is set too low: its value is "
+                    + f"{self.vis_frac_per_epoch}, and at that value "
+                    + f"{self.num_vis_per_epoch} adversarial examples will be added "
+                    + "per epoch. vis_frac_per_epoch should be at least 1 / (size of "
+                    + f"train set), and train set has size {num_train}."
+                )
+            # Generate data for pre-processing for adversarial example purposes.
+            tensor_transitions = TransformedDataset(
+                dataset, make_transition_to_tensor(self.num_acts)
+            )
+            transitions_dataloader = data.DataLoader(
+                tensor_transitions, shuffle=True, batch_size=self._batch_size
+            )
+            trans_tens_batch = next(iter(transitions_dataloader))
+            self.trans_tens_batch = trans_tens_batch.float()
 
     def train(
         self,
@@ -244,6 +345,9 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
             device: Device to train on.
             callback: Optional callback to call after each epoch, takes the epoch number
                 as the single argument (epoch numbers start at 1).
+                Will usually save the network at certain epochs. If network is being
+                adversarially trained, should also save the latest network
+                visualizations.
         """
         self._logger.log(f"Using optimizer {self._opt}")
         self._logger.log(f"Using loss function {self._loss_fn}")
@@ -262,8 +366,83 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 device,
                 epoch,
             )
+            if self.adversarial and epoch >= self.start_epoch:
+                self._add_adversarial_inputs(epoch, device)
             if callback is not None:
                 callback(epoch)
+
+    def _add_adversarial_inputs(self, epoch: int, device):
+        """Generates inputs that max reward_net output, adds them to train data."""
+        # Generate dataset of adversarial examples / visualizations.
+        vis_obs = []
+        vis_acts = []
+        vis_next_obs = []
+        num_vis_calls = (
+            self.num_vis_per_epoch
+            if not self.reward_net.use_action
+            else math.ceil(self.num_vis_per_epoch / self.num_acts)
+        )
+        for i in range(num_vis_calls):
+            obs, acts, next_obs = self._visualize_network(device)
+            if i == 0:
+                vis_obs = obs.detach().cpu().numpy()
+                vis_acts = acts.detach().cpu().numpy()
+                vis_next_obs = next_obs.detach().cpu().numpy()
+            else:
+                vis_obs = np.concatenate([vis_obs, obs.detach().cpu().numpy()], axis=0)
+                vis_acts = np.concatenate(
+                    [vis_acts, acts.detach().cpu().numpy()], axis=0
+                )
+                vis_next_obs = np.concatenate(
+                    [vis_next_obs, next_obs.detach().cpu().numpy()], axis=0
+                )
+        # Turn them into TransitionsWithRew.
+        dones = np.array([False] * vis_obs.shape[0])
+        infos = np.array([{}] * vis_obs.shape[0])
+        rews = np.array([self.nonsense_reward] * vis_obs.shape[0]).astype(np.float32)
+        vis_dataset = types.TransitionsWithRew(
+            obs=vis_obs,
+            acts=vis_acts,
+            next_obs=vis_next_obs,
+            dones=dones,
+            infos=infos,
+            rews=rews,
+        )
+
+        # below is used to save the visualizations (in scripts/train_regression.py)
+        self.latest_visualizations = vis_dataset
+        # Add to the train dataset.
+        self._train_set = data.ConcatDataset([self._train_set, vis_dataset])
+        self._train_loader = data.DataLoader(
+            self._train_set,
+            shuffle=self._shuffle,
+            batch_size=self._batch_size,
+            num_workers=self._num_loader_workers,
+            collate_fn=transitions_collate_fn,
+            generator=self._shuffle_generator,
+        )
+
+    def _visualize_network(self, device):
+        num_features = self.num_acts if self.reward_net.use_action else 1
+
+        nmf = LayerNMF(
+            model=self.wrapped_reward_net,
+            features=num_features,
+            layer_name="rew_net_cnn_dense_final",
+            model_inputs_preprocess=self.trans_tens_batch.to(device),
+            activation_fn="relu",
+        )
+        visualization_np = nmf.vis_traditional()
+        visualization_tens = th.tensor(visualization_np)
+        visualization_tens = th.permute(visualization_tens, (0, 3, 1, 2))
+        obs, acts, next_obs = tensor_to_transition(visualization_tens)
+        # There isn't ever any gradient to the actions, which are just used (if at all)
+        # to select which final-layer neuron to read out reward from.
+        # So, if actions are meaningful at all, they should go sequentially,
+        # since in that eventuality each transition will be chosen to maximize the
+        # reward conditioned on some variable action, that action varying sequentially.
+        action_nums = th.tensor(list(range(num_features))).to(device)
+        return obs, action_nums, next_obs
 
     def _train_batch(
         self,
@@ -274,16 +453,38 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         self.reward_net.train()
         weighted_batch_losses = 0
         sample_count = 0
+        # For adversarial training, find the (self.gradient_clip_percentile)th
+        # percentile gradient norm in the first epoch before clipping starts, and clip
+        # future gradients to that.
+        # This avoids gradients exploding due to extremely large mis-predictions on
+        # adversarial examples.
+        if self.adversarial and epoch == self.start_epoch:
+            grad_norms = []
+
         for batch_idx, data_dict in enumerate(self._train_loader):
             self._global_batch_step += 1
             model_args, target = self._data_dict_to_model_args_and_target(
                 data_dict, device
             )
-
             self._opt.zero_grad()
             output = self.reward_net(*model_args)
             loss = self._loss_fn(output, target)
             loss.backward()
+
+            if self.adversarial and epoch == self.start_epoch:
+                grads = [
+                    param.grad.detach().flatten()
+                    for param in self.reward_net.parameters()
+                    if param.grad is not None
+                ]
+                grad_norm = th.cat(grads).norm()
+                grad_norms.append(grad_norm)
+            if self.adversarial and epoch > self.start_epoch:
+                # clip norm
+                th.nn.utils.clip_grad_norm_(
+                    self.reward_net.parameters(), self._grad_clip_val
+                )
+
             self._opt.step()
             # Weigh each loss by the number of samples in the batch. This way we can
             # divide by the number of samples to get the average per-sample loss.
@@ -293,14 +494,21 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 self.logger.record("epoch", epoch)
                 # Log the mean loss over the batch.
                 self.logger.record("train_loss", loss.item())
-                # Determine the mean loss over the entire test dataset.
+                # Determine the mean loss over (a subset of) the test dataset.
                 test_loss = self._eval_on_dataset(
-                    device, self._loss_fn, self._test_loader
+                    device,
+                    self._loss_fn,
+                    self._test_loader,
+                    num_iters=self._test_subset_within_epoch,
                 )
                 self.logger.record("test_loss", test_loss)
                 self.logger.dump(self._global_batch_step)
 
         # At the end of the epoch.
+        if self.adversarial and epoch == self.start_epoch:
+            grad_norms.sort()
+            percentile = int(len(grad_norms) * self.gradient_clip_percentile)
+            self._grad_clip_val = grad_norms[percentile]
         per_sample_ep_loss = weighted_batch_losses / sample_count
         self.logger.record("epoch_train_loss", per_sample_ep_loss)
         test_loss = self._eval_on_dataset(device, self._loss_fn, self._test_loader)
@@ -313,10 +521,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         device: str,
         loss_fn: Callable[[th.Tensor, th.Tensor], th.Tensor],
         dataloader: th.utils.data.DataLoader,
+        num_iters: Optional[int] = None,
     ) -> float:
         """Evaluate model on provided data loader. Returns loss, averaged over the
         number of samples in the dataset. Model is set to eval mode before evaluation
-        and back to train mode afterwards.
+        and back to train mode afterwards. Set num_iters to only evaluate on a subset.
         """
         self.reward_net.eval()
         weighted_test_loss = 0.0
@@ -325,6 +534,7 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
         # Also: If dataloader truncates, there are fewer items being used for evaluation
         # than there are in the full (un-truncated) dataset.
         num_items = 0
+        i = 0
         with th.no_grad():
             for data_dict in dataloader:
                 model_args, target = self._data_dict_to_model_args_and_target(
@@ -334,6 +544,11 @@ class SupervisedTrainer(base.BaseImitationAlgorithm):
                 # Sum up batch loss
                 weighted_test_loss += loss_fn(output, target).item() * len(target)
                 num_items += len(target)  # Count total number of samples
+                i += 1
+                if num_iters is not None and i == num_iters:
+                    # break out of loop early if we don't want to loop over whole test
+                    # set
+                    break
 
         sample_test_loss = weighted_test_loss / num_items  # Make it per-sample loss
         self.reward_net.train()

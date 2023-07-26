@@ -1,6 +1,7 @@
 """Common configuration elements for training supervised models."""
 
 import logging
+import math
 from typing import Any, Mapping, Optional, Sequence
 
 from imitation.data import types
@@ -19,12 +20,23 @@ logger = logging.getLogger(__name__)
 def config():
     epochs = 100  # Number of training epochs
     test_frac = 0.1  # Fraction of training data to use for testing
-    test_freq = 64  # Frequency of running tests (in batches)
-    batch_size = 32  # Batch size for training a supervised model
+    test_freq = 256  # Frequency of running tests (in batches)
+    batch_size = 128  # Batch size for training a supervised model
     num_loader_workers = 0  # Number of workers for data loading
     # Limit the total number of samples (train and test) to this number. Default of -1
     # to not limit the number of samples.
     limit_samples = -1
+    # Only evaluate test loss on 4 batches when you're in the middle of a train epoch.
+    # Set to None to evaluate on the whole test set.
+    test_subset_within_epoch = 4
+    # use adversarial training. below are configs to be set if adversarial is set to
+    # True. for details, see documentation of SupervisedTrainer in
+    # trainers/supervised_trainer.py
+    adversarial = False
+    start_epoch = None
+    nonsense_reward = None
+    vis_frac_per_epoch = None
+    gradient_clip_percentile = None
     # Retain this fraction of zero-reward transitions and filter out the rest to
     # manually re-weight the dataset. Default of "None" to not filter out anything.
     frac_zero_reward_retained = None
@@ -89,13 +101,28 @@ def make_trainer(
     num_loader_workers: int,
     frac_zero_reward_retained: Optional[float],
     limit_samples: int,
+    test_subset_within_epoch: Optional[int],
     opt_kwargs: Optional[Mapping[str, Any]],
+    adversarial: bool,
+    start_epoch: Optional[int],
+    nonsense_reward: Optional[float],
+    num_acts: Optional[int],
+    vis_frac_per_epoch: Optional[float],
+    gradient_clip_percentile: Optional[float],
     debugging: Mapping,
 ) -> SupervisedTrainer:
-    # MSE loss with mean reduction (the default)
-    # Mean reduction means every batch affects model updates the same, regardless of
-    # batch_size.
-    loss_fn = th.nn.MSELoss()
+    if not adversarial:
+        # MSE loss with mean reduction (the default)
+        # Mean reduction means every batch affects model updates the same, regardless of
+        # batch_size.
+        loss_fn = th.nn.MSELoss()
+    else:
+        # Huber loss with mean reduction
+        # When the prediction is within a distance of sqrt(3) of the regression target,
+        # this is just equal to half of the MSE loss, otherwise it's L1 loss.
+        # Designed to ensure that visualizations don't overwhelm the loss during
+        # adversarial training
+        loss_fn = th.nn.HuberLoss(delta=math.sqrt(3))
 
     trainer = SupervisedTrainer(
         demonstrations=expert_trajectories,
@@ -106,10 +133,17 @@ def make_trainer(
         test_freq=test_freq,
         num_loader_workers=num_loader_workers,
         loss_fn=loss_fn,
+        test_subset_within_epoch=test_subset_within_epoch,
         frac_zero_reward_retained=frac_zero_reward_retained,
         opt_kwargs=opt_kwargs,
         custom_logger=custom_logger,
         allow_variable_horizon=True,
+        adversarial=adversarial,
+        start_epoch=start_epoch,
+        nonsense_reward=nonsense_reward,
+        num_acts=num_acts,
+        vis_frac_per_epoch=vis_frac_per_epoch,
+        gradient_clip_percentile=gradient_clip_percentile,
         debug_settings=debugging,
     )
     return trainer
