@@ -78,7 +78,12 @@ def get_mse(list_attr_vals):
 
 
 @train_probe_ex.capture
-def benchmark_accuracy(dataset, use_next_info: bool, attributes: Union[str, List[str]]):
+def benchmark_accuracy(
+    dataset,
+    use_next_info: bool,
+    attributes: Union[str, List[str]],
+    attr_cap: Optional[float],
+):
     """Determine the MSE from always guessing the mean value of the attributes."""
     attr_list = attributes if isinstance(attributes, list) else [attributes]
     mse = 0
@@ -86,6 +91,10 @@ def benchmark_accuracy(dataset, use_next_info: bool, attributes: Union[str, List
         attr_vals = list(
             map(lambda x: x["next_infos" if use_next_info else "infos"][attr], dataset)
         )
+        if attr_cap is not None:
+            if attr_cap <= 0:
+                raise ValueError("Attribute cap must be positive")
+            attr_vals = list(map(lambda x: max(min(x, attr_cap), -attr_cap), attr_vals))
         attr_mse = get_mse(attr_vals)
         mse += attr_mse
     print("\nLoss from predicting mean:", mse)
