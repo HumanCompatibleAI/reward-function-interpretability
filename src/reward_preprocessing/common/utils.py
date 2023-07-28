@@ -320,6 +320,9 @@ def flatten_trajectories_with_rew_double_info(
     Note: this will not include the final transition of the trajectory, because the
     info dictionary grouped with the final observation actually contains state
     information pertaining to the next episode.
+
+    It also will not include the first transition, because the first observation does
+    not come with an info dict.
     """
     keys = ["obs", "next_obs", "acts", "rews", "dones", "infos", "next_infos"]
     parts = {key: [] for key in keys}
