@@ -128,6 +128,7 @@ def filter_dataset(dataset, use_next_info, attributes, attr_cap):
     new_rews = [dataset.rews[i] for i in keep_indices]
     new_infos = [dataset.infos[i] for i in keep_indices]
     new_next_infos = [dataset.next_infos[i] for i in keep_indices]
+    print("Length of filtered dataset:", len(keep_indices))
     return DoubleInfoTransitionsWithRew(
         acts=new_acts,
         obs=new_obs,
