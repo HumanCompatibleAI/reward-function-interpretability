@@ -25,6 +25,7 @@ def default():
     num_epochs = 5
     compare_to_mean = True
     compare_to_random_net = True
+    filter_extreme_attrs = False
     locals()  # make flake8 happy
 
 
