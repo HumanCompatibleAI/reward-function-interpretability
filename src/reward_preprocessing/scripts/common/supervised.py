@@ -29,6 +29,8 @@ def config():
     # Only evaluate test loss on 4 batches when you're in the middle of a train epoch.
     # Set to None to evaluate on the whole test set.
     test_subset_within_epoch = 4
+    # train classification for whether reward is 0 or not, rather than regression.
+    classify = False
     # use adversarial training. below are configs to be set if adversarial is set to
     # True. for details, see documentation of SupervisedTrainer in
     # trainers/supervised_trainer.py
@@ -103,6 +105,7 @@ def make_trainer(
     limit_samples: int,
     test_subset_within_epoch: Optional[int],
     opt_kwargs: Optional[Mapping[str, Any]],
+    classify: bool,
     adversarial: bool,
     start_epoch: Optional[int],
     nonsense_reward: Optional[float],
@@ -112,10 +115,22 @@ def make_trainer(
     debugging: Mapping,
 ) -> SupervisedTrainer:
     if not adversarial:
-        # MSE loss with mean reduction (the default)
-        # Mean reduction means every batch affects model updates the same, regardless of
-        # batch_size.
-        loss_fn = th.nn.MSELoss()
+        if not classify:
+            # MSE loss with mean reduction (the default)
+            # Mean reduction means every batch affects model updates the same,
+            # regardless of batch_size.
+            loss_fn = th.nn.MSELoss()
+        else:
+            # loss function takes outputs (interpreted as log-probability reward is
+            # zero), reward, and computes the cross-entropy loss.
+            def loss_fn(input, target):
+                if len(input.shape) == 1:
+                    input = input[:, None]
+                zeros = th.zeros(input.shape)
+                log_probs = th.cat((input, zeros), dim=1)
+                target_classes = (target != 0).long()
+                return th.nn.CrossEntropyLoss()(log_probs, target_classes)
+
     else:
         # Huber loss with mean reduction
         # When the prediction is within a distance of sqrt(3) of the regression target,
