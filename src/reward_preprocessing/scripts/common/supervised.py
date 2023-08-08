@@ -29,7 +29,8 @@ def config():
     # Only evaluate test loss on 4 batches when you're in the middle of a train epoch.
     # Set to None to evaluate on the whole test set.
     test_subset_within_epoch = 4
-    # train classification for whether reward is 0 or not, rather than regression.
+    # flag to train classification for whether reward is 0 or not, rather than
+    # regression.
     classify = False
     # use adversarial training. below are configs to be set if adversarial is set to
     # True. for details, see documentation of SupervisedTrainer in
@@ -112,6 +113,7 @@ def make_trainer(
     num_acts: Optional[int],
     vis_frac_per_epoch: Optional[float],
     gradient_clip_percentile: Optional[float],
+    device: str,
     debugging: Mapping,
 ) -> SupervisedTrainer:
     if not adversarial:
@@ -126,7 +128,7 @@ def make_trainer(
             def loss_fn(input, target):
                 if len(input.shape) == 1:
                     input = input[:, None]
-                zeros = th.zeros(input.shape)
+                zeros = th.zeros(input.shape).to(device)
                 log_probs = th.cat((input, zeros), dim=1)
                 target_classes = (target != 0).long()
                 return th.nn.CrossEntropyLoss()(log_probs, target_classes)
