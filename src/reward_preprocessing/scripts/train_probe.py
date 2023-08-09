@@ -2,7 +2,7 @@ import functools
 import operator
 import os
 import os.path
-from typing import List, Optional, Union
+from typing import Callable, List, Optional, Union
 
 from imitation.data import types
 from imitation.scripts.common import common, demonstrations
@@ -28,6 +28,7 @@ def train_probe(
     attributes,
     attr_dim,
     attr_cap,
+    attr_func,
     batch_size,
     num_epochs,
 ):
@@ -41,6 +42,7 @@ def train_probe(
         attribute_max=attr_cap,
         loss_type="mse",
         device=device,
+        attribute_func=attr_func,
     )
 
     probe.train(
@@ -149,6 +151,7 @@ def train_probes_experiment(
     num_probe_layers: int,
     attributes: Union[str, List[str]],
     attr_cap: Optional[float],
+    attr_func: Optional[Union[Callable[..., float], Callable[..., List[float]]]],
     batch_size: int,
     num_epochs: int,
     compare_to_mean: bool,

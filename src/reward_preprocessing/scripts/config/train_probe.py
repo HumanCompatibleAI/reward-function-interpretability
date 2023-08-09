@@ -21,6 +21,7 @@ def default():
     attributes = None
     attr_dim = None
     attr_cap = None
+    attr_func = None
     batch_size = 128
     num_epochs = 5
     compare_to_mean = True
@@ -91,4 +92,19 @@ def dots_and_dists():
             hid_channels=(96, 256, 384, 384, 256),
         )
     )
+    attributes = "distances"
+    attr_dim = 3
+    locals()
+
+
+@train_probe_ex.named_config
+def get_red():
+    attr_func = lambda vec: vec[0]  # noqa: E731
+    attr_dim = 1
+    locals()
+
+
+@train_probe_ex.named_config
+def sort_distances():
+    attr_func = sorted  # noqa: E731
     locals()
