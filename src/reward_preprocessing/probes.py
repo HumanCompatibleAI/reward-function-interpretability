@@ -3,7 +3,7 @@
 import itertools
 import math
 import random
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 import warnings
 
 from imitation.rewards.reward_nets import CnnRewardNet, cnn_transpose
@@ -36,12 +36,18 @@ class CnnProbe(nn.Module):
         attribute_max: Optional[float],
         loss_type: str,
         device: th.device,
+        attribute_func: Optional[
+            Union[Callable[..., float], Callable[..., List[float]]]
+        ] = None,
         obs_shape: Tuple[int, int, int] = (3, 64, 64),
     ) -> None:
         """Make a probe on an underlying CNN.
 
 
         num_probe_layers: Number of hidden layers in the probe head.
+        attribute_func: Function to call on the attribute in the info dict before
+            regressing the probe. Defaults to the identity. Attribute_dim should be the
+            length of the output of this function.
         """
         super(CnnProbe, self).__init__()
         self.attribute_name = attribute_name
@@ -59,6 +65,7 @@ class CnnProbe(nn.Module):
         self.probe_head = None
         self.num_probe_layers = num_probe_layers
         self.loss_type = loss_type
+        self.attribute_func = attribute_func
         self.device = device
 
         # type-check inputs
@@ -237,13 +244,16 @@ class CnnProbe(nn.Module):
         info_dicts = (
             data_dict["next_infos"] if self.use_next_state else data_dict["infos"]
         )
+        attr_func = (
+            self.attribute_func if self.attribute_func is not None else (lambda x: x)
+        )
         target = (
             th.tensor(
                 [
                     list(
                         itertools.chain.from_iterable(
                             [
-                                self.cap_state_var(info_dict[name])
+                                self.cap_state_var(attr_func(info_dict[name]))
                                 for name in self.attribute_name
                             ]
                         )
@@ -254,7 +264,7 @@ class CnnProbe(nn.Module):
             if isinstance(self.attribute_name, list)
             else th.tensor(
                 [
-                    self.cap_state_var(info_dict[self.attribute_name])
+                    self.cap_state_var(attr_func(info_dict[self.attribute_name]))
                     for info_dict in info_dicts
                 ]
             ).to(th.float32)
