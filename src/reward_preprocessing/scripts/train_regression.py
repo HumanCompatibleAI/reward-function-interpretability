@@ -64,6 +64,7 @@ def train_regression(supervised, checkpoint_epoch_interval: int):  # From ingred
         model=model,
         custom_logger=custom_logger,
         num_acts=num_acts,
+        device=device,
     )
 
     trainer.log_data_stats()
