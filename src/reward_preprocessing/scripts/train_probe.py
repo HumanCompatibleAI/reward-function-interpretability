@@ -57,6 +57,10 @@ def _sum_vecs(vec1, vec2):
     return list(map(operator.add, vec1, vec2))
 
 
+def compose_funcs(f, g):
+    return lambda x: f(g(x))
+
+
 def get_mean_attr_val(list_attr_vals):
     num_vals = len(list_attr_vals)
     if isinstance(list_attr_vals[0], list):
@@ -88,14 +92,20 @@ def benchmark_accuracy(
     use_next_info: bool,
     attributes: Union[str, List[str]],
     attr_cap: Optional[float],
+    attr_func: Optional[Union[Callable[..., float], Callable[..., List[float]]]],
 ):
     """Determine the MSE from always guessing the mean value of the attributes."""
     attr_list = attributes if isinstance(attributes, list) else [attributes]
     mse = 0
+    attr_func_ = attr_func if attr_func is not None else (lambda x: x)
     for attr in attr_list:
-        attr_vals = list(
-            map(lambda x: x["next_infos" if use_next_info else "infos"][attr], dataset)
-        )
+
+        def get_attr(x):
+            field = "next_infos" if use_next_info else "infos"
+            return x[field][attr]
+
+        attr_vals = list(map(compose_funcs(attr_func_, get_attr), dataset))
+
         if attr_cap is not None:
             if attr_cap <= 0:
                 raise ValueError("Attribute cap must be positive")
