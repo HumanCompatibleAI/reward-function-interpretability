@@ -14,4 +14,5 @@ def defaults():
     traj_path = "/nas/ucb/pavel/rfi/test/dots-and-dists-10000.npz"
     size = (0.64, 0.64)  # Size of the observation in inches
     colors = ["r", "b", "g", "y", "c"]  # Add more colors to allow more pairs
+    weights = None  # set to make a weighted average
     locals()  # make flake8 happy
