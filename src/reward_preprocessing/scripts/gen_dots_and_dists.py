@@ -1,6 +1,6 @@
 import os
 import os.path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import matplotlib
 from matplotlib import pyplot as plt
@@ -23,6 +23,7 @@ def generate_simple_trajectories(
     traj_path: str,
     colors: List[str],
     size: Tuple[int, int],
+    weights: Optional[List[int]] = None,
 ):
 
     # Set the seed
@@ -32,7 +33,7 @@ def generate_simple_trajectories(
     avg_distances = []
     for i in range(num_transitions):
         data, avg_distance, distances = generate_transition(
-            number_pairs, circle_radius, size, colors
+            number_pairs, circle_radius, size, colors, weights
         )
         obs_list.append(data)
         infos_list.append({"distances": distances})
@@ -68,7 +69,13 @@ def generate_transition(
     circle_radius: float,
     size: Tuple[float, float],
     colors: List[str],
+    weights: Optional[List[int]],
 ):
+    if weights is not None:
+        if len(weights) < number_pairs:
+            raise ValueError("Not every pair has a weight")
+        norm = sum(weights[:number_pairs])
+
     if number_pairs > len(colors):
         raise ValueError("Not enough colors for the number of pairs")
 
@@ -112,7 +119,13 @@ def generate_transition(
     data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
     plt.close()
 
-    avg_distance = np.mean(distances)
+    if weights is None:
+        avg_distance = np.mean(distances)
+    else:
+        weighted_distances = [
+            dist * weight for (dist, weight) in zip(distances, weights)
+        ]
+        avg_distance = sum(weighted_distances) / norm
     return data, avg_distance, distances
 
 
