@@ -108,3 +108,9 @@ def get_red():
 def sort_distances():
     attr_func = sorted  # noqa: E731
     locals()
+
+
+@train_probe_ex.named_config
+def exp_distances():
+    attr_func = lambda vec: [20**x for x in vec]  # noqa: E731
+    locals()
