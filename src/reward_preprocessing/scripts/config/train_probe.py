@@ -114,3 +114,10 @@ def sort_distances():
 def exp_distances():
     attr_func = lambda vec: [20**x for x in vec]  # noqa: E731
     locals()
+
+
+@train_probe_ex.named_config
+def sum_distances():
+    attr_func = sum
+    attr_dim = 1
+    locals()

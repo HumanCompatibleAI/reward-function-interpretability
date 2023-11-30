@@ -328,17 +328,26 @@ def flatten_trajectories_with_rew_double_info(
     parts = {key: [] for key in keys}
     long_trajs = filter(lambda traj: len(traj.acts) > 2, trajectories)
     for traj in long_trajs:
+        # discard first and last action
         parts["acts"].append(traj.acts[1:-1])
+        # discard first observation (with first action), as well as the second-last
+        # and last observations (which go with the last action)
         parts["obs"].append(traj.obs[1:-2])
+        # discard first observation (which can't be a next_obs), second observation
+        # (which goes with the first action), and last observation (which goes with
+        # the last action)
         parts["next_obs"].append(traj.obs[2:-1])
+        # make enough dones
         dones = np.zeros(len(traj.acts) - 2, dtype=bool)
         parts["dones"].append(dones)
+        # rews match actions
         parts["rews"].append(traj.rews[1:-1])
 
         if traj.infos is None:
             infos = np.array([{}] * (len(traj) - 1))
             next_infos = np.array([{}] * (len(traj) - 1))
         else:
+            # index 0 of traj.infos is associated with index 1 of traj.obs
             infos = traj.infos[:-2]
             next_infos = traj.infos[1:-1]
 

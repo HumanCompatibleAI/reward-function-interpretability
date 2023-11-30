@@ -31,7 +31,7 @@ def generate_simple_trajectories(
     obs_list = []
     infos_list = []
     avg_distances = []
-    for i in range(num_transitions):
+    for i in range(num_transitions + 1):
         data, avg_distance, distances = generate_transition(
             number_pairs, circle_radius, size, colors, weights
         )
@@ -39,8 +39,14 @@ def generate_simple_trajectories(
         infos_list.append({"distances": distances})
         avg_distances.append(avg_distance)
 
-    # Duplicate last observation, since there is always a final next_obs.
-    obs_list.append(obs_list[-1].copy())
+    # Drop the first element of the infos list, since the first observation shouldn't
+    # come with an info dict (see flatten_trajectories_with_rew_double_info in
+    # common/utils.py)
+    infos_list = infos_list[1:]
+
+    # Drop the last element of avg_distances, since the last observation is the next_obs
+    # of the final transition, and rewards are associated with obs, not next_obs
+    avg_distances = avg_distances[:-1]
 
     condensed = {
         "obs": np.array(obs_list).astype(np.uint8),
